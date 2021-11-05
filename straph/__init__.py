@@ -1,6 +1,7 @@
 from straph.generators import erdos_renyi, barabasi_albert
 from straph.parser import parser, sort_csv
 from straph.paths import Path
+from straph.paths import Metawalk
 from straph.stream import (StreamGraph,
                            read_stream_graph,
                            stream_graph_from_events_list,
