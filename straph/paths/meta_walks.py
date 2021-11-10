@@ -25,6 +25,31 @@ class Metawalk:
     def duration(self):
         return self.time_intervals[-1][1] - self.time_intervals[0][0]
 
+    def clone(self):
+        return Metawalk(self.time_intervals[:],self.nodes[:])
+
+    def immut(self):
+
+
+    def __str__(self):
+        s = ""
+        for i in range(0,self.length()):
+            s += " "
+            s += str(self.nodes[i])
+            s += " "
+            s += str(self.time_intervals[i])
+        s += " "
+        s += str(self.nodes[i+1])
+        return s
+
+    def equal(self, m):
+        if m.length() != self.length():
+            return False
+        if (m.nodes == self.nodes) and (m.time_intervals == self.time_intervals):
+            return True
+        return False
+
+
     def plot(self, S, color="#18036f",
              markersize=10, dag=False, fig=None):
         """

@@ -38,6 +38,7 @@ from sortedcontainers import SortedSet
 from straph import components as cmp
 from straph import etf
 from straph.paths import paths as ap
+from straph.paths import meta_walks as mw
 from straph.utils import get_cmap
 
 
@@ -4480,6 +4481,41 @@ class StreamGraph:
                         isolated_nodes.append((t0, t1, n))
         return isolated_nodes
 
+    ###################################
+    #            MetaWalks            #
+    ###################################
+
+    def metapaths(self,x):
+        """the function returns all metapaths in a link stream
+        and is based on bellman-ford algorithm
+
+        :param x: x the node from which we want the metawalks
+        :return: a list of the metapaths in the link stream 
+        """
+        res = [set() for i in range(len(self.nodes))]
+
+        #the 2 loops inside the first are to iterate over each temporal link 
+        for k in self.nodes:
+            for i in range(0,len(self.links)):
+                a,b = self.links[i]
+                for j in range(0,len(self.link_presence[i]),2):
+                    t1,t2 = self.link_presence[i][j:j+2]
+                    if a == x:
+                        res[b].add(mw.Metawalk([(t1,t2)],[a,b]))
+                    else:
+                        if len(res[a]) != 0:
+                            for e in res[a]:
+                                start,end = e.time_intervals[-1]
+                                # check if the path can be extended
+                                if start <= t1:
+                                    #we should clone the metawalk and add something to it
+                                    m = e.clone()
+                                    m.time_intervals.append((t1,t2))
+                                    m.nodes.append(b)
+                                    res[b].add(m)
+        return res 
+
+
     #############################################################################
     #                       END                                                 #
     #############################################################################
@@ -4661,3 +4697,4 @@ def performance_test_path_functions(S, path_type, random_nodes=False,
     print("None latencies :", cnt_none_latencies)
     print("Null latencies :", cnt_null_latencies)
     print("Strictly Positive latencies :", cnt_non_null_latencies)
+
