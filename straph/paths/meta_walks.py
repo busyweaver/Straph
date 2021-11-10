@@ -28,9 +28,10 @@ class Metawalk:
     def clone(self):
         return Metawalk(self.time_intervals[:],self.nodes[:])
 
-    def immut(self):
-
-
+    def __hash__(self):
+        m = tuple(self.nodes)
+        n = tuple(self.time_intervals)
+        return hash((m,n))
     def __str__(self):
         s = ""
         for i in range(0,self.length()):
@@ -42,7 +43,7 @@ class Metawalk:
         s += str(self.nodes[i+1])
         return s
 
-    def equal(self, m):
+    def __eq__(self, m):
         if m.length() != self.length():
             return False
         if (m.nodes == self.nodes) and (m.time_intervals == self.time_intervals):
