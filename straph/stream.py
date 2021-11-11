@@ -14,7 +14,7 @@
 
 # OVERALL Todos:
 # TODO : Harmoniser les noms des fonctions, augmented ou segmented dès que temporal node au lieu de node
-
+import copy
 import csv
 import datetime as dt
 import itertools
@@ -1010,7 +1010,6 @@ class StreamGraph:
 
         if self.node_to_id is None:
             self.node_to_id = {n: n for n in self.nodes}
-
         degrees_partition = self.degrees_partition()
         isolated_nodes = self.isolated_nodes()
         degrees_partition[0] = isolated_nodes
@@ -4513,7 +4512,72 @@ class StreamGraph:
                                     m.time_intervals.append((t1,t2))
                                     m.nodes.append(b)
                                     res[b].add(m)
-        return res 
+        return res
+
+    def portion_sorted_list(self,l,a,b):
+        b1 = False
+        b2 = True
+        t1 = 0
+        t2 = len(l)
+        for i in range(0,len(l)):
+            if (l[i] > a) and (not b1):
+                t1 = i
+                b1 = True
+            if (l[i] >= b) and b2:
+                t2 = i 
+                b2 = False
+        return (t1,t2)
+
+    def __deepcopy__(self):
+        """
+        make a deepcopy of a stream graph
+        """
+        id = self.id
+        times = copy.deepcopy(self.times)
+        nodes = copy.deepcopy(self.nodes)
+        #node_to_label = dict()
+        # for e in self.node_to_label.keys():
+        #     node_to_label[e] = self.node_to_label[e]
+        node_to_label = self.node_to_label.copy()
+        #print(type(self.node_to_id))
+        if self.node_to_id != None:
+            node_to_id = self.node_to_id.copy()
+        else:
+            node_to_id = None
+        nodes_presence = copy.deepcopy(self.node_presence)
+        links = copy.deepcopy(self.links)
+        link_presence = copy.deepcopy(self.link_presence)
+        weights = copy.deepcopy(self.weights)
+        trips = copy.deepcopy(self.trips)
+        return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips)
+
+    def fragmented_stream_graph(self):
+        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals"""
+        s = self.__deepcopy__()
+        l = list(self.event_times())
+        l.sort()
+        for i in range(0,len(self.links)):
+            a,b = self.links[i]
+            decalage = 0
+            for j in range(0,len(self.link_presence[i]),2):
+                t1,t2 = self.link_presence[i][j:j+2]
+                print("lien actuel",a,b,t1,t2,l)
+                por_1, por_2 = self.portion_sorted_list(l,t1,t2)
+                portion = l[por_1:por_2]
+                print("portion",portion)
+                time_1 = t1
+                time_2 = 0
+                for k in range(0,len(portion)):
+                    time_2 = portion[k]
+                    s.link_presence[i].insert(j + k + 1 + decalage,time_2)
+                    s.link_presence[i].insert(j + k + 2 + decalage,time_2)
+                    time_1 = time_2
+                decalage += 2 * len(portion)
+               # s.link_presence[i].insert(j+k+2,time_1)
+               # s.link_presence[i].insert(j+k+3,t2)
+                print("nouveau lien",s.link_presence[i])
+        return s
+
 
 
     #############################################################################
