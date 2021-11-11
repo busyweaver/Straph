@@ -4591,7 +4591,42 @@ class StreamGraph:
         """
         self.points.append(t)
 
+    def fastest_paths_between_2_vertices(m):
+        """
+        the function returns all metapaths in a link stream
+        and is based on bellman-ford algorithm
 
+        :param x: x the node from which we want the metawalks
+        :return: a list of the metapaths in the link stream 
+        """
+        res = [dict() for i in range(len(self.nodes))]
+
+        #the 2 loops inside the first are to iterate over each temporal link 
+        for k in self.nodes:
+            for i in range(0,len(self.links)):
+                a,b = self.links[i]
+                for j in range(0,len(self.link_presence[i]),2):
+                    t1,t2 = self.link_presence[i][j:j+2]
+                    if a == x:
+                        if t1 not in res[b]:
+                            res[b][t1] = Set()
+                            res[b][t1].add(mw.Metawalk([(t1,t2)],[a,b]))
+                        else:
+                            res[b][t1].add(mw.Metawalk([(t1,t2)],[a,b]))
+                    else:
+                        if len(res[a]) != 0:
+                            for e in res[a]:
+                                start,end = e.time_intervals[-1]
+                                # check if the path can be extended
+                                if start <= t1:
+                                    #we should clone the metawalk and add something to it
+                                    m = e.clone()
+                                    m.time_intervals.append((t1,t2))
+                                    m.nodes.append(b)
+                                    res[b].add(m)
+        return res
+
+        
 
 
 
