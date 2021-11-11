@@ -487,7 +487,9 @@ class StreamGraph:
                  links=None,
                  link_presence=None,
                  weights=None,
-                 trips=None):
+                 trips=None,
+                 points=None
+    ):
         """
         A basic constructor for a ``StreamGraph`` object
         
@@ -509,6 +511,7 @@ class StreamGraph:
         self.link_presence = link_presence
         self.weights = weights
         self.trips = trips
+        self.points = points
 
     def check_integrity(self):
         """
@@ -647,12 +650,15 @@ class StreamGraph:
         """
         if all:
             event_times = sorted([t for np in self.node_presence for t in np] +
-                                 [t for lp in self.link_presence for t in lp])
+                                 [t for lp in self.link_presence for t in lp] +
+                                 [t  for t in self.points]
+            )
             return event_times
         else:
             event_t_nodes = set([t for np in self.node_presence for t in np])
             event_t_links = set([t for lp in self.link_presence for t in lp])
-            return event_t_links | event_t_nodes
+            event_t_points = set([t  for t in self.points])
+            return event_t_links | event_t_nodes | event_t_points
 
     def number_of_event_times(self):
         """
@@ -4552,7 +4558,7 @@ class StreamGraph:
         return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips)
 
     def fragmented_stream_graph(self):
-        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals"""
+        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream"""
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()
@@ -4577,6 +4583,15 @@ class StreamGraph:
                # s.link_presence[i].insert(j+k+3,t2)
                 print("nouveau lien",s.link_presence[i])
         return s
+
+    def add_point(self,t):
+        """
+        Add a point to a StreamGraph
+        :param t: the time to be added in the event times
+        """
+        self.points.append(t)
+
+
 
 
 
