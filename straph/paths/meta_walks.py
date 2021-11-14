@@ -43,6 +43,9 @@ class Metawalk:
         s += str(self.nodes[i+1])
         return s
 
+    def __repr__(self):
+        return self.__str__()
+
     def __eq__(self, m):
         if m.length() != self.length():
             return False
@@ -50,6 +53,19 @@ class Metawalk:
             return True
         return False
 
+    def first_time(self):
+        return self.time_intervals[0][0]
+
+    def last_departure(self):
+        return self.time_intervals[0][1]
+
+    def first_arrival(self):
+        return self.time_intervals[-1][0]
+
+    def first_node(self):
+        return self.nodes[0]
+    def last_node(self):
+        return self.nodes[-1]
 
     def plot(self, S, color="#18036f",
              markersize=10, dag=False, fig=None):
