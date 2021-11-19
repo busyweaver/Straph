@@ -1401,6 +1401,7 @@ class StreamGraph:
 
         # Set xticks
         xticks = numpy.linspace(int(self.times[0]), int(self.times[1]), 11)
+        xticks = [numpy.around(e, decimals=2) for e in xticks]
         ax.set_xticks(xticks)
         if timestamp is True:
 
