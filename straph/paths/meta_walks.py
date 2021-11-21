@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-
+import numpy as np
+import numpy.polynomial.polynomial as nppol
 
 class Metawalk:
     def __init__(self,
@@ -41,6 +42,8 @@ class Metawalk:
             s += str(self.time_intervals[i])
         s += " "
         s += str(self.nodes[i+1])
+        s += " | volume = "
+        s += str(self.volume())
         return s
 
     def __repr__(self):
@@ -52,6 +55,45 @@ class Metawalk:
         if (m.nodes == self.nodes) and (m.time_intervals == self.time_intervals):
             return True
         return False
+
+    def volume(self):
+        """Normally the link are either exactly the same or disjoint, need to check for inclusion, exclusion of intervals  """
+        time_intervals = self.time_intervals[:]
+        time_intervals.append([-1,-1])
+        res = [0 for i in range(len(time_intervals))]
+        if len(time_intervals)==0:
+            res = [0]
+        elif len(time_intervals)==1:
+            x,y = time_intervals[0]
+            if x == y:
+                res = [1]
+            else:
+                res = [0, np.around((y - x), decimals=2)]
+        else:
+            last_x,last_y = time_intervals[0]
+            if last_x == last_y:
+                degree = 0
+            else:
+                degree = 1
+            for i in range(1,len(time_intervals)):
+                x,y = time_intervals[i]
+                #it should be enough to check one bound no overlap in linkq in fragmented link streams but maybe its ok to generalise it and make it work whenvever later on
+                if x == last_x:
+                    if x != y :
+                        degree += 1
+                else:
+                    if last_x == last_y :
+                        res[0] += 1
+                    else:
+                        res[degree] += np.around((last_y - last_x), decimals=2)
+                        if x == y:
+                            degree = 0
+                        else:
+                            degree = 1
+                        last_x = x
+                        last_y = y
+        res = [np.around(e,decimals=2) for e in res]
+        return nppol.Polynomial(res)
 
     def first_time(self):
         return self.time_intervals[0][0]
