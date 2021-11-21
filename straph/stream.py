@@ -4645,8 +4645,7 @@ class StreamGraph:
         # check if latency
 
             existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
-            if t1 == 1.0 and t2 == 3.0 and b == 3:
-                print ("existing",existing_keys)
+
 
             if existing_keys != [] and t1 < t2:
                 #not latency
@@ -4664,16 +4663,18 @@ class StreamGraph:
 
 
 
-    def check_edge(self,x,a,b,t1,t2,res):
+    def check_edge(self,x,a,b,t1,t2,res, res2):
         #print("check_edge",a,b,t1,t2)
         if a == x:
                 #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
             if (t2,t1) not in res[b]:
                 res[b][(t2,t1)] = set()
+                res2[b][(t2,t1)] = set()
             res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+            res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
         else:
-            if len(res[a]) != 0:
-                ll = f.reduce(lambda a, b: a+b, list(map(list,list(res[a].values()))))
+            if len(res2[a]) != 0:
+                ll = f.reduce(lambda a, b: a+b, list(map(list,list(res2[a].values()))))
                 for e in ll:
                     start,end = e.time_intervals[-1]
                     # check if the path can be extended
@@ -4688,6 +4689,12 @@ class StreamGraph:
                             res[b][(last_depar,t1)].add(m)
                         else:
                             res[b][(last_depar,t1)].add(m)
+
+                        if (last_depar,t1) not in res2[b]:
+                            res2[b][(last_depar,t1)] = set()
+                            res2[b][(last_depar,t1)].add(m)
+                        else:
+                            res2[b][(last_depar,t1)].add(m)
                         #print("edge",m)
                         self.filter_metapaths(x,b,last_depar,t1,res)
 
@@ -4703,6 +4710,7 @@ class StreamGraph:
         :return: a list of the metapaths in the link stream 
         """
         res = [dict() for i in range(len(self.nodes))]
+        res2 = [dict() for i in range(len(self.nodes))]
 
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
@@ -4710,7 +4718,7 @@ class StreamGraph:
                 a,b = self.links[i]
                 for j in range(0,len(self.link_presence[i]),2):
                     t1,t2 = self.link_presence[i][j:j+2]
-                    self.check_edge(x,a,b,t1,t2,res)
+                    self.check_edge(x,a,b,t1,t2,res,res2)
         return res
         #             if a == x:
         #                 if t2 not in res[b]:
