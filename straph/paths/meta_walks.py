@@ -95,6 +95,28 @@ class Metawalk:
         res = [np.around(e,decimals=2) for e in res]
         return nppol.Polynomial(res)
 
+    def passes_through(self,v,t):
+
+        if v in self.nodes:
+            indice = self.nodes.index(v)
+        else:
+            return False
+        if indice == 0:
+            if t < self.time_intervals[0][0]:
+                return True
+            else:
+                return False
+        elif indice == len(self.nodes) -1:
+            if t >= self.time_intervals[len(self.time_intervals)-1][1]:
+                return True
+            else:
+                return False
+        else:
+            if t >= self.time_intervals[indice-1][1] and t < self.time_intervals[indice][0]:
+                return True
+            else:
+                return False
+
     def first_time(self):
         return self.time_intervals[0][0]
 
