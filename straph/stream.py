@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager
 import networkx as nx
 import numpy
+import numpy.polynomial.polynomial as nppol
 from operator import itemgetter
 import pandas as pd
 import random
@@ -4525,14 +4526,64 @@ class StreamGraph:
                                     res[b].add(m)
         return res
 
-    def betweenness_temporal_node(t,v):
+    def actual_degree(self,p):
+        x = p.degree()
+        for i in range(0,x):
+            if p.coef[x-i] != 0:
+                return x-i
+        # polynomial is null
+        return -1
+
+
+    def betweenness_temporal_node(self,t,v):
         """il faut arranger plein de trucs, genre couper les chemins dès le début mais bon """
         self.add_point(t)
         new = self.fragmented_stream_graph()
-        for u in new.nodes:
-            new.fastest_paths_from_vertex(u)
-            
+        all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+        fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+        for i in range(0,len(new.nodes)):
+            l = new.fastest_paths_from_vertex(new.nodes[i])
+            #a changer et couper les chemins en amont
+            for el in l:
+                for e in el.values():
+                    for ee in e:
+                        ee = ee.fastest_meta_walk()
+                        all_fastest[i][ee.last_node()].add(ee)
+                        if ee.passes_through(t,v):
+                            fastest_passing_through[i][ee.last_node()].add(ee)
+        return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
 
+    def get_volume_betweenness(self,all_fast,passing):
+        return [   [   (self.volume_metapaths(list(passing[i][j])),self.volume_metapaths(list(all_fast[i][j])))  for j in range(0,len(self.nodes))]  for i in range(0,len(self.nodes))]
+
+
+    def matthieu_clem_betweenness(self,all_fast,passing):
+        print("all_fastest",all_fast)
+        print("passing_thruough",passing)
+        res = self.get_volume_betweenness(all_fast,passing)
+        print("res",res)
+        return sum(sum( self.value_betweenness_at(res,i,j)  for j in range(0,len(res[i])) )   for i in range(0,len(res)))
+
+
+
+
+    def value_betweenness_at(self,res,i,j):
+        x,y = res[i][j]
+        p = self.actual_degree(x)
+        q = self.actual_degree(y)
+        if p == -1:
+            return 0
+        if p == q:
+            return x.coef[p]/y.coef[q]
+        else:
+            return 0
+
+
+
+    def volume_metapaths(self,l):
+        if l == []:
+            return nppol.Polynomial([0])
+        return sum(e.volume() for e in l)
 
     def portion_sorted_list(self,l,a,b):
         b1 = False
@@ -4664,8 +4715,6 @@ class StreamGraph:
                 existing_keys = [e for e in list(res[b].keys()) if ((e[0] == t1) and (e[1] > t2)) or ((e[0] <  t1) and (e[1] == t2)) and (e[0] != e[1]) ]
                # print("existing",existing_keys)
                 for e in existing_keys:
-                    if b == 3 and e[0] == 1.0 and e[1] == 3.0:
-                        print (b,t1,t2)
                     # its a latency and we remove slowlier paths
                     del res[b][e]
 #        return res

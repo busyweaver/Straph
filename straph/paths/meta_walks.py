@@ -83,7 +83,7 @@ class Metawalk:
                         degree += 1
                 else:
                     if last_x == last_y :
-                        res[0] += 1
+                        res[0] = 1
                     else:
                         res[degree] += np.around((last_y - last_x), decimals=2)
                         if x == y:
@@ -95,7 +95,7 @@ class Metawalk:
         res = [np.around(e,decimals=2) for e in res]
         return nppol.Polynomial(res)
 
-    def passes_through(self,v,t):
+    def passes_through(self,t,v):
 
         if v in self.nodes:
             indice = self.nodes.index(v)
