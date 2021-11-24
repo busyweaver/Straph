@@ -107,7 +107,7 @@ class Metawalk:
             else:
                 return False
         elif indice == len(self.nodes) -1:
-            if t >= self.time_intervals[len(self.time_intervals)-1][1]:
+            if t >= self.time_intervals[-1][1]:
                 return True
             else:
                 return False
@@ -116,6 +116,30 @@ class Metawalk:
                 return True
             else:
                 return False
+
+    def passes_through_whole_interval(self,v,t1,t2):
+        return False
+
+    def passes_through_somewhere_interval(self,v,t1,t2):
+        return False
+
+    def fastest_meta_walk(self):
+        if self.time_intervals[0] == self.time_intervals[-1]:
+            return self.clone()
+        else:
+            nodes = self.nodes[:] 
+            time_intervals = self.time_intervals[:]
+            time_intervals[0] = (time_intervals[0][1],time_intervals[0][1])
+            time_intervals[-1] = (time_intervals[-1][0],time_intervals[-1][0])
+            for i in range(1,len(time_intervals)):
+                if time_intervals[i][0] < time_intervals[0][0]:
+                    time_intervals[i] = (time_intervals[0][0],time_intervals[i][1])
+                if time_intervals[i][1] > time_intervals[-1][1]:
+                    time_intervals[i] = (time_intervals[i][0],time_intervals[-1][1])
+
+        return Metawalk(time_intervals,nodes)
+
+
 
     def first_time(self):
         return self.time_intervals[0][0]

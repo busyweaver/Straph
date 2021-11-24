@@ -4525,6 +4525,15 @@ class StreamGraph:
                                     res[b].add(m)
         return res
 
+    def betweenness_temporal_node(t,v):
+        """il faut arranger plein de trucs, genre couper les chemins dès le début mais bon """
+        self.add_point(t)
+        new = self.fragmented_stream_graph()
+        for u in new.nodes:
+            new.fastest_paths_from_vertex(u)
+            
+
+
     def portion_sorted_list(self,l,a,b):
         b1 = False
         b2 = True
