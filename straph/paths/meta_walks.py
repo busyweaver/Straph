@@ -121,7 +121,24 @@ class Metawalk:
         return False
 
     def passes_through_somewhere_interval(self,v,t1,t2):
+        #t1 included, but t2 not
+
         return False
+    def add_interval_betweenness(self,u,v,t_max,interval_size):
+        res = []
+        for i in range(0,len(self.time_intervals)-1):
+            left_bound = self.time_intervals[i][1]
+            right_bound = self.time_intervals[i+1][0]
+            nb_interval_contributes_to = (left_bound - right_bound) // interval_size
+            fst_interval_left_bound = left_bound // interval_size
+            for j in range(1,nb_interval_contributes_to+1):
+                res.append((self.nodes[i+1], fst_interval_left_bound, fst_interval_left_bound + j * interval_size ))
+                fst_interval_left_bound =  fst_interval_left_bound + j * interval_size
+        return res
+
+
+
+
 
     def fastest_meta_walk(self):
         if self.time_intervals[0] == self.time_intervals[-1]:

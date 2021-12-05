@@ -4558,12 +4558,32 @@ class StreamGraph:
 
 
     def matthieu_clem_betweenness(self,all_fast,passing):
+        #not including contribution..
         print("all_fastest",all_fast)
         print("passing_thruough",passing)
         res = self.get_volume_betweenness(all_fast,passing)
         print("res",res)
         return sum(sum( self.value_betweenness_at(res,i,j)  for j in range(0,len(res[i])) )   for i in range(0,len(res)))
 
+    def betweenneess_interval(self,interval_size):
+        m = max(self.times)
+        for i in range(1,m//interval_size):
+            self.add_point(i*(m//interval_size))
+        new = self.fragmented_stream_graph()
+        all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+        fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+        for i in range(0,len(new.nodes)):
+            l = new.fastest_paths_from_vertex(new.nodes[i])
+            #a changer et couper les chemins en amont
+            for el in l:
+                for e in el.values():
+                    for ee in e:
+                        ee = ee.fastest_meta_walk()
+                        all_fastest[i][ee.last_node()].add(ee)
+                        if ee.passes_through(t,v):
+                            fastest_passing_through[i][ee.last_node()].add(ee)
+        return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
+        
 
 
 
@@ -4659,7 +4679,8 @@ class StreamGraph:
         Add a point to a StreamGraph
         :param t: the time to be added in the event times
         """
-        self.points.append(t)
+        if t not in self.points:
+            self.points.append(t)
 
     def create_dictionary_all_metapaths(self, mp):
         res = [dict() for j in range(len(self.nodes))] 
