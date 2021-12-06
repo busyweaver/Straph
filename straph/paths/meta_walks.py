@@ -124,7 +124,7 @@ class Metawalk:
         #t1 included, but t2 not
 
         return False
-    def add_interval_betweenness(self,u,v,t_max,interval_size):
+    def add_interval_betweenness(self,t_max,interval_size):
         res = []
         for i in range(0,len(self.time_intervals)-1):
             left_bound = self.time_intervals[i][1]

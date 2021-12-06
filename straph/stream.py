@@ -4580,9 +4580,10 @@ class StreamGraph:
                     for ee in e:
                         ee = ee.fastest_meta_walk()
                         all_fastest[i][ee.last_node()].add(ee)
-                        if ee.passes_through(t,v):
-                            fastest_passing_through[i][ee.last_node()].add(ee)
-        return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
+                        r = add_interval_betweenness(ee,max(self.times),interval_size)
+                        for (v,t1,t2) in r:
+                            dic[(v,t1,t2)].append(ee)
+                        #a finir
         
 
 
