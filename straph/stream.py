@@ -4697,7 +4697,7 @@ class StreamGraph:
     def update_metapaths(self, final_paths,  b, t1, t2, m):
         #normally there should be no keys (i.e intervals) in the paths included in others
         intervals = [e for e in list(final_paths[b].keys()) ]
-        print("update_metapaths",b,t1,t2)
+#        print("update_metapaths",b,t1,t2)
         boo = True
         if intervals == []:
             final_paths[b][(t1,t2)] = set()
@@ -4708,10 +4708,10 @@ class StreamGraph:
                 # example (3,1) for t1 t2, in this case t1,t2 is a metaedge and nothing happens in the fls in this time, only in boundaries things can happen. if it is an instantenous metapaths it would be included in this one, else it is not an instantenous metapaths and if it starts during t1,t2 it has to be omitted.
                 for e in intervals:
                     a,c = e
-                    if a >= t2 and a <= t1 and a < c:
-                        print("******** deleting *******",e)
+                    if a >= t2 and a <= t1 and a <= c: #remove instantenous paths included in this one and non instantenous ones.
+ #                       print("******** deleting *******",e)
                         del final_paths[b][e]
-                    if c >= t2 and c <= t1 and a < c:
+                    elif c >= t2 and c <= t1 and a <= c:
                         #on peut en avoir plusieur, ne pas sortir ici
                         del final_paths[b][e]
                 if (t1,t2) in final_paths[b]:
@@ -4866,11 +4866,11 @@ class StreamGraph:
         return True
 
     def extend_paths(self,x,a,b,t1,t2,final_paths, tmp_paths):
-        print("extend_paths",a,b,t1,t2)
-        print("keys")
-        for e in final_paths:
-            print(e.keys())
-        print("final",final_paths)
+        #print("extend_paths",a,b,t1,t2)
+        #print("keys")
+        #for e in final_paths:
+        #    print(e.keys())
+        #print("final",final_paths)
         if a == x:
             if (t2,t1) not in final_paths[b]:
                 final_paths[b][(t2,t1)] = set()
@@ -4884,11 +4884,13 @@ class StreamGraph:
                     start,end = e.time_intervals[-1]
                     boo = True
                     m = self.adapt_metawalk(start,end,t1,t2,e,b)
-                    print("res adapt",e,m)
+                    #print("res adapt",e,m)
                     if m == None :
                         boo = False
                     if boo == True:
                         last_depar = m.last_departure()
+                        if ( b in e.nodes):
+                            return
                         #in all cases the path is ok, so it is added to tmp paths
                         if (last_depar,t1) not in tmp_paths[b]:
                             tmp_paths[b][(last_depar,t1)] = set()
@@ -4898,6 +4900,28 @@ class StreamGraph:
                         # t1 is first arrival
                         self.update_metapaths(final_paths,  b, last_depar, t1, m)
 
+    def relax_paper(self,x,a,b,t1,t2,final_paths, tmp_paths,pre,cur_best,maxi):
+                #print("extend_paths",a,b,t1,t2)
+        #print("keys")
+        #for e in final_paths:
+        #    print(e.keys())
+        #print("final",final_paths)
+        #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
+        arrivals = [e for e in list(cur_best[a].keys()) ]
+        for e in arrivals:
+            if t2 >= e: # the new metawalk is ok
+                if t2 == e or t1 == e : #3 cases possible on intervals positions
+                    #the max should be saved it is not good to compute it each time
+                    c = maxi * (e - cur_best[a][e][0]) + cur_best[a][e][1] + 1
+                else if t1 > e[0]:
+                    c = maxi * (t1 - cur_best[a][e][0]) + cur_best[a][e][1] + 1
+            if c < (cur_best[b][e][1] - cur_best[b][e][0]) * maxi + cur_best[b][e][1]:
+                pre[b][e] = []
+                cur_best[b][e]
+            if c == (cur_best[b][e][1] - cur_best[b][e][0]) * maxi + cur_best[b][e][1]:
+                pre[b][e].append((a,t1,t2))
+
+#arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
     def fastest_paths_from_vertex(self,x,boo):
                              #b is bool for new and old version 0 for old and 1 for new, to be removed
         """
@@ -4907,6 +4931,9 @@ class StreamGraph:
         :param x: x the node from which we want the metawalks
         :return: a list of the metapaths in the link stream 
         """
+        pre = dict()
+        cur_best = dict()
+
         final_paths = [dict() for i in range(len(self.nodes))]
         tmp_paths = [dict() for i in range(len(self.nodes))]
 
@@ -4919,7 +4946,9 @@ class StreamGraph:
                     if boo == 0:
                         self.check_edge(x,a,b,t1,t2,final_paths,tmp_paths)
                     else:
+                        #add commented line for both directions of edges
                         self.extend_paths(x,a,b,t1,t2,final_paths, tmp_paths)
+                        self.extend_paths(x,b,a,t1,t2,final_paths, tmp_paths)
 
         return final_paths
 
