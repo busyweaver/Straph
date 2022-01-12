@@ -4583,7 +4583,6 @@ class StreamGraph:
                         if ee.passes_through(t,v):
                             fastest_passing_through[i][ee.last_node()].add(ee)
         return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
-        
 
 
 
@@ -4695,11 +4694,63 @@ class StreamGraph:
 
         return res
 
+    def update_metapaths(self, final_paths,  b, t1, t2, m):
+        #normally there should be no keys (i.e intervals) in the paths included in others
+        intervals = [e for e in list(final_paths[b].keys()) ]
+        print("update_metapaths",b,t1,t2)
+        boo = True
+        if intervals == []:
+            final_paths[b][(t1,t2)] = set()
+            final_paths[b][(t1,t2)].add(m)
+        else:
+
+            if t2 <= t1:
+                # example (3,1) for t1 t2, in this case t1,t2 is a metaedge and nothing happens in the fls in this time, only in boundaries things can happen. if it is an instantenous metapaths it would be included in this one, else it is not an instantenous metapaths and if it starts during t1,t2 it has to be omitted.
+                for e in intervals:
+                    a,c = e
+                    if a >= t2 and a <= t1 and a < c:
+                        print("******** deleting *******",e)
+                        del final_paths[b][e]
+                    if c >= t2 and c <= t1 and a < c:
+                        #on peut en avoir plusieur, ne pas sortir ici
+                        del final_paths[b][e]
+                if (t1,t2) in final_paths[b]:
+                    l = list(final_paths[b][(t1,t2)])
+                    if len(m.time_intervals) < len(l[0].time_intervals):
+                        final_paths[b][e] = set()
+                        final_paths[b][e].add(m)
+                    elif len(m.time_intervals) == len(l[0].time_intervals):
+                        final_paths[b][(t1,t2)].add(m)
+                    return
+
+            else: #non instantenous metawalk
+                for e in intervals:
+                    a,c = e
+                    if (a >= t1 and c < t2) or (a > t1 and c <= t2):
+                        boo = False
+                        return boo
+                    if (t1 >= a and t2 < c) or (t1 > a and t2 <= c):
+                        #on peut en avoir plusieur, ne pas sortir ici
+                        del final_paths[b][e]
+                    if (t1 == a and t2 == c):
+                        l = list(final_paths[b][e])
+                        if len(m.time_intervals) < len(l[0].time_intervals):
+                            final_paths[b][e] = set()
+                            final_paths[b][e].add(m)
+                        elif len(m.time_intervals) == len(l[0].time_intervals):
+                            final_paths[b][e].add(m)
+                        return
+            final_paths[b][(t1,t2)] = set()
+            final_paths[b][(t1,t2)].add(m)
+
+
     def is_latency(self, res,  b, t1, t2):
+        # the pair is instantenous
+        if t2 <= t1:
+            return True
+        #check for inclusion
         existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
         return existing_keys == []
-
-
 
     def filter_fastest_metapaths_slow(self, m):
         res = self.create_dictionary_all_metapaths(m)
@@ -4777,10 +4828,78 @@ class StreamGraph:
                         #print("edge",m)
                         self.filter_metapaths(x,b,last_depar,t1,res)
 
-#        return res
+    def sf_paths_check(self,x,a,b,t1,t2,res, res2):
+        if a == x:
+                #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
+            if (t2,t1) not in res[b]:
+                res[b][(t2,t1)] = set()
+                res2[b][(t2,t1)] = set()
+            res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+            res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
 
+    def adapt_metawalk(self,start,end,t1,t2,e,b):
+            # check if the path can be extended
+        if start <= t1 and end <= t2: #the extension can be added with no problems
+                                #we should clone the metawalk and add something to it
+            m = e.clone()
+            m.time_intervals.append((t1,t2))
+            m.nodes.append(b)
+        elif start <= t1:
+            m = e.clone()
+            m.time_intervals.append((t1,t2))
+            m.nodes.append(b)
+            m.update_following_last(1)
+        elif end <= t2:
+            m = e.clone()
+            m.time_intervals.append((t1,t2))
+            m.nodes.append(b)
+            m.update_following_last(0)
+        else:
+            m = None
+        return m
 
-    def fastest_paths_from_vertex(self,x):
+    def is_shortest_path(self,last_depar,t1,final_paths,m):
+        if (last_depar,t1) in final_paths[b]:
+            r = list(final_paths[b])[0]
+            if len(r.time_intervals) < len(m.time_intervals):
+                return False
+        return True
+
+    def extend_paths(self,x,a,b,t1,t2,final_paths, tmp_paths):
+        print("extend_paths",a,b,t1,t2)
+        print("keys")
+        for e in final_paths:
+            print(e.keys())
+        print("final",final_paths)
+        if a == x:
+            if (t2,t1) not in final_paths[b]:
+                final_paths[b][(t2,t1)] = set()
+                tmp_paths[b][(t2,t1)] = set()
+            final_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+            tmp_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+        else:
+            if len(tmp_paths[a]) != 0:
+                ll = f.reduce(lambda a, b: a+b, list(map(list,list(tmp_paths[a].values()))))
+                for e in ll:
+                    start,end = e.time_intervals[-1]
+                    boo = True
+                    m = self.adapt_metawalk(start,end,t1,t2,e,b)
+                    print("res adapt",e,m)
+                    if m == None :
+                        boo = False
+                    if boo == True:
+                        last_depar = m.last_departure()
+                        #in all cases the path is ok, so it is added to tmp paths
+                        if (last_depar,t1) not in tmp_paths[b]:
+                            tmp_paths[b][(last_depar,t1)] = set()
+                            tmp_paths[b][(last_depar,t1)].add(m)
+                        else:
+                            tmp_paths[b][(last_depar,t1)].add(m)
+                        # t1 is first arrival
+                        self.update_metapaths(final_paths,  b, last_depar, t1, m)
+
+    def fastest_paths_from_vertex(self,x,boo):
+                             #b is bool for new and old version 0 for old and 1 for new, to be removed
         """
         the function returns all metapaths in a link stream
         and is based on bellman-ford algorithm
@@ -4788,8 +4907,8 @@ class StreamGraph:
         :param x: x the node from which we want the metawalks
         :return: a list of the metapaths in the link stream 
         """
-        res = [dict() for i in range(len(self.nodes))]
-        res2 = [dict() for i in range(len(self.nodes))]
+        final_paths = [dict() for i in range(len(self.nodes))]
+        tmp_paths = [dict() for i in range(len(self.nodes))]
 
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
@@ -4797,48 +4916,12 @@ class StreamGraph:
                 a,b = self.links[i]
                 for j in range(0,len(self.link_presence[i]),2):
                     t1,t2 = self.link_presence[i][j:j+2]
-                    self.check_edge(x,a,b,t1,t2,res,res2)
-        return res
-        #             if a == x:
-        #                 if t2 not in res[b]:
-        #                     res[b][t2] = set()
-        #                     res[b][t2].add(mw.Metawalk([(t1,t2)],[a,b]))
-        #                 else:
-        #                     temps_fin = list(res[b][t2])[0].first_arrival_time()
-        #                     if t1 < temps_fin:
-        #                         res[b][t2] = set()
-        #                     if t1 == temps_fin:
-        #                         existing_keys = [e for e in list(res[b].keys()) if e > t1 ]
-        #                         extract_values = itemgetter(*existing_keys)(res[b])
-        #                         ll = f.reduce(lambda a, b: a+b, list(map(list,list(extract_values))))
-        #                         first_arrival = list(map(first_arrival_time,ll))
-        #                         if [t for t in first_arrival if t == temps_fin] == []:
-        #                             #if the list is not empty then the pair is not a latency pair
-        #                             res[b][t1].add(mw.Metawalk([(t1,t2)],[a,b]))
-        #             else:
-        #                 if len(res[a]) != 0:
-        #                     ll = f.reduce(lambda a, b: a+b, list(map(list,list(res[a].values()))))
-        #                    # print(res[a],ll)
-        #                     for e in ll:
-        #                         #print("marche",e)
-        #                         start,end = e.time_intervals[-1]
-        #                         # check if the path can be extended
-        #                         if start <= t1:
-        #                             #we should clone the metawalk and add something to it
-        #                             m = e.clone()
-        #                             m.time_intervals.append((t1,t2))
-        #                             m.nodes.append(b)
-        #                             first_link = m.first_time()
-        #                             if first_link not in res[b]:
-        #                                 res[b][first_link] = set()
-        #                                 res[b][first_link].add(m)
-        #                             else:
-        #                                 temps_fin = list(res[b][first_link])[0].first_arrival_time()
-        #                                 if t1 < temps_fin:
-        #                                     res[b][first_link] = set()
-        #                                 if t1 == temps_fin:
-        #                                     res[b][first_link].add(m)
-        # return res
+                    if boo == 0:
+                        self.check_edge(x,a,b,t1,t2,final_paths,tmp_paths)
+                    else:
+                        self.extend_paths(x,a,b,t1,t2,final_paths, tmp_paths)
+
+        return final_paths
 
     #############################################################################
     #                       END                                                 #

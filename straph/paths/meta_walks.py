@@ -50,48 +50,73 @@ class Metawalk:
         return self.__str__()
 
     def __eq__(self, m):
+        if m == None:
+            return False
         if m.length() != self.length():
             return False
         if (m.nodes == self.nodes) and (m.time_intervals == self.time_intervals):
             return True
         return False
 
+    def is_instantenous(self):
+
+        #we check from the last because of the algirothm that uses it add new links to the end of the metawalk
+        b = True
+        if len(self.time_intervals) == 1:
+            return True
+        x = self.time_intervals[-1]
+        for i in range(-2,-len(self.time_intervals)-1,-1):
+            if self.time_intervals[i] != x:
+                return False
+        return True
+
+    def update_following_last(self,b):
+        #sometimes when adding a metaedge the metawalk has to be cut at some points because some paths are no longer valid.
+        if b == 0:
+            #last edge added ends at same time but starts before
+            self.time_intervals[-1][0] = self.time_intervals[-2][0]
+        else:
+            end = self.time_intervals[-1][1]
+            # last edge starts at same time but ends before
+            for i in range(-2,-len(self.time_intervals)-1,-1):
+                if self.time_intervals[i][1] > end:
+                    self.time_intervals[i][1] = end
+
+
+
     def volume(self):
         """Normally the link are either exactly the same or disjoint, need to check for inclusion, exclusion of intervals  """
         time_intervals = self.time_intervals[:]
         time_intervals.append([-1,-1])
-        res = [0 for i in range(len(time_intervals))]
-        if len(time_intervals)==0:
-            res = [0]
-        elif len(time_intervals)==1:
-            x,y = time_intervals[0]
-            if x == y:
-                res = [1]
-            else:
-                res = [0, np.around((y - x), decimals=2)]
-        else:
+        res = [0 for i in range(len(time_intervals)+ 1)]
+        last_x,last_y = time_intervals[0]
+        b = True
+        if len(time_intervals)==1:
             last_x,last_y = time_intervals[0]
+            if last_x != last_y:
+                b = False
+                res[1] = np.around((last_y - last_x), decimals=2)
+        else:
+
             if last_x == last_y:
                 degree = 0
             else:
                 degree = 1
             for i in range(1,len(time_intervals)):
+                if last_x != last_y:
+                    b = False
                 x,y = time_intervals[i]
-                #it should be enough to check one bound no overlap in linkq in fragmented link streams but maybe its ok to generalise it and make it work whenvever later on
-                if x == last_x:
-                    if x != y :
-                        degree += 1
+                #it should be enough to check one bound no overlap in linkq in fragmented link streams but maybe its ok to generalise it and make it work whenvever later on, update : false, [1,2],[1,1]
+                if x == last_x and y == last_y and degree > 0:
+                    degree += 1
                 else:
-                    if last_x == last_y :
-                        res[0] = 1
-                    else:
-                        res[degree] += np.around((last_y - last_x), decimals=2)
-                        if x == y:
-                            degree = 0
-                        else:
-                            degree = 1
-                        last_x = x
-                        last_y = y
+                    res[degree] += np.around((last_y - last_x)/np.math.factorial(degree), decimals=2) 
+                    if x != y:
+                        degree = 1
+                    last_x = x
+                    last_y = y
+        if b == True:
+            res[0] = 1
         res = [np.around(e,decimals=2) for e in res]
         return nppol.Polynomial(res)
 
