@@ -4900,26 +4900,83 @@ class StreamGraph:
                         # t1 is first arrival
                         self.update_metapaths(final_paths,  b, last_depar, t1, m)
 
-    def relax_paper(self,x,a,b,t1,t2,final_paths, tmp_paths,pre,cur_best,maxi):
-                #print("extend_paths",a,b,t1,t2)
-        #print("keys")
-        #for e in final_paths:
-        #    print(e.keys())
-        #print("final",final_paths)
+    def relax_paper(self,x,a,b,t1,t2,pre,cur_best,maxi):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
+        print(a,b,t1,t2)
+        print("cur_best",cur_best)
+        print("pre",pre)
         for e in arrivals:
+            print("arrivals",arrivals)
             if t2 >= e: # the new metawalk is ok
-                if t2 == e or t1 == e : #3 cases possible on intervals positions
-                    #the max should be saved it is not good to compute it each time
-                    c = maxi * (e - cur_best[a][e][0]) + cur_best[a][e][1] + 1
-                else if t1 > e[0]:
-                    c = maxi * (t1 - cur_best[a][e][0]) + cur_best[a][e][1] + 1
-            if c < (cur_best[b][e][1] - cur_best[b][e][0]) * maxi + cur_best[b][e][1]:
-                pre[b][e] = []
-                cur_best[b][e]
-            if c == (cur_best[b][e][1] - cur_best[b][e][0]) * maxi + cur_best[b][e][1]:
-                pre[b][e].append((a,t1,t2))
+                if t2 == e : #3 cases possible on intervals positions
+                    if cur_best[a][e][0] > t2:
+                        last_depar = t2
+                    else:
+                        last_depar = cur_best[a][e][0]
+                    first_arrival = e
+                    if (e - last_depar) <= 0:
+                        c = (0.0,cur_best[a][e][1] + 1)
+                    else:
+                        c = ( (e - last_depar) , cur_best[a][e][1] + 1)
+                    first_arrival = e
+                if t1 == e and t2 != e : #3 cases possible on intervals positions
+                    first_arrival = e
+                    last_depar = cur_best[a][e][0]
+                    if (e - cur_best[a][e][0]) <= 0:
+                        c = (0.0,cur_best[a][e][1] + 1)
+                    else:
+                        c = ( (e - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
+                    first_arrival = e
+                elif t1 > e:
+                    if (t1 - cur_best[a][e][0]) <= 0:
+                        c = (0.0,cur_best[a][e][1] + 1)
+                    else:
+                        c = ((t1 - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
+                    first_arrival = t1
+                    last_depar = cur_best[a][e][0]
+#                print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
+                if first_arrival in cur_best[b]:
+
+                    if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+                        pre[b][first_arrival] = set()
+                        cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
+                        print("comp", c,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+                    if c == ((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]):
+                        pre[b][first_arrival].add((a,e))
+                else:
+                    pre[b][first_arrival] = set()
+                    cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+                    pre[b][first_arrival].add((a,e))
+        return
+
+    def count_walks_paper(self,x):
+
+        cur_best = [dict() for i in range(len(self.nodes))]
+        pre = [dict() for i in range(len(self.nodes))]
+        maxi = max(self.times)
+        #the 2 loops inside the first are to iterate over each temporal link 
+        for k in self.nodes:
+            for i in range(0,len(self.links)):
+                a,b = self.links[i]
+                for j in range(0,len(self.link_presence[i]),2):
+                    t1,t2 = self.link_presence[i][j:j+2]
+                    #add commented line for both directions of edges
+                    if a == x:
+                        cur_best[b][t1] = (t2,1.0)
+                        pre[b][t1] = (a,0.0)
+                    if b == x:
+                        cur_best[a][t1] = (t2,1.0)
+                        pre[a][t1] = (b,0.0)
+                    else:
+                        self.relax_paper(x,a,b,t1,t2,pre,cur_best,maxi)
+                        self.relax_paper(x,b,a,t1,t2,pre,cur_best,maxi)
+                        #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
+
+        return (pre,cur_best)
+
+
+
 
 #arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
     def fastest_paths_from_vertex(self,x,boo):
