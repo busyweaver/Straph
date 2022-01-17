@@ -4914,6 +4914,7 @@ class StreamGraph:
                         last_depar = t2
                     else:
                         last_depar = cur_best[a][e][0]
+                    edge_taken = (t2,t2)
                     first_arrival = e
                     if (e - last_depar) <= 0:
                         c = (0.0,cur_best[a][e][1] + 1)
@@ -4923,6 +4924,7 @@ class StreamGraph:
                 if t1 == e and t2 != e : #3 cases possible on intervals positions
                     first_arrival = e
                     last_depar = cur_best[a][e][0]
+                    edge_taken = (t1,t2)
                     if (e - cur_best[a][e][0]) <= 0:
                         c = (0.0,cur_best[a][e][1] + 1)
                     else:
@@ -4933,6 +4935,7 @@ class StreamGraph:
                         c = (0.0,cur_best[a][e][1] + 1)
                     else:
                         c = ((t1 - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
+                    edge_taken = (t1,t2)
                     first_arrival = t1
                     last_depar = cur_best[a][e][0]
 #                print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
@@ -4943,11 +4946,11 @@ class StreamGraph:
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
                         print("comp", c,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                     if c == ((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]):
-                        pre[b][first_arrival].add((a,e))
+                        pre[b][first_arrival].add((a,e,edge_taken))
                 else:
                     pre[b][first_arrival] = set()
                     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                    pre[b][first_arrival].add((a,e))
+                    pre[b][first_arrival].add((a,e,edge_taken))
         return
 
     def count_walks_paper(self,x):
@@ -4964,10 +4967,10 @@ class StreamGraph:
                     #add commented line for both directions of edges
                     if a == x:
                         cur_best[b][t1] = (t2,1.0)
-                        pre[b][t1] = (a,0.0)
+                        pre[b][t1] = (a,0.0,(t1,t2))
                     if b == x:
                         cur_best[a][t1] = (t2,1.0)
-                        pre[a][t1] = (b,0.0)
+                        pre[a][t1] = (b,0.0,(t1,t2))
                     else:
                         self.relax_paper(x,a,b,t1,t2,pre,cur_best,maxi)
                         self.relax_paper(x,b,a,t1,t2,pre,cur_best,maxi)
