@@ -4970,7 +4970,7 @@ class StreamGraph:
                         pre[b][t1] = (a,0.0,(t1,t2))
                     if b == x:
                         cur_best[a][t1] = (t2,1.0)
-                        pre[a][t1] = (b,0.0,(t1,t2))
+                        pre[a][t1] = {(b,0.0,(t1,t2))}
                     else:
                         self.relax_paper(x,a,b,t1,t2,pre,cur_best,maxi)
                         self.relax_paper(x,b,a,t1,t2,pre,cur_best,maxi)
@@ -4979,7 +4979,71 @@ class StreamGraph:
         return (pre,cur_best)
 
 
+    def latencies(self,cur_best):
+        latencies = [dict() for i in range(len(self.nodes))]
+        last_depr = [dict() for i in range(len(self.nodes))]
+        for k in self.nodes:
+            for key in cur_best[k]:
+                latencies[k][key] = cur_best[k][key]
+                if cur_best[k][key][0] not in last_depr[k]:
+                    last_depr[k][cur_best[k][key][0]] = key
+                else:
+                    #we already have one element for the departure
+                    if last_depr[k][cur_best[k][key][0]] > key:
+                        del latencies[k][last_depr[k][cur_best[k][key][0]]]
+                        last_depr[k][cur_best[k][key][0]] = key
+                    else:
+                        del latencies[k][key]
 
+        return latencies
+
+    def cal_lat(self, arr,latencies):
+        #return latency
+        return arr - latencies[arr][0]
+
+    def check_contri(self, j, i,latencies):
+        lati = (self.cal_lat(i,latencies),latencies[i][1])
+        latj = (self.cal_lat(j,latencies),latencies[j][1])
+        if latj < lati:
+            return True
+        else:
+            return False
+
+    def contribution_each_latency(self,latencies):
+        maxi = max(self.times)
+        #        contri = [dict() for i in range(len(self.nodes))]
+        contri = [dict() for i in range(len(self.nodes))]
+        for k in self.nodes:
+            # l contains first arrival times
+            l = [e for e in latencies[k].keys() ]
+            l.sort()
+            for i in range(0,len(l)):
+                #check left contribution
+                j = i - 1
+                S = -1
+                b = True
+                while(j >= 0 and b):
+                    if self.check_contri(l[j], l[i], latencies[k]):
+                        S = latencies[k][l[j]][0]
+                        b = False
+                    else:
+                        j = j - 1
+                if S == -1:
+                    S = 0
+                #check right contribution
+                j = i + 1
+                A = -1
+                b = True
+                while(j < len(l) and b):
+                    if self.check_contri(l[j], l[i], latencies[k]):
+                        A = l[j]
+                        b = False
+                    else:
+                        j = j + 1
+                if A == -1:
+                    A = maxi
+                contri[k][l[i]] = (S,A)
+        return contri
 
 #arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
     def fastest_paths_from_vertex(self,x,boo):
