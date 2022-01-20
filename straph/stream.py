@@ -4929,7 +4929,7 @@ class StreamGraph:
                         c = (0.0,cur_best[a][e][1] + 1)
                     else:
                         c = ( (e - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
-                    first_arrival = e
+                    #first_arrival = e
                 elif t1 > e:
                     if (t1 - cur_best[a][e][0]) <= 0:
                         c = (0.0,cur_best[a][e][1] + 1)
@@ -4945,7 +4945,11 @@ class StreamGraph:
                         pre[b][first_arrival] = set()
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
                         print("comp", c,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
-                    if c == ((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]):
+                    if (first_arrival - cur_best[b][first_arrival][0]) < 0:
+                        x = 0
+                    else:
+                        x = (first_arrival - cur_best[b][first_arrival][0])
+                    if c == (x , cur_best[b][first_arrival][1]):
                         pre[b][first_arrival].add((a,e,edge_taken))
                 else:
                     pre[b][first_arrival] = set()
@@ -4967,7 +4971,7 @@ class StreamGraph:
                     #add commented line for both directions of edges
                     if a == x:
                         cur_best[b][t1] = (t2,1.0)
-                        pre[b][t1] = (a,0.0,(t1,t2))
+                        pre[b][t1] = {(a,0.0,(t1,t2))}
                     if b == x:
                         cur_best[a][t1] = (t2,1.0)
                         pre[a][t1] = {(b,0.0,(t1,t2))}
