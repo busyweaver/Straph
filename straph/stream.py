@@ -491,7 +491,8 @@ class StreamGraph:
                  link_presence=None,
                  weights=None,
                  trips=None,
-                 points=[]
+                 points=[],
+                 interval_type=None,
     ):
         """
         A basic constructor for a ``StreamGraph`` object
@@ -4651,26 +4652,22 @@ class StreamGraph:
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()
+        s.interval_type = []
         for i in range(0,len(self.links)):
             a,b = self.links[i]
+            s.interval_type.append([])
             decalage = 0
+            s.interval_type[i] = [ 1 for  k in range(len(s.link_presence[i]))]
             for j in range(0,len(self.link_presence[i]),2):
                 t1,t2 = self.link_presence[i][j:j+2]
                 por_1, por_2 = self.portion_sorted_list(l,t1,t2)
                 portion = l[por_1:por_2]
-                time_1 = t1
-                time_2 = 0
                 dup = self.duplicate_elem_in_list(portion)
+                dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
                 s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
+                s.interval_type[i] = s.interval_type[i][0:j+1+decalage] + dup_interval + s.interval_type[i][j+1+decalage:len(s.interval_type[i])]
                 decalage += len(dup)
-                # for k in range(0,len(portion)):
-                #     time_2 = portion[k]
-                #     s.link_presence[i].insert(j + k + 1 + decalage,time_2)
-                #     s.link_presence[i].insert(j + k + 2 + decalage,time_2)
-                #     time_1 = time_2
-                # decalage += 2 * len(portion)
-               # s.link_presence[i].insert(j+k+2,time_1)
-               # s.link_presence[i].insert(j+k+3,t2)
+
         return s
 
     def add_point(self,t):
@@ -4921,7 +4918,6 @@ class StreamGraph:
                         c = (0.0,cur_best[a][e][1] + 1)
                     else:
                         c = ( (e - last_depar) , cur_best[a][e][1] + 1)
-                    first_arrival = e
                 if t1 == e and t2 != e : #3 cases possible on intervals positions
                     first_arrival = e
                     second_arrival = t2
@@ -4946,7 +4942,8 @@ class StreamGraph:
                 if first_arrival in cur_best[b]:
 
                     if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                        pre[b][first_arrival] = set()
+                        #pre[b][first_arrival] = set()
+                        pre[b][first_arrival] = dict()
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
                         print("comp", c,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                     if (first_arrival - cur_best[b][first_arrival][0]) < 0:
@@ -4954,18 +4951,28 @@ class StreamGraph:
                     else:
                         x = (first_arrival - cur_best[b][first_arrival][0])
                     if c == (x , cur_best[b][first_arrival][1]):
-                        pre[b][first_arrival].add((a,e,edge_taken))
+                        #pre[b][first_arrival].add((a,e,edge_taken))
+                        if (a,e) not in pre[b][first_arrival]:
+                            pre[b][first_arrival][(a,e)] = edge_taken
+                        else:
+                            e1,e2 = edge_taken
+                            x1,x2 = pre[b][first_arrival][(a,e)]
+                            if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+                                pre[b][first_arrival][(a,e)] = edge_taken
+
                 else:
-                    pre[b][first_arrival] = set()
+                    #pre[b][first_arrival] = set()
+                    pre[b][first_arrival] = dict()
                     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                    pre[b][first_arrival].add((a,e,edge_taken))
+                    #pre[b][first_arrival].add((a,e,edge_taken))
+                    pre[b][first_arrival][(a,e)] = edge_taken
 
 
                 if second_arrival != -1:
                     if second_arrival in cur_best[b]:
 
                         if c < ((second_arrival - cur_best[b][second_arrival][0]), cur_best[b][second_arrival][1]):
-                            pre[b][second_arrival] = set()
+                            pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
                             print("comp", c,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                         if (second_arrival - cur_best[b][second_arrival][0]) < 0:
@@ -4973,11 +4980,18 @@ class StreamGraph:
                         else:
                             x = (second_arrival - cur_best[b][second_arrival][0])
                         if c == (x , cur_best[b][second_arrival][1]):
-                            pre[b][second_arrival].add((a,e,edge_taken))
+                            #pre[b][second_arrival].add((a,e,edge_taken))
+                            if (a,e) not in pre[b][second_arrival]:
+                                pre[b][second_arrival][(a,e)] = edge_taken
+                            else:
+                                e1,e2 = edge_taken
+                                x1,x2 = pre[b][second_arrival][(a,e)]
+                                if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+                                    pre[b][second_arrival][(a,e)] = edge_taken
                     else:
-                        pre[b][second_arrival] = set()
+                        pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                        pre[b][second_arrival].add((a,e,edge_taken))
+                        pre[b][second_arrival][(a,e)] = edge_taken
         return
 
     def count_walks_paper(self,x):
@@ -4991,6 +5005,7 @@ class StreamGraph:
                 a,b = self.links[i]
                 for j in range(0,len(self.link_presence[i]),2):
                     t1,t2 = self.link_presence[i][j:j+2]
+                    typ1,typ2 = self.interval_type[i][j:j+2]
                     #add commented line for both directions of edges
                     if a == x:
                         cur_best[b][t1] = (t2,1.0)
