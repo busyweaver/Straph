@@ -5009,14 +5009,14 @@ class StreamGraph:
                     #add commented line for both directions of edges
                     if a == x:
                         cur_best[b][t1] = (t2,1.0)
-                        pre[b][t1] = {(a,0.0,(t1,t2))}
+                        pre[b][t1] = {(a,0.0):(t1,t2)}
                         cur_best[b][t2] = (t2,1.0)
-                        pre[b][t2] = {(a,0.0,(t1,t2))}
+                        pre[b][t2] = {(a,0.0):(t1,t2)}
                     if b == x:
                         cur_best[a][t1] = (t2,1.0)
-                        pre[a][t1] = {(b,0.0,(t1,t2))}
+                        pre[a][t1] = {(b,0.0):(t1,t2)}
                         cur_best[a][t2] = (t2,1.0)
-                        pre[a][t2] = {(b,0.0,(t1,t2))}
+                        pre[a][t2] = {(b,0.0):(t1,t2)}
                     else:
                         self.relax_paper(x,a,b,t1,t2,pre,cur_best,maxi)
                         self.relax_paper(x,b,a,t1,t2,pre,cur_best,maxi)
@@ -5042,6 +5042,15 @@ class StreamGraph:
                         del latencies[k][key]
 
         return latencies
+
+    def predecessor_graph(self,pre):
+        G = nx.DiGraph()
+        for k in self.nodes:
+            if k != 0:
+                for key in pre[k].keys():
+                    for v2 in pre[k][key].keys():
+                        G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+        return G
 
     def cal_lat(self, arr,latencies):
         #return latency
