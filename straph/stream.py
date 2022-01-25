@@ -4897,13 +4897,14 @@ class StreamGraph:
                         # t1 is first arrival
                         self.update_metapaths(final_paths,  b, last_depar, t1, m)
 
-    def relax_paper(self,x,a,b,t1,t2,pre,cur_best,maxi):
+    def relax_paper(self,x,a,b,t1,t2,pre,cur_best):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
         print(a,b,t1,t2)
         print("cur_best",cur_best)
         print("pre",pre)
-        for e in arrivals:
+        for i in range(len(arrivals)):
+            e = arrivals[i]
             print("arrivals",arrivals)
             second_arrival = -1
             if t2 >= e: # the new metawalk is ok
@@ -4914,31 +4915,25 @@ class StreamGraph:
                         last_depar = cur_best[a][e][0]
                     edge_taken = (t2,t2)
                     first_arrival = e
-                    if (e - last_depar) <= 0:
-                        c = (0.0,cur_best[a][e][1] + 1)
-                    else:
-                        c = ( (e - last_depar) , cur_best[a][e][1] + 1)
                 if t1 == e and t2 != e : #3 cases possible on intervals positions
                     first_arrival = e
                     second_arrival = t2
                     last_depar = cur_best[a][e][0]
                     edge_taken = (t1,t2)
-                    if (e - cur_best[a][e][0]) <= 0:
-                        c = (0.0,cur_best[a][e][1] + 1)
-                    else:
-                        c = ( (e - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
+
                     #first_arrival = e
                 elif t1 > e:
                     if t1 != t2:
                         second_arrival = t2
-                    if (t1 - cur_best[a][e][0]) <= 0:
-                        c = (0.0,cur_best[a][e][1] + 1)
-                    else:
-                        c = ((t1 - cur_best[a][e][0]) , cur_best[a][e][1] + 1)
                     edge_taken = (t1,t2)
                     first_arrival = t1
                     last_depar = cur_best[a][e][0]
-#                print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
+                    #print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
+                if (first_arrival - last_depar) <= 0:
+                    c = (0.0, cur_best[a][e][1] + 1)
+                else:
+                    c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
+                bool = False
                 if first_arrival in cur_best[b]:
 
                     if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
@@ -4954,11 +4949,13 @@ class StreamGraph:
                         #pre[b][first_arrival].add((a,e,edge_taken))
                         if (a,e) not in pre[b][first_arrival]:
                             pre[b][first_arrival][(a,e)] = edge_taken
+                            bool = True
                         else:
                             e1,e2 = edge_taken
                             x1,x2 = pre[b][first_arrival][(a,e)]
                             if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
                                 pre[b][first_arrival][(a,e)] = edge_taken
+                                bool = True
 
                 else:
                     #pre[b][first_arrival] = set()
@@ -4966,32 +4963,46 @@ class StreamGraph:
                     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
                     #pre[b][first_arrival].add((a,e,edge_taken))
                     pre[b][first_arrival][(a,e)] = edge_taken
+                    bool = True
 
 
                 if second_arrival != -1:
                     if second_arrival in cur_best[b]:
+                        if (second_arrival - last_depar) <= 0:
+                            c2 = (0.0,cur_best[a][e][1] + 1)
+                        else:
+                            c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
 
-                        if c < ((second_arrival - cur_best[b][second_arrival][0]), cur_best[b][second_arrival][1]):
+                        if c2 < ((second_arrival - cur_best[b][second_arrival][0]), cur_best[b][second_arrival][1]):
                             pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                            print("comp", c,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+                            print("comp", c2,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                         if (second_arrival - cur_best[b][second_arrival][0]) < 0:
                             x = 0
                         else:
                             x = (second_arrival - cur_best[b][second_arrival][0])
-                        if c == (x , cur_best[b][second_arrival][1]):
+                        if c2 == (x , cur_best[b][second_arrival][1]):
                             #pre[b][second_arrival].add((a,e,edge_taken))
                             if (a,e) not in pre[b][second_arrival]:
-                                pre[b][second_arrival][(a,e)] = edge_taken
+                                if bool:
+                                    pre[b][second_arrival][(b,e)] = edge_taken
+                                else:
+                                    pre[b][second_arrival][(a,e)] = edge_taken
                             else:
                                 e1,e2 = edge_taken
                                 x1,x2 = pre[b][second_arrival][(a,e)]
                                 if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
-                                    pre[b][second_arrival][(a,e)] = edge_taken
+                                    if bool:
+                                        pre[b][second_arrival][(b,e)] = edge_taken
+                                    else:
+                                        pre[b][second_arrival][(a,e)] = edge_taken
                     else:
                         pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                        pre[b][second_arrival][(a,e)] = edge_taken
+                        if bool:
+                            pre[b][second_arrival][(b,e)] = edge_taken
+                        else:
+                            pre[b][second_arrival][(a,e)] = edge_taken
         return
 
     def count_walks_paper(self,x):
@@ -5011,15 +5022,15 @@ class StreamGraph:
                         cur_best[b][t1] = (t2,1.0)
                         pre[b][t1] = {(a,0.0):(t1,t2)}
                         cur_best[b][t2] = (t2,1.0)
-                        pre[b][t2] = {(a,0.0):(t1,t2)}
+                        pre[b][t2] = {(b,0.0):(t1,t2)}
                     if b == x:
                         cur_best[a][t1] = (t2,1.0)
                         pre[a][t1] = {(b,0.0):(t1,t2)}
                         cur_best[a][t2] = (t2,1.0)
-                        pre[a][t2] = {(b,0.0):(t1,t2)}
+                        pre[a][t2] = {(a,0.0):(t1,t2)}
                     else:
-                        self.relax_paper(x,a,b,t1,t2,pre,cur_best,maxi)
-                        self.relax_paper(x,b,a,t1,t2,pre,cur_best,maxi)
+                        self.relax_paper(x,a,b,t1,t2,pre,cur_best)
+                        self.relax_paper(x,b,a,t1,t2,pre,cur_best)
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
         return (pre,cur_best)
@@ -5049,7 +5060,8 @@ class StreamGraph:
             if k != 0:
                 for key in pre[k].keys():
                     for v2 in pre[k][key].keys():
-                        G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                        if v2[0] != k:
+                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
         return G
 
     def cal_lat(self, arr,latencies):
