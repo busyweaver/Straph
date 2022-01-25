@@ -16,9 +16,14 @@ class Metawalk:
         self.time_intervals = time_intervals
         self.nodes = nodes
 
-    def add_link(self, l, t):
-        self.time_intervals.append(t)
-        self.nodes.append(l)
+    def add_link(self, a, b, t):
+        if self.nodes == []:
+            self.nodes = self.nodes + [a,b]
+            self.time_intervals.append(t)
+        else:
+            if self.nodes[-1] == a:
+                self.time_intervals.append(t)
+                self.nodes.append(b)
 
     def length(self):
         return len(self.time_intervals)

@@ -5036,6 +5036,7 @@ class StreamGraph:
         return (pre,cur_best)
 
 
+
     def latencies(self,cur_best):
         latencies = [dict() for i in range(len(self.nodes))]
         last_depr = [dict() for i in range(len(self.nodes))]
@@ -5063,6 +5064,20 @@ class StreamGraph:
                         if v2[0] != k:
                             G.add_edge(v2,(k,key),interval=pre[k][key][v2])
         return G
+
+    def metapaths_from_predecessor(self,G):
+        l = []
+        paths = nx.all_simple_paths(G,(0,0.0))
+        for path in map(nx.utils.pairwise, paths):
+            for i in range(0,len(path)):
+                if i == 0:
+                    m = mw.Metawalk([],[])
+                    m.add_link(e[0][0],e[1][0],G[e[0]][e[1]]['interval'])
+            l.append(m)
+        return l
+
+
+
 
     def cal_lat(self, arr,latencies):
         #return latency
