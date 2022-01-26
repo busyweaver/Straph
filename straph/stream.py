@@ -5009,7 +5009,6 @@ class StreamGraph:
 
         cur_best = [dict() for i in range(len(self.nodes))]
         pre = [dict() for i in range(len(self.nodes))]
-        maxi = max(self.times)
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
             for i in range(0,len(self.links)):
@@ -5023,7 +5022,7 @@ class StreamGraph:
                         pre[b][t1] = {(a,0.0):(t1,t2)}
                         cur_best[b][t2] = (t2,1.0)
                         pre[b][t2] = {(b,0.0):(t1,t2)}
-                    if b == x:
+                    elif b == x:
                         cur_best[a][t1] = (t2,1.0)
                         pre[a][t1] = {(b,0.0):(t1,t2)}
                         cur_best[a][t2] = (t2,1.0)
