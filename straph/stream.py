@@ -5048,14 +5048,31 @@ class StreamGraph:
                     #add commented line for both directions of edges
                     if a == x:
                         cur_best[b][t1] = (t1,1.0)
-                        pre[b][t1] = {(a,0.0):(t1,t2)}
                         cur_best[b][t2] = (t2,1.0)
-                        pre[b][t2] = {(b,0.0):(t1,t2)}
+                        if t1 not in pre[b]:
+                            pre[b][t1] = {(a,0.0):(t1,t2)}
+                        else:
+                            pre[b][t1][(a,0.0)] = (t1,t2)
+
+                        if t2 not in pre[b]:
+                            pre[b][t2] = {(a,0.0):(t1,t2)}
+                        else:
+                            pre[b][t2][(a,0.0)] = (t1,t2)
+                        #pre[b][t2] = {(b,0.0):(t1,t2)}
                     elif b == x:
                         cur_best[a][t1] = (t1,1.0)
-                        pre[a][t1] = {(b,0.0):(t1,t2)}
                         cur_best[a][t2] = (t2,1.0)
-                        pre[a][t2] = {(a,0.0):(t1,t2)}
+                        if t1 not in pre[a]:
+                            pre[a][t1] = {(b,0.0):(t1,t2)}
+                        else:
+                            pre[a][t1][(b,0.0)] = (t1,t2)
+
+                        if t2 not in pre[a]:
+                            pre[a][t2] = {(b,0.0):(t1,t2)}
+                        else:
+                            pre[a][t2][(b,0.0)] = (t1,t2)
+                        #pre[a][t1] = {(b,0.0):(t1,t2)}
+                        #pre[a][t2] = {(a,0.0):(t1,t2)}
                     else:
                         self.relax_paper(x,a,b,t1,t2,pre,cur_best)
                         self.relax_paper(x,b,a,t1,t2,pre,cur_best)
