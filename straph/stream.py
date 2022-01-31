@@ -4943,6 +4943,7 @@ class StreamGraph:
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals_b = [e for e in list(cur_best[b].keys()) ]
         arrivals_b.sort()
+        print("resting",arrivals_b)
         close_arrival = self.closest_arrival(t1, arrivals_b)
         if close_arrival != -1:
             last_depar = cur_best[b][close_arrival][0]
