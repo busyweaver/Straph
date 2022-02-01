@@ -5255,17 +5255,14 @@ class StreamGraph:
             l.append(m)
         return l
 
+    def depth_trav(G, node, last_inter, before_last_inter, sigma, depth)
+
     def volume_metapaths(self, x, G, laten_arri, laten_depar, contri):
         sigma = dict()
         #visited = [(x,0)]
         node = (x,0)
         for e in G[node]:
-            #visited.append(e)
-            if e not in sigma:
-                sigma[e] = 0
-            else:
-                sigma[e] += 0
-
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1)
 
 
 
