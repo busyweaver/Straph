@@ -5255,6 +5255,19 @@ class StreamGraph:
             l.append(m)
         return l
 
+    def volume_metapaths(self, x, G, laten_arri, laten_depar, contri):
+        sigma = dict()
+        #visited = [(x,0)]
+        node = (x,0)
+        for e in G[node]:
+            #visited.append(e)
+            if e not in sigma:
+                sigma[e] = 0
+            else:
+                sigma[e] += 0
+
+
+
 
 
 
