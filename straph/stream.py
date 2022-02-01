@@ -5166,8 +5166,19 @@ class StreamGraph:
                     typ1,typ2 = self.interval_type[i][j:j+2]
                     #add commented line for both directions of edges
                     if a == x:
-                        cur_best[b][t1] = (t1,1.0)
-                        cur_best[b][t2] = (t2,1.0)
+                        if t1 not in cur_best[b]:
+                            cur_best[b][t1] = (t1,1)
+                        else:
+                            if (0.0,1) < (t1 - cur_best[b][t1][0],cur_best[b][t1][1]):
+                                cur_best[b][t1] = (t1,1)
+                                pre[b][t1] = dict()
+                        if t2 not in cur_best[b]:
+                            cur_best[b][t2] = (t2,1)
+                        else:
+                            if (0.0,1) < (t2 - cur_best[b][t2][0],cur_best[b][t2][1]):
+                                cur_best[b][t2] = (t2,1)
+                                pre[b][t2] = dict()
+
                         if t1 not in pre[b]:
                             pre[b][t1] = {(a,0.0):(t1,t1)}
                         else:
@@ -5185,8 +5196,20 @@ class StreamGraph:
                                      pre[b][t2][(a,0.0)] = (t1,t2)
                         #pre[b][t2] = {(b,0.0):(t1,t2)}
                     elif b == x:
-                        cur_best[a][t1] = (t1,1.0)
-                        cur_best[a][t2] = (t2,1.0)
+                        if t1 not in cur_best[a]:
+                            cur_best[a][t1] = (t1,1)
+                        else:
+                            if (0.0,1) < (t1 - cur_best[a][t1][0],cur_best[a][t1][1]):
+                                cur_best[a][t1] = (t1,1)
+                                pre[a][t1] = dict()
+                        if t2 not in cur_best[a]:
+                            cur_best[a][t2] = (t2,1)
+                        else:
+                            if (0.0,1) < (t2 - cur_best[a][t2][0],cur_best[a][t2][1]):
+                                cur_best[a][t2] = (t2,1)
+                                pre[a][t2] = dict()
+
+                        #cur_best[a][t2] = (t2,1.0)
                         if t1 not in pre[a]:
                             pre[a][t1] = {(b,0.0):(t1,t1)}
                         else:
@@ -5255,14 +5278,63 @@ class StreamGraph:
             l.append(m)
         return l
 
-    def depth_trav(G, node, last_inter, before_last_inter, sigma, depth)
+    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual):
+        res = actual_poly[:]
+        last_x, last_y = last_inter
+        if depth == 1:
+            if last_x != last_y:
+                res[1] = numpy.around((last_y - last_x), decimals=2)
+                # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
+                pow_actual = 0
+            else:
+                res[0] = 1
+        else:
+            if b == True:
+                if last_x == last_y:
+                    res[0] = 1
+                else:
+                    res[1] = numpy.around((last_y - last_x), decimals=2)
+                    b = False
+            else:
+                if last_x == last_y:
+                    #il ne devrait rien se passer pour l'ajout dans res
+                    pow_actual = 0
+                else:
+                    blastx, blasty = before_last_inter
+                    if last_x == blastx and last_y == blasty:
+                        pow_actual += 1
+                        res[pow_actual] = numpy.around((last_y - last_x), decimals=2)
+                    else:
+                        pow_actual = 1
+                        res[pow_actual] = numpy.around((last_y - last_x), decimals=2)
+        #add to sigma
+        if node not in sigma:
+            sigma[node] = nppol.Polynomial(res)
+        else:
+            sigma[node] = sigma[node] + nppol.Polynomial(res)
 
-    def volume_metapaths(self, x, G, laten_arri, laten_depar, contri):
+        if depth == 1:
+            for e in G[node]:
+                self.depth_trav(G, e, G[node][e]['interval'], (last_y,last_y), sigma, depth + 1, actual_poly, b, pow_actual)
+        else:
+            for e in G[node]:
+                self.depth_trav(G, e, G[node][e]['interval'], last_inter, sigma, depth + 1, res, b, pow_actual)
+
+
+
+
+
+
+
+
+    def volume_metapaths(self, x, G):
         sigma = dict()
         #visited = [(x,0)]
         node = (x,0)
         for e in G[node]:
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1)
+            poly = [0 for i in range(len(self.nodes))]
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0)
+        return sigma
 
 
 
