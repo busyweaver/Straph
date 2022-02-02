@@ -4903,7 +4903,7 @@ class StreamGraph:
         if t2 >= e:
 
             if t2 == e:
-                edge_taken1 = (t2,t2)
+                edge_taken1 = (t1,t2)
                 first_arrival = e
             else:
                 if t1 != t2:
@@ -5033,8 +5033,10 @@ class StreamGraph:
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
         print(a,b,t1,t2)
-        print("cur_best",cur_best)
-        print("pre",pre)
+        print("cur_besta",cur_best[a])
+        print("cur_bestb",cur_best[b])
+        print("prea",pre[a])
+        print("preb",pre[b])
         for i in range(len(arrivals)):
             e = arrivals[i]
             print("arrivals",arrivals)
@@ -5278,52 +5280,77 @@ class StreamGraph:
             l.append(m)
         return l
 
-    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual):
+    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual, instantenous):
+        instantenous2 = instantenous
         res = actual_poly[:]
         last_x, last_y = last_inter
         if depth == 1:
             if last_x != last_y:
                 res[1] = numpy.around((last_y - last_x), decimals=2)
                 # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
-                pow_actual = 0
+                pow_actual = 1
             else:
+                instantenous2 = False
                 res[0] = 1
         else:
-            if b == True:
-                if last_x == last_y:
-                    res[0] = 1
+            if instantenous:
+                blastx, blasty = before_last_inter
+                if last_x == blastx and last_y == blasty:
+                    pow_actual += 1
+                    res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
                 else:
-                    res[1] = numpy.around((last_y - last_x), decimals=2)
-                    b = False
-            else:
-                if last_x == last_y:
-                    #il ne devrait rien se passer pour l'ajout dans res
-                    pow_actual = 0
-                else:
-                    blastx, blasty = before_last_inter
-                    if last_x == blastx and last_y == blasty:
-                        pow_actual += 1
-                        res[pow_actual] = numpy.around((last_y - last_x), decimals=2)
-                    else:
+                    instantenous2 = False
+                    if last_x != last_y:
+                        res[1] = numpy.around((last_y - last_x), decimals=2)
+                        # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
                         pow_actual = 1
-                        res[pow_actual] = numpy.around((last_y - last_x), decimals=2)
+                    else:
+                        res[0] = 1
+            else:
+
+                if b == True:
+                    if last_x == last_y:
+                        res[0] = 1
+                    else:
+                        res[1] = numpy.around((last_y - last_x), decimals=2)
+                        pow_actual += 1
+                        b = False
+                else:
+                    if last_x == last_y:
+                        #il ne devrait rien se passer pour l'ajout dans res
+                        pow_actual = 0
+                    else:
+                        blastx, blasty = before_last_inter
+                        if last_x == blastx and last_y == blasty:
+                            pow_actual += 1
+                            res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
+                        else:
+                            pow_actual = 1
+                            res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
         #add to sigma
+        print("last",last_inter,"before_last",before_last_inter,"b",b,"instantenous",instantenous2)
+        print("poly ",node,nppol.Polynomial(res))
         if node not in sigma:
             sigma[node] = nppol.Polynomial(res)
         else:
             sigma[node] = sigma[node] + nppol.Polynomial(res)
 
-        if depth == 1:
+        if instantenous:
             for e in G[node]:
-                self.depth_trav(G, e, G[node][e]['interval'], (last_y,last_y), sigma, depth + 1, actual_poly, b, pow_actual)
+                if G[node][e]['interval'][0] < last_inter[0]:
+                    debut = G[node][e]['interval'][1]
+                else:
+                    debut = G[node][e]['interval'][0]
+                link_mod = (debut, G[node][e]['interval'][1])
+                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, actual_poly, b, pow_actual, instantenous2)
         else:
             for e in G[node]:
-                self.depth_trav(G, e, G[node][e]['interval'], last_inter, sigma, depth + 1, res, b, pow_actual)
-
-
-
-
-
+                if G[node][e]['interval'][0] < last_inter[0]:
+                    debut = G[node][e]['interval'][1]
+                else:
+                    debut = G[node][e]['interval'][0]
+                link_mod = (debut, G[node][e]['interval'][1])
+                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, res, b, pow_actual, instantenous2)
 
 
 
@@ -5333,7 +5360,7 @@ class StreamGraph:
         node = (x,0)
         for e in G[node]:
             poly = [0 for i in range(len(self.nodes))]
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0)
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, True)
         return sigma
 
 
