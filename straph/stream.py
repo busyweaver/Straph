@@ -5290,7 +5290,7 @@ class StreamGraph:
                 # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
                 pow_actual = 1
             else:
-                instantenous2 = False
+                instantenous = False
                 res[0] = 1
         else:
             if instantenous:
@@ -5299,34 +5299,25 @@ class StreamGraph:
                     pow_actual += 1
                     res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
                 else:
-                    instantenous2 = False
+                    instantenous = False
                     if last_x != last_y:
                         res[1] = numpy.around((last_y - last_x), decimals=2)
-                        # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
                         pow_actual = 1
                     else:
+                        pow_actual = 0
                         res[0] = 1
             else:
-
-                if b == True:
-                    if last_x == last_y:
-                        res[0] = 1
-                    else:
-                        res[1] = numpy.around((last_y - last_x), decimals=2)
-                        pow_actual += 1
-                        b = False
+                if last_x == last_y:
+                    #il ne devrait rien se passer pour l'ajout dans res
+                    pow_actual = 0
                 else:
-                    if last_x == last_y:
-                        #il ne devrait rien se passer pour l'ajout dans res
-                        pow_actual = 0
+                    blastx, blasty = before_last_inter
+                    if last_x == blastx and last_y == blasty:
+                        pow_actual += 1
+                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
                     else:
-                        blastx, blasty = before_last_inter
-                        if last_x == blastx and last_y == blasty:
-                            pow_actual += 1
-                            res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
-                        else:
-                            pow_actual = 1
-                            res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
+                        pow_actual = 1
+                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
         #add to sigma
         print("last",last_inter,"before_last",before_last_inter,"b",b,"instantenous",instantenous2)
         print("poly ",node,nppol.Polynomial(res))
