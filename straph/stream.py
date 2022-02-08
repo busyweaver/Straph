@@ -5366,14 +5366,17 @@ class StreamGraph:
         lati = (self.cal_lat(i,latencies),latencies[i][1])
         latj = (self.cal_lat(j,latencies),latencies[j][1])
         if latj < lati:
-            return True
+            return 1
+        elif latj == lati:
+            return 0
         else:
-            return False
+            return -1
 
     def contribution_each_latency(self,latencies):
         maxi = max(self.times)
         #        contri = [dict() for i in range(len(self.nodes))]
         contri = [dict() for i in range(len(self.nodes))]
+        prev_next = [dict() for i in range(len(self.nodes))]
         for k in self.nodes:
             # l contains first arrival times
             l = [e for e in latencies[k].keys() ]
@@ -5384,10 +5387,16 @@ class StreamGraph:
                 S = -1
                 b = True
                 while(j >= 0 and b):
-                    if self.check_contri(l[j], l[i], latencies[k]):
+                    cond = self.check_contri(l[j], l[i], latencies[k])
+                    if  cond == 1:
                         S = latencies[k][l[j]][0]
                         b = False
                     else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
                         j = j - 1
                 if S == -1:
                     S = 0
@@ -5396,15 +5405,21 @@ class StreamGraph:
                 A = -1
                 b = True
                 while(j < len(l) and b):
-                    if self.check_contri(l[j], l[i], latencies[k]):
+                    cond = self.check_contri(l[j], l[i], latencies[k])
+                    if cond == 1:
                         A = l[j]
                         b = False
                     else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
                         j = j + 1
                 if A == -1:
                     A = maxi
                 contri[k][l[i]] = (S,A)
-        return contri
+        return contri,prev_next
 
 #arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
     def fastest_paths_from_vertex(self,x,boo):
