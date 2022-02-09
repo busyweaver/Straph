@@ -5421,6 +5421,15 @@ class StreamGraph:
                 contri[k][l[i]] = (S,A)
         return contri,prev_next
 
+    def volume_sz_t_v(self, G, latencies, contri, z, v, t):
+        lat = -1
+        for e in latencies[z].keys():
+            if t >= e and t <= latencies[z][e] :
+                lat = e
+        paths = nx.all_simple_paths(G,(0,0.0),(z,latencies[z][lat]))
+
+
+
 #arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
     def fastest_paths_from_vertex(self,x,boo):
                              #b is bool for new and old version 0 for old and 1 for new, to be removed
