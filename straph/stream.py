@@ -4922,26 +4922,26 @@ class StreamGraph:
         else:
             return (arrival - last_depar,leng)
 
-    def closest_arrival(self,first_arrival,arrivals_b):
+    def closest_arrival(self,arrival,arrivals_b):
         if len(arrivals_b) == 0:
             return -1
         elif len(arrivals_b) == 1:
-            if arrivals_b[0] <= first_arrival:
+            if arrivals_b[0] <= arrival:
                 return arrivals_b[0]
             else:
                 return -1
         else:
             for i in range(1,len(arrivals_b)):
-                if (arrivals_b[i-1] <= first_arrival) and (arrivals_b[i] >= first_arrival):
+                if (arrivals_b[i-1] <= arrival) and (arrivals_b[i] >= arrival):
                     return arrivals_b[i-1]
-            if arrivals_b[-1] <= first_arrival:
+            if arrivals_b[-1] <= arrival:
                 return arrivals_b[-1]
             else:
                 return -1
 
-    def relax_resting_paths(self,x,b,t1,t2,pre,cur_best):
+    def relax_resting_paths(self,x,b,t1,t2,pre,cur_best, pointer):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals_b = [e for e in list(cur_best[b].keys()) ]
+        arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
         arrivals_b.sort()
         print("resting",arrivals_b)
         close_arrival = self.closest_arrival(t1, arrivals_b)
@@ -4958,6 +4958,7 @@ class StreamGraph:
             print("cur_best",cur_best)
             print("pre",pre)
             print("arrivals",arrivals_b)
+            print("close_arrival",close_arrival)
 
             if first_arrival in cur_best[b]:
                 cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
@@ -4967,6 +4968,7 @@ class StreamGraph:
                     #pre[b][first_arrival] = set()
                     pre[b][first_arrival] = dict()
                     cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
+                    pointer[(b,first_arrival)] = (b,close_arrival) 
                     #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
                     # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                 # if cnew == cold:
@@ -4983,6 +4985,7 @@ class StreamGraph:
             else:
                 pre[b][first_arrival] = dict()
                 cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
+                pointer[(b,first_arrival)] = (b,close_arrival) 
                 #pre[b][first_arrival].add((a,e,edge_taken1))
                 # pre[b][first_arrival][(aa,e)] = edge_last
                 # bool = True
@@ -5002,6 +5005,7 @@ class StreamGraph:
                         if c2new < c2old:
                             pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
+                            pointer[(b,second_arrival)] = (b,close_arrival) 
                             # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                             #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
 
@@ -5022,6 +5026,7 @@ class StreamGraph:
                     else:
                         pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
+                        pointer[(b,second_arrival)] = (b,close_arrival) 
                         # if bool:
                         #     pre[b][second_arrival][(aa,e)] = edge_last
                         # else:
@@ -5029,7 +5034,7 @@ class StreamGraph:
         return
 
 
-    def relax_paper(self,x,a,b,t1,t2,pre,cur_best):
+    def relax_paper(self,x,a,b,t1,t2,pre,cur_best, pointer):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
         print(a,b,t1,t2)
@@ -5080,6 +5085,7 @@ class StreamGraph:
                         #pre[b][first_arrival] = set()
                         pre[b][first_arrival] = dict()
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
+                        pointer[(b,first_arrival)] = (b,first_arrival) 
                         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
                         print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
@@ -5107,6 +5113,7 @@ class StreamGraph:
                     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
                     #pre[b][first_arrival].add((a,e,edge_taken1))
                     pre[b][first_arrival][(a,e)] = edge_taken1
+                    pointer[(b,first_arrival)] = (b,first_arrival) 
                     bool = True
 
 
@@ -5124,6 +5131,7 @@ class StreamGraph:
                         if c2new < c2old:
                             pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
+                            pointer[(b,second_arrival)] = (b,second_arrival) 
                             print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                             c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
                         # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
@@ -5149,6 +5157,7 @@ class StreamGraph:
                     else:
                         pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+                        pointer[(b,second_arrival)] = (b,second_arrival) 
                         if bool:
                             pre[b][second_arrival][(b,e)] = edge_taken2
                         else:
@@ -5159,6 +5168,7 @@ class StreamGraph:
 
         cur_best = [dict() for i in range(len(self.nodes))]
         pre = [dict() for i in range(len(self.nodes))]
+        pointer = dict()
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
             for i in range(0,len(self.links)):
@@ -5229,15 +5239,15 @@ class StreamGraph:
                         #pre[a][t2] = {(a,0.0):(t1,t2)}
                     else:
                         #extending rested paths to t1,t2
-                        self.relax_resting_paths(x,b,t1,t2,pre,cur_best)
-                        self.relax_resting_paths(x,a,t1,t2,pre,cur_best)
+                        self.relax_resting_paths(x,b,t1,t2,pre,cur_best, pointer)
+                        self.relax_resting_paths(x,a,t1,t2,pre,cur_best, pointer)
 
                         #paths using new edge
-                        self.relax_paper(x,a,b,t1,t2,pre,cur_best)
-                        self.relax_paper(x,b,a,t1,t2,pre,cur_best)
+                        self.relax_paper(x,a,b,t1,t2,pre,cur_best, pointer)
+                        self.relax_paper(x,b,a,t1,t2,pre,cur_best, pointer)
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
-        return (pre,cur_best)
+        return (pre, cur_best, pointer)
 
 
 
@@ -5353,6 +5363,16 @@ class StreamGraph:
             poly = [0 for i in range(len(self.nodes))]
             self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, True)
         return sigma
+
+    def sigma_tv(self, pre, sigma, v, t):
+        if (v,t) not in sigma:
+            arrivals_b = [e for e in list(pre[v].keys()) if pre[v][e] != {} ]
+            x = self.closest_arrival(t,arrivals_b)
+            if x != -1:
+                return  sigma[(v,x)]
+            else:
+                return nppol.Polynomial([0])
+
 
 
 

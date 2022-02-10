@@ -125,6 +125,16 @@ class Metawalk:
         res = [np.around(e,decimals=2) for e in res]
         return nppol.Polynomial(res)
 
+    def merge_meta_paths(self, m2, stream):
+        if m2.nodes[0] != self.nodes[-1]:
+            #error
+            return Metawalk([],[])
+        else:
+            return Metawalk(self.nodes + m2.nodes[1:],self.time_intervals + m2.time_intervals[1:])
+
+
+
+
     def passes_through(self,t,v):
 
         if v in self.nodes:
