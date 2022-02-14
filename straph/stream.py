@@ -5372,6 +5372,9 @@ class StreamGraph:
                 return  sigma[(v,x)]
             else:
                 return nppol.Polynomial([0])
+        else:
+            return  sigma[(v,t)]
+
 
 
 
