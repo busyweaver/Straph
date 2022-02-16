@@ -96,6 +96,7 @@ class Metawalk:
         res = [0 for i in range(len(time_intervals)+ 1)]
         last_x,last_y = time_intervals[0]
         b = True
+        somme = 0
         if len(time_intervals)==1:
             last_x,last_y = time_intervals[0]
             if last_x != last_y:
@@ -105,23 +106,31 @@ class Metawalk:
 
             if last_x == last_y:
                 degree = 0
+                chevau = 0
             else:
                 degree = 1
+                chevau = 1
             for i in range(1,len(time_intervals)):
                 if last_x != last_y:
                     b = False
                 x,y = time_intervals[i]
                 #it should be enough to check one bound no overlap in linkq in fragmented link streams but maybe its ok to generalise it and make it work whenvever later on, update : false, [1,2],[1,1]
-                if x == last_x and y == last_y and degree > 0:
+                if x == last_x and y == last_y and chevau > 0:
                     degree += 1
+                    chevau += 1
                 else:
-                    res[degree] += np.around((last_y - last_x)/np.math.factorial(degree), decimals=2) 
+                    somme += np.around((last_y - last_x)/np.math.factorial(chevau), decimals=2) 
                     if x != y:
-                        degree = 1
+                        chevau = 1
+                        degree += 1
+                    else:
+                        chevau = 0
                     last_x = x
                     last_y = y
         if b == True:
             res[0] = 1
+        else:
+            res[degree] = somme
         res = [np.around(e,decimals=2) for e in res]
         return nppol.Polynomial(res)
 

@@ -5290,7 +5290,7 @@ class StreamGraph:
             l.append(m)
         return l
 
-    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual, instantenous):
+    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual, chevau, instantenous):
         instantenous2 = instantenous
         res = actual_poly[:]
         last_x, last_y = last_inter
@@ -5299,38 +5299,47 @@ class StreamGraph:
                 res[1] = numpy.around((last_y - last_x), decimals=2)
                 # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
                 pow_actual = 1
+                chevau = 1
             else:
                 instantenous = False
-                res[0] = 1
+                 res[0] = 1
         else:
             if instantenous:
                 blastx, blasty = before_last_inter
                 if last_x == blastx and last_y == blasty:
                     pow_actual += 1
-                    res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
+                    chevau += 1
+                    #chevau ou pow_actual ne devrait rien changer ici
+                    res[chevau] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2)
                 else:
                     instantenous = False
                     if last_x != last_y:
                         res[1] = numpy.around((last_y - last_x), decimals=2)
                         pow_actual = 1
+                        chevau = 1
                     else:
                         pow_actual = 0
-                        res[0] = 1
+                        chevau = 0
+                        #res[0] = 1
             else:
                 if last_x == last_y:
                     #il ne devrait rien se passer pour l'ajout dans res
-                    pow_actual = 0
+                    chevau = 0
                 else:
+                    pow_actual += 1
                     blastx, blasty = before_last_inter
                     if last_x == blastx and last_y == blasty:
-                        pow_actual += 1
-                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
+                        chevau += 1
+                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2) + res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=2)
                     else:
-                        pow_actual = 1
-                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(pow_actual), decimals=2)
+                        chevau = 1
+                        res[pow_actual] = res[pow_actual - 1] + numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2)
+                        res[pow_actual - 1] = 0
         #add to sigma
+        print("node", node)
         print("last",last_inter,"before_last",before_last_inter,"b",b,"instantenous",instantenous2)
         print("poly ",node,nppol.Polynomial(res))
+
         if node not in sigma:
             sigma[node] = nppol.Polynomial(res)
         else:
@@ -5343,7 +5352,7 @@ class StreamGraph:
                 else:
                     debut = G[node][e]['interval'][0]
                 link_mod = (debut, G[node][e]['interval'][1])
-                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, actual_poly, b, pow_actual, instantenous2)
+                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, actual_poly, b, pow_actual, chevau, instantenous2)
         else:
             for e in G[node]:
                 if G[node][e]['interval'][0] < last_inter[0]:
@@ -5351,7 +5360,7 @@ class StreamGraph:
                 else:
                     debut = G[node][e]['interval'][0]
                 link_mod = (debut, G[node][e]['interval'][1])
-                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, res, b, pow_actual, instantenous2)
+                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, res, b, pow_actual, chevau,  instantenous2)
 
 
 
@@ -5361,7 +5370,7 @@ class StreamGraph:
         node = (x,0)
         for e in G[node]:
             poly = [0 for i in range(len(self.nodes))]
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, True)
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
         return sigma
 
     def sigma_tv(self, pre, sigma, v, t):
