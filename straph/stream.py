@@ -4608,6 +4608,9 @@ class StreamGraph:
     def portion_sorted_list(self,l,a,b):
         b1 = False
         b2 = True
+        #we should not have any element
+        if a == b:
+            return (0,0)
         t1 = 0
         t2 = len(l)
         for i in range(0,len(l)):
@@ -4660,8 +4663,10 @@ class StreamGraph:
             s.interval_type[i] = [ 1 for  k in range(len(s.link_presence[i]))]
             for j in range(0,len(self.link_presence[i]),2):
                 t1,t2 = self.link_presence[i][j:j+2]
+                #print("t1,t2",a,b,(t1,t2))
                 por_1, por_2 = self.portion_sorted_list(l,t1,t2)
                 portion = l[por_1:por_2]
+                #print("portion",por_1,por_2,l[por_1:por_2])
                 dup = self.duplicate_elem_in_list(portion)
                 dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
                 s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
@@ -4944,10 +4949,10 @@ class StreamGraph:
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
         arrivals_b.sort()
-        print("relaxing_paths", b, t1, t2)
-        print("resting",arrivals_b)
+        #print("relaxing_paths", b, t1, t2)
+        #print("resting",arrivals_b)
         close_arrival = self.closest_arrival(t1, arrivals_b)
-        print("close_arrival",close_arrival)
+        #print("close_arrival",close_arrival)
         if close_arrival != -1:
             last_depar = cur_best[b][close_arrival][0]
             #e = pre[b][close_arrival][1]
@@ -4956,13 +4961,13 @@ class StreamGraph:
                 first_arrival, second_arrival= (t1, t2)
             else:
                 first_arrival, second_arrival= (t1, -1)
-            print("relaxing_paths")
+            #print("relaxing_paths")
             #print(aa,b,t1,t2)
-            print("cur_bestb",cur_best[b])
-            print("preb",pre[b])
-            print("arrivals",arrivals_b)
-            print("first,second",first_arrival, second_arrival)
-            print("close_arrival",close_arrival, "last_depar", last_depar)
+            #print("cur_bestb",cur_best[b])
+            #print("preb",pre[b])
+            #print("arrivals",arrivals_b)
+            #print("first,second",first_arrival, second_arrival)
+            #print("close_arrival",close_arrival, "last_depar", last_depar)
 
             if first_arrival in cur_best[b]:
                 cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
@@ -5041,17 +5046,17 @@ class StreamGraph:
     def relax_paper(self,x,a,b,t1,t2,pre,cur_best, pointer):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
-        print(a,b,t1,t2)
-        print("cur_besta",cur_best[a])
-        print("cur_bestb",cur_best[b])
-        print("prea",pre[a])
-        print("preb",pre[b])
+        # print(a,b,t1,t2)
+        # print("cur_besta",cur_best[a])
+        # print("cur_bestb",cur_best[b])
+        # print("prea",pre[a])
+        # print("preb",pre[b])
         for i in range(len(arrivals)):
             e = arrivals[i]
-            print("arrivals",arrivals)
+            #print("arrivals",arrivals)
             last_depar = cur_best[a][e][0]
             first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
-            print("edge",first_arrival,second_arrival,edge_taken1,edge_taken2)
+            #print("edge",first_arrival,second_arrival,edge_taken1,edge_taken2)
             # if t2 >= e: # the new metawalk is ok
             #     if t2 == e : #3 cases possible on intervals positions
             #         if cur_best[a][e][0] > t2:
@@ -5091,7 +5096,7 @@ class StreamGraph:
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
                         pointer[(b,first_arrival)] = (b,first_arrival) 
                         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                        print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+                        #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
                     #     x = 0
                     # else:
@@ -5136,7 +5141,7 @@ class StreamGraph:
                             pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
                             pointer[(b,second_arrival)] = (b,second_arrival) 
-                            print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+                            #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                             c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
                         # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
                         #     x = 0
@@ -5373,6 +5378,36 @@ class StreamGraph:
                 self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1,  res, b, pow_actual, chevau,  False)
 
 
+    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth):
+        print("noder",e, "predr",pred_node)
+        # nodes are the same as before we add paths
+        if pred_node[0] == e[0]:
+            if e not in sigma_r:
+                sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+            else:
+                if pred_node > sigma_r[e][0]:
+                    sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+        else:
+            if e not in sigma_r:
+                #no resting path here
+                sigma_r[e] = ((-1,-1),sigma[e])
+
+        visit = list(G[e])
+        visit.sort()
+        print("succ")
+        for ii in visit:
+            print("next ",ii)
+        for i in range(0,len(visit)):
+            if i == 0:
+                pred = (-1,-1)
+            else:
+                pred = visit[i-1]
+            poly = [0 for i in range(len(self.nodes))]
+            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1)
+
+        return
+
+
 
     def volume_metapaths(self, x, G):
         sigma = dict()
@@ -5383,16 +5418,30 @@ class StreamGraph:
             self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
         return sigma
 
-    def sigma_tv(self, pre, sigma, v, t):
-        if (v,t) not in sigma:
-            arrivals_b = [e for e in list(pre[v].keys()) if pre[v][e] != {} ]
-            x = self.closest_arrival(t,arrivals_b)
-            if x != -1:
-                return  sigma[(v,x)]
+    # def sigma_tv(self, pre, sigma, v, t):
+    #     if (v,t) not in sigma:
+    #         arrivals_b = [e for e in list(pre[v].keys()) if pre[v][e] != {} ]
+    #         x = self.closest_arrival(t,arrivals_b)
+    #         if x != -1:
+    #             return  sigma[(v,x)]
+    #         else:
+    #             return nppol.Polynomial([0])
+    #     else:
+    #         return  sigma[(v,t)]
+
+    def volume_metapaths_with_restingpaths(self, x, G, sigma):
+        sigma_r = dict()
+        node = (x,0)
+        visit = list(G[node])
+        visit.sort()
+        for i in range(0,len(visit)):
+            if i == 0:
+                pred = (-1,-1)
             else:
-                return nppol.Polynomial([0])
-        else:
-            return  sigma[(v,t)]
+                pred = visit[i-1]
+            poly = [0 for i in range(len(self.nodes))]
+            self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0)
+        return sigma_r
 
 
 
