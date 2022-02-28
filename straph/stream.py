@@ -4529,7 +4529,7 @@ class StreamGraph:
 
     def actual_degree(self,p):
         x = p.degree()
-        for i in range(0,x):
+        for i in range(0,x+1):
             if p.coef[x-i] != 0:
                 return x-i
         # polynomial is null
@@ -5443,7 +5443,151 @@ class StreamGraph:
             self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0)
         return sigma_r
 
+    def zero_array(self, p):
+        for e in p:
+            if e != 0:
+                return False
+        return True
 
+    def return_dict(self, e, d):
+        if e in d:
+            return d[e]
+        return 0
+
+    def pointers(self, sigma_r):
+        pointer = dict()
+        for k in self.nodes:
+            l = list(self.event_times())
+            l.sort()
+            last = (-1,-1)
+            for i in l:
+                if (k,i) in sigma_r:
+                    pointer[(k,i)] = (k,i)
+                    last = (k,i)
+                else:
+                    pointer[(k,i)] = last
+        return pointer
+
+    def pointers2(self, contri):
+        pointer2 = dict()
+        for k in self.nodes:
+            l = list(self.event_times())
+            l.sort()
+            last = (-1,-1)
+            for i in l:
+                if i in contri[k]:
+                    pointer2[(k,i)] = (k,i)
+                    last = (k,i)
+                else:
+                    pointer2[(k,i)] = last
+        return pointer2
+
+        
+
+
+
+    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2):
+
+        if s == v:
+            return nppol.Polynomial([0])
+        #voir papier matthieu clemence pour l'algo
+        prev = []
+        next = []
+
+
+        if t in prev_next[v]:
+            prev = [e for e in prev_next[v][t] if e < t]
+        t_contri = pointer2[(v,t)][1]
+        #if t not in contri[v]:
+        #    t_contri = pointer[(v,t)][1]
+
+        t_sigma = pointer[(v,t)][1]
+        #if (v,t) not in sigma_r:
+        #    t_sigma = pointer[(v,t)][1]
+        print("t_contri",v,t_contri)
+        print("t_sigma",v,t_sigma)
+        if t_contri == -1:
+            return nppol.Polynomial([0])
+        prev = [contri[v][t_contri][0]] + prev
+        #prev.sort()
+        if t in prev_next[v]:
+            next = [e for e in prev_next[v][t] if e > t]
+        next = next + [contri[v][t_contri][1]]
+        #prev.sort()
+        print("prev", prev)
+        print("next", next)
+
+        left = 0
+        right = 0
+
+        contrib = 0
+        s_prime = lat[v][t_contri][0]
+        vol_tv = sigma_r[(v,t_sigma)][1]
+        print("vol_tv",vol_tv, vol_tv.coef)
+        if self.zero_array(vol_tv.coef):
+            return nppol.Polynomial([0])
+        for s_left in prev:
+            if (v,s_left) in sigma_r:
+                left += sigma_r[pointer[(v,s_left)]][1]
+
+            a_prime = t
+            for a_right in next:
+                if (v,a_right) in sigma_r:
+                    right += sigma_r[pointer[(v,a_right)]][1]
+
+                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+                tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+                print("enum poly", tmp)
+                enum_degree = self.actual_degree(tmp)
+                print("actual enum", enum_degree)
+                enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+                print("left", left, "vol_tv", vol_tv, "right", right)
+                tmp = left + vol_tv + right
+                print("denum poly", tmp)
+                denum_degree = self.actual_degree(tmp)
+                print("actual denum", denum_degree)
+                denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+                print("enum", enum, "denum", denum)
+
+                res = nppol.polydiv(enum,denum)
+
+                contrib += nppol.Polynomial(res[0])
+                print("contrib",contrib)
+                a_prime = a_right
+            s_prime = s_left
+        return contrib
+
+
+    def delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2):
+        if s == v:
+            return nppol.Polynomial([0])
+
+        print("new_call, vt",(v,t))
+        s = self.delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2)
+        visit = list(G[(v,t)])
+        for i in range(0,len(visit)):
+            print("succ", visit[i])
+            svt = sigma_r[pointer[v,t]][1]
+            swtp = sigma_r[pointer[visit[i]]][1]
+
+            print("svt", svt)
+            tmp = svt
+            svt_degree = self.actual_degree(tmp)
+            print("actual svt", svt_degree)
+            svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+
+            print("swtp", swtp)
+            tmp = swtp
+            swtp_degree = self.actual_degree(tmp)
+            print("actual swtp", swtp_degree)
+            swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+
+            res = nppol.polydiv(svt_high,swtp_high)
+            s += nppol.Polynomial(res[0]) * self.delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2)
+
+        return s
 
 
 
