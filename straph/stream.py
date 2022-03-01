@@ -5491,6 +5491,9 @@ class StreamGraph:
         if s == v:
             return nppol.Polynomial([0])
         #voir papier matthieu clemence pour l'algo
+
+        if t not in lat[v]:
+            return nppol.Polynomial([0])
         prev = []
         next = []
 
@@ -5566,26 +5569,28 @@ class StreamGraph:
 
         print("new_call, vt",(v,t))
         s = self.delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2)
-        visit = list(G[(v,t)])
+        t_sigma = pointer[(v,t)][1]
+        visit = list(G[(v,t_sigma)])
         for i in range(0,len(visit)):
-            print("succ", visit[i])
-            svt = sigma_r[pointer[v,t]][1]
-            swtp = sigma_r[pointer[visit[i]]][1]
+            if visit[i][1] >= t:
+                print("succ", visit[i])
+                svt = sigma_r[pointer[v,t]][1]
+                swtp = sigma_r[pointer[visit[i]]][1]
 
-            print("svt", svt)
-            tmp = svt
-            svt_degree = self.actual_degree(tmp)
-            print("actual svt", svt_degree)
-            svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+                print("svt", svt)
+                tmp = svt
+                svt_degree = self.actual_degree(tmp)
+                print("actual svt", svt_degree)
+                svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
 
-            print("swtp", swtp)
-            tmp = swtp
-            swtp_degree = self.actual_degree(tmp)
-            print("actual swtp", swtp_degree)
-            swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+                print("swtp", swtp)
+                tmp = swtp
+                swtp_degree = self.actual_degree(tmp)
+                print("actual swtp", swtp_degree)
+                swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
 
-            res = nppol.polydiv(svt_high,swtp_high)
-            s += nppol.Polynomial(res[0]) * self.delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2)
+                res = nppol.polydiv(svt_high,swtp_high)
+                s += nppol.Polynomial(res[0]) * self.delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2)
 
         return s
 
