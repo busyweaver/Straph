@@ -5173,18 +5173,44 @@ class StreamGraph:
                             pre[b][second_arrival][(a,e)] = edge_taken2
         return
 
-    def count_walks_paper(self,x):
+    def add_curbest_initialise_pre(self, b, t, cur_best, pre):
+        if t not in cur_best[b]:
+            cur_best[b][t] = (t,1)
+        else:
+            if (0.0,1) < (t - cur_best[b][t][0],cur_best[b][t][1]):
+                cur_best[b][t] = (t,1)
+                pre[b][t] = dict()
+        return
 
+
+    def add_from_origin(self, a, b, t1, t2, pre, cur_best):
+        self.add_curbest_initialise_pre(b, t1, cur_best, pre)
+        self.add_curbest_initialise_pre(b, t2, cur_best, pre)
+        if t1 not in pre[b]:
+            pre[b][t1] = {(a,0.0):(t1,t1)}
+        else:
+            #no need for else case, since this can only be included
+            if (a,0.0) not in pre[b][t1]:
+                pre[b][t1][(a,0.0)] = (t1,t1)
+        if t2 not in pre[b]:
+            pre[b][t2] = {(a,0.0):(t1,t2)}
+        else:
+            if (a,0.0) in pre[b][t2]:
+                e1,e2 = pre[b][t2][(a,0.0)]
+                if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
+                    pre[b][t2][(a,0.0)] = (t1,t2)
+                    #pre[b][t2] = {(b,0.0):(t1,t2)}
+
+    def count_walks_paper(self,x):
         cur_best = [dict() for i in range(len(self.nodes))]
         pre = [dict() for i in range(len(self.nodes))]
-        pointer = dict()
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
             for i in range(0,len(self.links)):
                 a,b = self.links[i]
                 for j in range(0,len(self.link_presence[i]),2):
                     t1,t2 = self.link_presence[i][j:j+2]
-                    typ1,typ2 = self.interval_type[i][j:j+2]
+                    #typ1,typ2 = self.interval_type[i][j:j+2]
                     #add commented line for both directions of edges
                     if a == x:
                         if t1 not in cur_best[b]:
