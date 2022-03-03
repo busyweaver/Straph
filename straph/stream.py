@@ -4945,7 +4945,7 @@ class StreamGraph:
             else:
                 return -1
 
-    def relax_resting_paths(self,x,b,t1,t2,pre,cur_best, pointer):
+    def relax_resting_paths(self, b, t1, t2, pre, cur_best):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
         arrivals_b.sort()
@@ -4977,7 +4977,7 @@ class StreamGraph:
                     #pre[b][first_arrival] = set()
                     pre[b][first_arrival] = dict()
                     cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
-                    pointer[(b,first_arrival)] = (b,close_arrival) 
+                    #pointer[(b,first_arrival)] = (b,close_arrival) 
                     #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
                     # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                 # if cnew == cold:
@@ -4994,7 +4994,7 @@ class StreamGraph:
             else:
                 pre[b][first_arrival] = dict()
                 cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
-                pointer[(b,first_arrival)] = (b,close_arrival) 
+                #pointer[(b,first_arrival)] = (b,close_arrival) 
                 #pre[b][first_arrival].add((a,e,edge_taken1))
                 # pre[b][first_arrival][(aa,e)] = edge_last
                 # bool = True
@@ -5014,7 +5014,7 @@ class StreamGraph:
                     if c2new < c2old:
                         pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
-                        pointer[(b,second_arrival)] = (b,close_arrival) 
+                        #pointer[(b,second_arrival)] = (b,close_arrival) 
                         # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                         #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
 
@@ -5035,7 +5035,7 @@ class StreamGraph:
                 else:
                     pre[b][second_arrival] = dict()
                     cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
-                    pointer[(b,second_arrival)] = (b,close_arrival) 
+                    #pointer[(b,second_arrival)] = (b,close_arrival) 
                     # if bool:
                     #     pre[b][second_arrival][(aa,e)] = edge_last
                     # else:
@@ -5043,7 +5043,7 @@ class StreamGraph:
         return
 
 
-    def relax_paper(self,x,a,b,t1,t2,pre,cur_best, pointer):
+    def relax_paper(self, a, b, t1, t2, pre, cur_best):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals = [e for e in list(cur_best[a].keys()) ]
         # print(a,b,t1,t2)
@@ -5094,7 +5094,7 @@ class StreamGraph:
                         #pre[b][first_arrival] = set()
                         pre[b][first_arrival] = dict()
                         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                        pointer[(b,first_arrival)] = (b,first_arrival) 
+                        #pointer[(b,first_arrival)] = (b,first_arrival) 
                         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
                         #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
                     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
@@ -5122,7 +5122,7 @@ class StreamGraph:
                     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
                     #pre[b][first_arrival].add((a,e,edge_taken1))
                     pre[b][first_arrival][(a,e)] = edge_taken1
-                    pointer[(b,first_arrival)] = (b,first_arrival) 
+                    #pointer[(b,first_arrival)] = (b,first_arrival) 
                     bool = True
 
 
@@ -5140,7 +5140,7 @@ class StreamGraph:
                         if c2new < c2old:
                             pre[b][second_arrival] = dict()
                             cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                            pointer[(b,second_arrival)] = (b,second_arrival) 
+                            #pointer[(b,second_arrival)] = (b,second_arrival) 
                             #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
                             c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
                         # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
@@ -5166,7 +5166,7 @@ class StreamGraph:
                     else:
                         pre[b][second_arrival] = dict()
                         cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                        pointer[(b,second_arrival)] = (b,second_arrival) 
+                        #pointer[(b,second_arrival)] = (b,second_arrival) 
                         if bool:
                             pre[b][second_arrival][(b,e)] = edge_taken2
                         else:
@@ -5213,74 +5213,80 @@ class StreamGraph:
                     #typ1,typ2 = self.interval_type[i][j:j+2]
                     #add commented line for both directions of edges
                     if a == x:
-                        if t1 not in cur_best[b]:
-                            cur_best[b][t1] = (t1,1)
-                        else:
-                            if (0.0,1) < (t1 - cur_best[b][t1][0],cur_best[b][t1][1]):
-                                cur_best[b][t1] = (t1,1)
-                                pre[b][t1] = dict()
-                        if t2 not in cur_best[b]:
-                            cur_best[b][t2] = (t2,1)
-                        else:
-                            if (0.0,1) < (t2 - cur_best[b][t2][0],cur_best[b][t2][1]):
-                                cur_best[b][t2] = (t2,1)
-                                pre[b][t2] = dict()
+                        cur_best[a][t1] = (t1,0)
+                        cur_best[a][t2] = (t2,0)
+                        #self.add_from_origin(a, b, t1, t2, pre, cur_best)
+                        # if t1 not in cur_best[b]:
+                        #     cur_best[b][t1] = (t1,1)
+                        # else:
+                        #     if (0.0,1) < (t1 - cur_best[b][t1][0],cur_best[b][t1][1]):
+                        #         cur_best[b][t1] = (t1,1)
+                        #         pre[b][t1] = dict()
+                        # if t2 not in cur_best[b]:
+                        #     cur_best[b][t2] = (t2,1)
+                        # else:
+                        #     if (0.0,1) < (t2 - cur_best[b][t2][0],cur_best[b][t2][1]):
+                        #         cur_best[b][t2] = (t2,1)
+                        #         pre[b][t2] = dict()
 
-                        if t1 not in pre[b]:
-                            pre[b][t1] = {(a,0.0):(t1,t1)}
-                        else:
-                            if (a,0.0) not in pre[b][t1]:
-                                # e1,e2 = pre[b][t1][(a,0.0)]
-                                # if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                                pre[b][t1][(a,0.0)] = (t1,t1)
+                        # if t1 not in pre[b]:
+                        #     pre[b][t1] = {(a,0.0):(t1,t1)}
+                        # else:
+                        #     if (a,0.0) not in pre[b][t1]:
+                        #         # e1,e2 = pre[b][t1][(a,0.0)]
+                        #         # if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
+                        #         pre[b][t1][(a,0.0)] = (t1,t1)
 
-                        if t2 not in pre[b]:
-                            pre[b][t2] = {(a,0.0):(t1,t2)}
-                        else:
-                            if (a,0.0) in pre[b][t2]:
-                                 e1,e2 = pre[b][t2][(a,0.0)]
-                                 if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                                     pre[b][t2][(a,0.0)] = (t1,t2)
-                        #pre[b][t2] = {(b,0.0):(t1,t2)}
-                    elif b == x:
-                        if t1 not in cur_best[a]:
-                            cur_best[a][t1] = (t1,1)
-                        else:
-                            if (0.0,1) < (t1 - cur_best[a][t1][0],cur_best[a][t1][1]):
-                                cur_best[a][t1] = (t1,1)
-                                pre[a][t1] = dict()
-                        if t2 not in cur_best[a]:
-                            cur_best[a][t2] = (t2,1)
-                        else:
-                            if (0.0,1) < (t2 - cur_best[a][t2][0],cur_best[a][t2][1]):
-                                cur_best[a][t2] = (t2,1)
-                                pre[a][t2] = dict()
+                        # if t2 not in pre[b]:
+                        #     pre[b][t2] = {(a,0.0):(t1,t2)}
+                        # else:
+                        #     if (a,0.0) in pre[b][t2]:
+                        #          e1,e2 = pre[b][t2][(a,0.0)]
+                        #          if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
+                        #              pre[b][t2][(a,0.0)] = (t1,t2)
+                        # #pre[b][t2] = {(b,0.0):(t1,t2)}
+                    if b == x:
+                        cur_best[b][t1] = (t1,0)
+                        cur_best[b][t2] = (t2,0)
+                        #self.add_from_origin(b, a, t1, t2, pre, cur_best)
+                        # if t1 not in cur_best[a]:
+                        #     cur_best[a][t1] = (t1,1)
+                        # else:
+                        #     if (0.0,1) < (t1 - cur_best[a][t1][0],cur_best[a][t1][1]):
+                        #         cur_best[a][t1] = (t1,1)
+                        #         pre[a][t1] = dict()
+                        # if t2 not in cur_best[a]:
+                        #     cur_best[a][t2] = (t2,1)
+                        # else:
+                        #     if (0.0,1) < (t2 - cur_best[a][t2][0],cur_best[a][t2][1]):
+                        #         cur_best[a][t2] = (t2,1)
+                        #         pre[a][t2] = dict()
 
-                        #cur_best[a][t2] = (t2,1.0)
-                        if t1 not in pre[a]:
-                            pre[a][t1] = {(b,0.0):(t1,t1)}
-                        else:
-                            if (b,0.0) not in pre[a][t1]:
-                                pre[a][t1][(b,0.0)] = (t1,t1)
+                        # #cur_best[a][t2] = (t2,1.0)
+                        # if t1 not in pre[a]:
+                        #     pre[a][t1] = {(b,0.0):(t1,t1)}
+                        # else:
+                        #     if (b,0.0) not in pre[a][t1]:
+                        #         pre[a][t1][(b,0.0)] = (t1,t1)
 
-                        if t2 not in pre[a]:
-                            pre[a][t2] = {(b,0.0):(t1,t2)}
-                        else:
-                            if (b,0.0) in pre[a][t2]:
-                                e1,e2 = pre[a][t2][(b,0.0)]
-                                if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                                    pre[a][t2][(b,0.0)] = (t1,t2)
-                        #pre[a][t1] = {(b,0.0):(t1,t2)}
-                        #pre[a][t2] = {(a,0.0):(t1,t2)}
-                    else:
+                        # if t2 not in pre[a]:
+                        #     pre[a][t2] = {(b,0.0):(t1,t2)}
+                        # else:
+                        #     if (b,0.0) in pre[a][t2]:
+                        #         e1,e2 = pre[a][t2][(b,0.0)]
+                        #         if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
+                        #             pre[a][t2][(b,0.0)] = (t1,t2)
+                        # #pre[a][t1] = {(b,0.0):(t1,t2)}
+                        # #pre[a][t2] = {(a,0.0):(t1,t2)}
+                    #else:
                         #extending rested paths to t1,t2
-                        self.relax_resting_paths(x,b,t1,t2,pre,cur_best, pointer)
-                        self.relax_paper(x,a,b,t1,t2,pre,cur_best, pointer)
-                        self.relax_resting_paths(x,a,t1,t2,pre,cur_best, pointer)
-                        self.relax_paper(x,b,a,t1,t2,pre,cur_best, pointer)
+                    self.relax_resting_paths(b,t1,t2,pre,cur_best)
+                    self.relax_paper(a,b,t1,t2,pre,cur_best)
+                    self.relax_resting_paths(a,t1,t2,pre,cur_best)
+                    self.relax_paper(b,a,t1,t2,pre,cur_best)
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
-        return (pre, cur_best, pointer)
+        return (pre, cur_best)
 
 
 
@@ -5302,14 +5308,16 @@ class StreamGraph:
 
         return latencies
 
-    def predecessor_graph(self,pre):
+    def predecessor_graph(self,pre, node):
         G = nx.DiGraph()
         for k in self.nodes:
             if k != 0:
                 for key in pre[k].keys():
                     for v2 in pre[k][key].keys():
-                        if v2[0] != k:
+                        if v2[0] != node:
                             G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                        else:
+                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
         return G
 
     def metapaths_from_predecessor(self,G):
