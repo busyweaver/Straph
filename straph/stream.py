@@ -4945,6 +4945,22 @@ class StreamGraph:
             else:
                 return -1
 
+    def relax_resting_aux(self, b, last_depar, arrival, e, cur_best, pre):
+        if arrival in cur_best[b]:
+            cnew = self.compute_c(last_depar, arrival, cur_best[b][e][1])
+            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+            #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+            if cnew < cold:
+                #pre[b][arrival] = set()
+                pre[b][arrival] = dict()
+                cur_best[b][arrival] = (last_depar,cur_best[b][e][1])
+        else:
+            #pre[b][arrival] = set()
+            pre[b][arrival] = dict()
+            cur_best[b][arrival] =  (last_depar,cur_best[b][e][1])
+            #pre[b][arrival].add((a,e,edge_taken1))
+            #pre[b][arrival][(a,e)] = edge_taken
+
     def relax_resting_paths(self, b, t1, t2, pre, cur_best):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
@@ -4969,78 +4985,105 @@ class StreamGraph:
             #print("first,second",first_arrival, second_arrival)
             #print("close_arrival",close_arrival, "last_depar", last_depar)
 
-            if first_arrival in cur_best[b]:
-                cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
-                cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                if cnew < cold:
-                    #pre[b][first_arrival] = set()
-                    pre[b][first_arrival] = dict()
-                    cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
-                    #pointer[(b,first_arrival)] = (b,close_arrival) 
-                    #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                    # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
-                # if cnew == cold:
-                #     if (aa,e) not in pre[b][first_arrival]:
-                #         pre[b][first_arrival][(aa,e)] = pre[b][close_arrival][edge_last]
-                #         bool = True
-                #     else:
-                #         e1,e2 = edge_last
-                #         x1,x2 = pre[b][first_arrival][(aa,e)]
-                #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
-                #             pre[b][first_arrival][(aa,e)] = edge_last
-                #             bool = True
+            #if first_arrival in cur_best[b]:
+            self.relax_resting_aux(b, last_depar, first_arrival, close_arrival, cur_best, pre)
+            #     cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
+            #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+            #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+            #     if cnew < cold:
+            #         #pre[b][first_arrival] = set()
+            #         pre[b][first_arrival] = dict()
+            #         cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
+            #         #pointer[(b,first_arrival)] = (b,close_arrival) 
+            #         #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+            #         # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+            #     # if cnew == cold:
+            #     #     if (aa,e) not in pre[b][first_arrival]:
+            #     #         pre[b][first_arrival][(aa,e)] = pre[b][close_arrival][edge_last]
+            #     #         bool = True
+            #     #     else:
+            #     #         e1,e2 = edge_last
+            #     #         x1,x2 = pre[b][first_arrival][(aa,e)]
+            #     #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+            #     #             pre[b][first_arrival][(aa,e)] = edge_last
+            #     #             bool = True
 
-            else:
-                pre[b][first_arrival] = dict()
-                cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
-                #pointer[(b,first_arrival)] = (b,close_arrival) 
-                #pre[b][first_arrival].add((a,e,edge_taken1))
-                # pre[b][first_arrival][(aa,e)] = edge_last
-                # bool = True
+            # else:
+            #     pre[b][first_arrival] = dict()
+            #     cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
+            #     #pointer[(b,first_arrival)] = (b,close_arrival) 
+            #     #pre[b][first_arrival].add((a,e,edge_taken1))
+            #     # pre[b][first_arrival][(aa,e)] = edge_last
+            #     # bool = True
 
 
             if second_arrival != -1:
-                bool = False
-                if second_arrival in cur_best[b]:
-                    c2new = self.compute_c(last_depar, second_arrival, cur_best[b][close_arrival][1])
-                    c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                    #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-                    # if (second_arrival - last_depar) <= 0:
-                    #     c2 = (0.0,cur_best[a][e][1] + 1)
-                    # else:
-                    #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+                self.relax_resting_aux(b, last_depar, second_arrival, close_arrival, cur_best, pre)
+                # if second_arrival in cur_best[b]:
+                #     c2new = self.compute_c(last_depar, second_arrival, cur_best[b][close_arrival][1])
+                #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+                #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+                #     # if (second_arrival - last_depar) <= 0:
+                #     #     c2 = (0.0,cur_best[a][e][1] + 1)
+                #     # else:
+                #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
 
-                    if c2new < c2old:
-                        pre[b][second_arrival] = dict()
-                        cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
-                        #pointer[(b,second_arrival)] = (b,close_arrival) 
-                        # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
-                        #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+                #     if c2new < c2old:
+                #         pre[b][second_arrival] = dict()
+                #         cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
+                #         #pointer[(b,second_arrival)] = (b,close_arrival) 
+                #         # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+                #         #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
 
-                        # if c2new == c2old:
-                        #     if (aa,e) not in pre[b][second_arrival]:
-                        #         if bool:
-                        #             pre[b][second_arrival][(aa,e)] = edge_last
-                        #         else:
-                        #             pre[b][second_arrival][(aa,e)] = edge_last
-                        #     else:
-                        #         e1,e2 = edge_last
-                        #         x1,x2 = pre[b][second_arrival][(aa,e)]
-                        #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
-                        #             if bool:
-                        #                 pre[b][second_arrival][(aa,e)] = edge_last
-                        #             else:
-                        #                 pre[b][second_arrival][(aa,e)] = edge_last
-                else:
-                    pre[b][second_arrival] = dict()
-                    cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
-                    #pointer[(b,second_arrival)] = (b,close_arrival) 
-                    # if bool:
-                    #     pre[b][second_arrival][(aa,e)] = edge_last
-                    # else:
-                    #     pre[b][second_arrival][(aa,e)] = edge_last
+                #         # if c2new == c2old:
+                #         #     if (aa,e) not in pre[b][second_arrival]:
+                #         #         if bool:
+                #         #             pre[b][second_arrival][(aa,e)] = edge_last
+                #         #         else:
+                #         #             pre[b][second_arrival][(aa,e)] = edge_last
+                #         #     else:
+                #         #         e1,e2 = edge_last
+                #         #         x1,x2 = pre[b][second_arrival][(aa,e)]
+                #         #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+                #         #             if bool:
+                #         #                 pre[b][second_arrival][(aa,e)] = edge_last
+                #         #             else:
+                #         #                 pre[b][second_arrival][(aa,e)] = edge_last
+                # else:
+                #     pre[b][second_arrival] = dict()
+                #     cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
+                #     #pointer[(b,second_arrival)] = (b,close_arrival) 
+                #     # if bool:
+                #     #     pre[b][second_arrival][(aa,e)] = edge_last
+                #     # else:
+                #     #     pre[b][second_arrival][(aa,e)] = edge_last
         return
+
+    def relax_paths_aux(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre):
+        if arrival in cur_best[b]:
+            cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
+            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+            #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+            if cnew < cold:
+                #pre[b][arrival] = set()
+                pre[b][arrival] = dict()
+                cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
+                cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+            if cnew == cold:
+                #pre[b][arrival].add((a,e,edge_taken))
+                if (a,e) not in pre[b][arrival]:
+                    pre[b][arrival][(a,e)] = edge_taken
+                else:
+                    e1,e2 = edge_taken
+                    x1,x2 = pre[b][arrival][(a,e)]
+                    if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+                        pre[b][arrival][(a,e)] = edge_taken
+        else:
+            #pre[b][arrival] = set()
+            pre[b][arrival] = dict()
+            cur_best[b][arrival] =  (last_depar,cur_best[a][e][1] + 1)
+            #pre[b][arrival].add((a,e,edge_taken1))
+            pre[b][arrival][(a,e)] = edge_taken
 
 
     def relax_paper(self, a, b, t1, t2, pre, cur_best):
@@ -5080,97 +5123,97 @@ class StreamGraph:
             #         last_depar = cur_best[a][e][0]
             #         #print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
             if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
+                self.relax_paths_aux(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre)
                 #c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
                 # if (first_arrival - last_depar) <= 0:
                 #     c = (0.0, cur_best[a][e][1] + 1)
                 # else:
                 #     c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
-                bool = False
-                if first_arrival in cur_best[b]:
-                    cnew = self.compute_c(last_depar, first_arrival, cur_best[a][e][1] + 1)
-                    cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                    #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                    if cnew < cold:
-                        #pre[b][first_arrival] = set()
-                        pre[b][first_arrival] = dict()
-                        cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                        #pointer[(b,first_arrival)] = (b,first_arrival) 
-                        cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                        #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
-                    # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
-                    #     x = 0
-                    # else:
-                    #     x = (first_arrival - cur_best[b][first_arrival][0])
-                    # if c == (x , cur_best[b][first_arrival][1]):
-                    #if c == ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                    if cnew == cold:
-                        #pre[b][first_arrival].add((a,e,edge_taken))
-                        if (a,e) not in pre[b][first_arrival]:
-                            pre[b][first_arrival][(a,e)] = edge_taken1
-                            bool = True
-                        else:
-                            e1,e2 = edge_taken1
-                            x1,x2 = pre[b][first_arrival][(a,e)]
-                            if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                                pre[b][first_arrival][(a,e)] = edge_taken1
-                                bool = True
+                # if first_arrival in cur_best[b]:
+                #     cnew = self.compute_c(last_depar, first_arrival, cur_best[a][e][1] + 1)
+                #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+                #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+                #     if cnew < cold:
+                #         #pre[b][first_arrival] = set()
+                #         pre[b][first_arrival] = dict()
+                #         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
+                #         #pointer[(b,first_arrival)] = (b,first_arrival) 
+                #         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+                #         #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+                #     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
+                #     #     x = 0
+                #     # else:
+                #     #     x = (first_arrival - cur_best[b][first_arrival][0])
+                #     # if c == (x , cur_best[b][first_arrival][1]):
+                #     #if c == ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+                #     if cnew == cold:
+                #         #pre[b][first_arrival].add((a,e,edge_taken))
+                #         if (a,e) not in pre[b][first_arrival]:
+                #             pre[b][first_arrival][(a,e)] = edge_taken1
+                #             bool = True
+                #         else:
+                #             e1,e2 = edge_taken1
+                #             x1,x2 = pre[b][first_arrival][(a,e)]
+                #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+                #                 pre[b][first_arrival][(a,e)] = edge_taken1
+                #                 bool = True
 
-                else:
+                # else:
 
-                    #pre[b][first_arrival] = set()
-                    pre[b][first_arrival] = dict()
-                    cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                    #pre[b][first_arrival].add((a,e,edge_taken1))
-                    pre[b][first_arrival][(a,e)] = edge_taken1
-                    #pointer[(b,first_arrival)] = (b,first_arrival) 
-                    bool = True
+                #     #pre[b][first_arrival] = set()
+                #     pre[b][first_arrival] = dict()
+                #     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+                #     #pre[b][first_arrival].add((a,e,edge_taken1))
+                #     pre[b][first_arrival][(a,e)] = edge_taken1
+                #     #pointer[(b,first_arrival)] = (b,first_arrival) 
+                #     bool = True
 
 
                 if second_arrival != -1:
-                    bool = False
-                    if second_arrival in cur_best[b]:
-                        c2new = self.compute_c(last_depar, second_arrival, cur_best[a][e][1] + 1)
-                        c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                        #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-                        # if (second_arrival - last_depar) <= 0:
-                        #     c2 = (0.0,cur_best[a][e][1] + 1)
-                        # else:
-                        #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+                    self.relax_paths_aux(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre)
+                    # if second_arrival in cur_best[b]:
+                    #     c2new = self.compute_c(last_depar, second_arrival, cur_best[a][e][1] + 1)
+                    #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+                    #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+                    #     # if (second_arrival - last_depar) <= 0:
+                    #     #     c2 = (0.0,cur_best[a][e][1] + 1)
+                    #     # else:
+                    #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
 
-                        if c2new < c2old:
-                            pre[b][second_arrival] = dict()
-                            cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                            #pointer[(b,second_arrival)] = (b,second_arrival) 
-                            #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
-                            c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                        # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
-                        #     x = 0
-                        # else:
-                        #     x = (second_arrival - cur_best[b][second_arrival][0])
-                        # if c2 == (x , cur_best[b][second_arrival][1]):
-                        if c2new == c2old:
-                            #pre[b][second_arrival].add((a,e,edge_taken))
-                            if (a,e) not in pre[b][second_arrival]:
-                                if bool:
-                                    pre[b][second_arrival][(b,e)] = edge_taken2
-                                else:
-                                    pre[b][second_arrival][(a,e)] = edge_taken2
-                            else:
-                                e1,e2 = edge_taken2
-                                x1,x2 = pre[b][second_arrival][(a,e)]
-                                if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                                    if bool:
-                                        pre[b][second_arrival][(b,e)] = edge_taken2
-                                    else:
-                                        pre[b][second_arrival][(a,e)] = edge_taken2
-                    else:
-                        pre[b][second_arrival] = dict()
-                        cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                        #pointer[(b,second_arrival)] = (b,second_arrival) 
-                        if bool:
-                            pre[b][second_arrival][(b,e)] = edge_taken2
-                        else:
-                            pre[b][second_arrival][(a,e)] = edge_taken2
+                    #     if c2new < c2old:
+                    #         pre[b][second_arrival] = dict()
+                    #         cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
+                    #         #pointer[(b,second_arrival)] = (b,second_arrival) 
+                    #         #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+                    #         c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+                    #     # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
+                    #     #     x = 0
+                    #     # else:
+                    #     #     x = (second_arrival - cur_best[b][second_arrival][0])
+                    #     # if c2 == (x , cur_best[b][second_arrival][1]):
+                    #     if c2new == c2old:
+                    #         #pre[b][second_arrival].add((a,e,edge_taken))
+                    #         if (a,e) not in pre[b][second_arrival]:
+                    #             if bool:
+                    #                 pre[b][second_arrival][(b,e)] = edge_taken2
+                    #             else:
+                    #                 pre[b][second_arrival][(a,e)] = edge_taken2
+                    #         else:
+                    #             e1,e2 = edge_taken2
+                    #             x1,x2 = pre[b][second_arrival][(a,e)]
+                    #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+                    #                 if bool:
+                    #                     pre[b][second_arrival][(b,e)] = edge_taken2
+                    #                 else:
+                    #                     pre[b][second_arrival][(a,e)] = edge_taken2
+                    # else:
+                    #     pre[b][second_arrival] = dict()
+                    #     cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+                    #     #pointer[(b,second_arrival)] = (b,second_arrival) 
+                    #     if bool:
+                    #         pre[b][second_arrival][(b,e)] = edge_taken2
+                    #     else:
+                    #         pre[b][second_arrival][(a,e)] = edge_taken2
         return
 
     def add_curbest_initialise_pre(self, b, t, cur_best, pre):
