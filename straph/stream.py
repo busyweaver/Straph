@@ -4965,18 +4965,26 @@ class StreamGraph:
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
         arrivals_b.sort()
+        l = list(self.event_times())
+        l.sort()
+        D = dict()
+        for i in range(0,len(l)):
+            D[l[i]] = i
         #print("relaxing_paths", b, t1, t2)
         #print("resting",arrivals_b)
-        close_arrival = self.closest_arrival(t1, arrivals_b)
-        #print("close_arrival",close_arrival)
+        close_arrival = self.closest_arrival(t2, arrivals_b)
+        #print("close_arrival",close_arrival, t2)
         if close_arrival != -1:
             last_depar = cur_best[b][close_arrival][0]
+            for i in range(D[close_arrival],len(l)):
+                self.relax_resting_aux(b, last_depar, l[i], close_arrival, cur_best, pre)
+
             #e = pre[b][close_arrival][1]
             #aa = pre[b][close_arrival][0]
-            if t1 != t2:
-                first_arrival, second_arrival= (t1, t2)
-            else:
-                first_arrival, second_arrival= (t1, -1)
+            # if t1 != t2:
+            #     first_arrival, second_arrival= (t1, t2)
+            # else:
+            #     first_arrival, second_arrival= (t1, -1)
             #print("relaxing_paths")
             #print(aa,b,t1,t2)
             #print("cur_bestb",cur_best[b])
@@ -4986,7 +4994,7 @@ class StreamGraph:
             #print("close_arrival",close_arrival, "last_depar", last_depar)
 
             #if first_arrival in cur_best[b]:
-            self.relax_resting_aux(b, last_depar, first_arrival, close_arrival, cur_best, pre)
+            #self.relax_resting_aux(b, last_depar, first_arrival, close_arrival, cur_best, pre)
             #     cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
             #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
             #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
@@ -5017,8 +5025,8 @@ class StreamGraph:
             #     # bool = True
 
 
-            if second_arrival != -1:
-                self.relax_resting_aux(b, last_depar, second_arrival, close_arrival, cur_best, pre)
+            #if second_arrival != -1:
+            #    self.relax_resting_aux(b, last_depar, second_arrival, close_arrival, cur_best, pre)
                 # if second_arrival in cur_best[b]:
                 #     c2new = self.compute_c(last_depar, second_arrival, cur_best[b][close_arrival][1])
                 #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
@@ -5088,7 +5096,7 @@ class StreamGraph:
 
     def relax_paper(self, a, b, t1, t2, pre, cur_best):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals = [e for e in list(cur_best[a].keys()) ]
+        arrivals = [e for e in list(pre[a].keys()) if pre[a][e] != {}]
         # print(a,b,t1,t2)
         # print("cur_besta",cur_best[a])
         # print("cur_bestb",cur_best[b])
@@ -5245,8 +5253,11 @@ class StreamGraph:
                     #pre[b][t2] = {(b,0.0):(t1,t2)}
 
     def count_walks_paper(self,x):
-        cur_best = [dict() for i in range(len(self.nodes))]
-        pre = [dict() for i in range(len(self.nodes))]
+        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in list(self.event_times())} for i in range(len(self.nodes)) ]
+        pre = [{t:{}   for t in list(self.event_times())} for i in range(len(self.nodes))]
+        for e in cur_best[x]:
+            cur_best[x][e] = (e,0)
+            pre[x][e]={(0,0):(-1,-1)}
         #the 2 loops inside the first are to iterate over each temporal link 
         for k in self.nodes:
             for i in range(0,len(self.links)):
@@ -5255,9 +5266,9 @@ class StreamGraph:
                     t1,t2 = self.link_presence[i][j:j+2]
                     #typ1,typ2 = self.interval_type[i][j:j+2]
                     #add commented line for both directions of edges
-                    if a == x:
-                        cur_best[a][t1] = (t1,0)
-                        cur_best[a][t2] = (t2,0)
+                    # if a == x:
+                    #     cur_best[a][t1] = (t1,0)
+                    #     cur_best[a][t2] = (t2,0)
                         #self.add_from_origin(a, b, t1, t2, pre, cur_best)
                         # if t1 not in cur_best[b]:
                         #     cur_best[b][t1] = (t1,1)
@@ -5288,9 +5299,9 @@ class StreamGraph:
                         #          if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
                         #              pre[b][t2][(a,0.0)] = (t1,t2)
                         # #pre[b][t2] = {(b,0.0):(t1,t2)}
-                    if b == x:
-                        cur_best[b][t1] = (t1,0)
-                        cur_best[b][t2] = (t2,0)
+                    # if b == x:
+                    #     cur_best[b][t1] = (t1,0)
+                    #     cur_best[b][t2] = (t2,0)
                         #self.add_from_origin(b, a, t1, t2, pre, cur_best)
                         # if t1 not in cur_best[a]:
                         #     cur_best[a][t1] = (t1,1)
@@ -5323,10 +5334,10 @@ class StreamGraph:
                         # #pre[a][t2] = {(a,0.0):(t1,t2)}
                     #else:
                         #extending rested paths to t1,t2
-                    self.relax_resting_paths(b,t1,t2,pre,cur_best)
                     self.relax_paper(a,b,t1,t2,pre,cur_best)
-                    self.relax_resting_paths(a,t1,t2,pre,cur_best)
+                    self.relax_resting_paths(b,t1,t2,pre,cur_best)
                     self.relax_paper(b,a,t1,t2,pre,cur_best)
+                    self.relax_resting_paths(a,t1,t2,pre,cur_best)
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
         return (pre, cur_best)
@@ -5338,16 +5349,17 @@ class StreamGraph:
         last_depr = [dict() for i in range(len(self.nodes))]
         for k in self.nodes:
             for key in cur_best[k]:
-                latencies[k][key] = cur_best[k][key]
-                if cur_best[k][key][0] not in last_depr[k]:
-                    last_depr[k][cur_best[k][key][0]] = key
-                else:
-                    #we already have one element for the departure
-                    if last_depr[k][cur_best[k][key][0]] > key:
-                        del latencies[k][last_depr[k][cur_best[k][key][0]]]
+                if cur_best[k][key][0] != -numpy.Infinity:
+                    latencies[k][key] = cur_best[k][key]
+                    if (cur_best[k][key][0] not in last_depr[k]):
                         last_depr[k][cur_best[k][key][0]] = key
                     else:
-                        del latencies[k][key]
+                        #we already have one element for the departure
+                        if last_depr[k][cur_best[k][key][0]] > key:
+                            del latencies[k][last_depr[k][cur_best[k][key][0]]]
+                            last_depr[k][cur_best[k][key][0]] = key
+                        else:
+                            del latencies[k][key]
 
         return latencies
 
