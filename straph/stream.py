@@ -5467,7 +5467,7 @@ class StreamGraph:
                 self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1,  res, b, pow_actual, chevau,  False)
 
 
-    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth):
+    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, depar_branch):
         print("noder",e, "predr",pred_node)
         # nodes are the same as before we add paths
         if pred_node[0] == e[0]:
@@ -5492,7 +5492,7 @@ class StreamGraph:
             else:
                 pred = visit[i-1]
             poly = [0 for i in range(len(self.nodes))]
-            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1)
+            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, e)
 
         return
 
@@ -5504,7 +5504,7 @@ class StreamGraph:
         node = (x,0)
         for e in G[node]:
             poly = [0 for i in range(len(self.nodes))]
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True, e)
         return sigma
 
     # def sigma_tv(self, pre, sigma, v, t):
@@ -5632,7 +5632,12 @@ class StreamGraph:
                 print("enum poly", tmp)
                 enum_degree = self.actual_degree(tmp)
                 print("actual enum", enum_degree)
-                enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+                if enum_degree == -1:
+                    enum = tuple([0])
+                else:
+                    enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
 
                 print("left", left, "vol_tv", vol_tv, "right", right)
                 tmp = left + vol_tv + right
