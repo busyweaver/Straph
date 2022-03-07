@@ -5467,10 +5467,10 @@ class StreamGraph:
                 self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1,  res, b, pow_actual, chevau,  False)
 
 
-    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, depar_branch):
+    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
         print("noder",e, "predr",pred_node)
         # nodes are the same as before we add paths
-        if pred_node[0] == e[0]:
+        if pred_node[0] == e[0] and pred_depar == actual_depar:
             if e not in sigma_r:
                 sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
             else:
@@ -5489,10 +5489,12 @@ class StreamGraph:
         for i in range(0,len(visit)):
             if i == 0:
                 pred = (-1,-1)
+                pred_depar = -1
             else:
                 pred = visit[i-1]
+                pred_depar = pred[1]
             poly = [0 for i in range(len(self.nodes))]
-            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, e)
+            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, pred_depar, visit[i][1])
 
         return
 
@@ -5504,7 +5506,7 @@ class StreamGraph:
         node = (x,0)
         for e in G[node]:
             poly = [0 for i in range(len(self.nodes))]
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True, e)
+            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
         return sigma
 
     # def sigma_tv(self, pre, sigma, v, t):
@@ -5526,10 +5528,12 @@ class StreamGraph:
         for i in range(0,len(visit)):
             if i == 0:
                 pred = (-1,-1)
+                pred_depar = -1
             else:
                 pred = visit[i-1]
+                pred_depar = pred[1]
             poly = [0 for i in range(len(self.nodes))]
-            self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0)
+            self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0, pred_depar, visit[i][1])
         return sigma_r
 
     def zero_array(self, p):
@@ -5576,7 +5580,7 @@ class StreamGraph:
 
 
     def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2):
-
+        print("call svvt, ","s",s,"v",v,"t",t)
         if s == v:
             return nppol.Polynomial([0])
         #voir papier matthieu clemence pour l'algo
@@ -5600,6 +5604,7 @@ class StreamGraph:
         print("t_sigma",v,t_sigma)
         if t_contri == -1:
             return nppol.Polynomial([0])
+
         prev = [contri[v][t_contri][0]] + prev
         #prev.sort()
         if t in prev_next[v]:
@@ -5619,13 +5624,8 @@ class StreamGraph:
         if self.zero_array(vol_tv.coef):
             return nppol.Polynomial([0])
         for s_left in prev:
-            if (v,s_left) in sigma_r:
-                left += sigma_r[pointer[(v,s_left)]][1]
-
             a_prime = t
             for a_right in next:
-                if (v,a_right) in sigma_r:
-                    right += sigma_r[pointer[(v,a_right)]][1]
 
                 print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
                 tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
@@ -5652,8 +5652,13 @@ class StreamGraph:
 
                 contrib += nppol.Polynomial(res[0])
                 print("contrib",contrib)
+                if (v,a_right) in sigma_r:
+                    right += sigma_r[pointer[(v,a_right)]][1]
                 a_prime = a_right
+            if (v,s_left) in sigma_r:
+                left += sigma_r[pointer[(v,s_left)]][1]
             s_prime = s_left
+        print("end svvt", contrib)
         return contrib
 
 
