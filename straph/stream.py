@@ -5366,13 +5366,13 @@ class StreamGraph:
     def predecessor_graph(self,pre, node):
         G = nx.DiGraph()
         for k in self.nodes:
-            if k != 0:
-                for key in pre[k].keys():
-                    for v2 in pre[k][key].keys():
-                        if v2[0] != node:
-                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
-                        else:
-                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
+            #if k != 0:
+            for key in pre[k].keys():
+                for v2 in pre[k][key].keys():
+                    if v2[0] != node:
+                        G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                    else:
+                        G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
         return G
 
     def metapaths_from_predecessor(self,G):
