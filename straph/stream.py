@@ -5526,6 +5526,7 @@ class StreamGraph:
             self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0, pred_depar, visit[i][1])
         return sigma_r
 
+
     # def trav_sigmastv(self, G, e, last_inter, before_last_inter, pred_node, pointer, pred_depar, actual_depar):
     #     print("noder",e, "predr",pred_node)
     #     # nodes are the same as before we add paths
@@ -5756,11 +5757,11 @@ class StreamGraph:
 
         return s
 
-    def contri_delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
-        (x,y) = pointer3[(v,t)]
-        if (x,y) != 1:
-            res = self.delta_svt(s, x, y, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
-            return res - self.delta_svvt()
+    # def contri_delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
+    #     (x,y) = pointer3[(v,t)]
+    #     if (x,y) != 1:
+    #         res = self.delta_svt(s, x, y, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
+    #         return res - self.delta_svvt()
 
 
 
