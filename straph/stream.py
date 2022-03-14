@@ -5366,13 +5366,13 @@ class StreamGraph:
     def predecessor_graph(self,pre, node):
         G = nx.DiGraph()
         for k in self.nodes:
-            #if k != 0:
-            for key in pre[k].keys():
-                for v2 in pre[k][key].keys():
-                    if v2[0] != node:
-                        G.add_edge(v2,(k,key),interval=pre[k][key][v2])
-                    else:
-                        G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
+            if k != node:
+                for key in pre[k].keys():
+                    for v2 in pre[k][key].keys():
+                        if v2[0] != node:
+                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                        else:
+                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
         return G
 
     def metapaths_from_predecessor(self,G):
@@ -5509,16 +5509,6 @@ class StreamGraph:
             self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
         return sigma
 
-    # def sigma_tv(self, pre, sigma, v, t):
-    #     if (v,t) not in sigma:
-    #         arrivals_b = [e for e in list(pre[v].keys()) if pre[v][e] != {} ]
-    #         x = self.closest_arrival(t,arrivals_b)
-    #         if x != -1:
-    #             return  sigma[(v,x)]
-    #         else:
-    #             return nppol.Polynomial([0])
-    #     else:
-    #         return  sigma[(v,t)]
 
     def volume_metapaths_with_restingpaths(self, x, G, sigma):
         sigma_r = dict()
@@ -5535,6 +5525,54 @@ class StreamGraph:
             poly = [0 for i in range(len(self.nodes))]
             self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0, pred_depar, visit[i][1])
         return sigma_r
+
+    # def trav_sigmastv(self, G, e, last_inter, before_last_inter, pred_node, pointer, pred_depar, actual_depar):
+    #     print("noder",e, "predr",pred_node)
+    #     # nodes are the same as before we add paths
+    #     if pred_node[0] == e[0] and pred_depar == actual_depar:
+    #         if e not in sigma_r:
+    #             sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+    #         else:
+    #             if pred_node > sigma_r[e][0]:
+    #                 sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+    #     else:
+    #         if e not in sigma_r:
+    #             #no resting path here
+    #             sigma_r[e] = ((-1,-1),sigma[e])
+
+    #     visit = list(G[e])
+    #     visit.sort()
+    #     print("succ")
+    #     for ii in visit:
+    #         print("next ",ii)
+    #     for i in range(0,len(visit)):
+    #         if i == 0:
+    #             pred = (-1,-1)
+    #             pred_depar = -1
+    #         else:
+    #             pred = visit[i-1]
+    #             pred_depar = pred[1]
+    #         poly = [0 for i in range(len(self.nodes))]
+    #         self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, pred_depar, visit[i][1])
+
+    #     return
+
+
+    #     def pointer_sigmastv(self, x, G):
+    #     pointer = dict()
+    #     node = (x,0)
+    #     visit = list(G[node])
+    #     visit.sort()
+    #     for i in range(0,len(visit)):
+    #         if i == 0:
+    #             pred = (-1,-1)
+    #             pred_depar = -1
+    #         else:
+    #             pred = visit[i-1]
+    #             pred_depar = pred[1]
+    #         poly = [0 for i in range(len(self.nodes))]
+    #         self.sigmastv(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, pointer, pred_depar, visit[i][1])
+    #     return pointer
 
     def zero_array(self, p):
         for e in p:
@@ -5561,6 +5599,26 @@ class StreamGraph:
                     pointer[(k,i)] = last
         return pointer
 
+    def pointers3(self, cur_best):
+        pointer = dict()
+        for k in self.nodes:
+            l = list(self.event_times())
+            l.sort(reverse = True)
+            after = (-1,-1)
+            for i in l:
+                if (k,i) in pointer:
+                    pointer[(k,i)] = (k,i)
+                    after = (k,i)
+                else:
+                    if after != (-1,-1):
+                        if cur_best[k][after[0]] == cur_best[k][i]:
+                            pointer[(k,i)] = last
+                        else:
+                            pointer[(k,i)] = (-1,-1)
+                    else:
+                        pointer[(k,i)] = after
+        return pointer
+
     def pointers2(self, contri):
         pointer2 = dict()
         for k in self.nodes:
@@ -5579,7 +5637,7 @@ class StreamGraph:
 
 
 
-    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2):
+    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
         print("call svvt, ","s",s,"v",v,"t",t)
         if s == v:
             return nppol.Polynomial([0])
@@ -5592,7 +5650,7 @@ class StreamGraph:
 
 
         if t in prev_next[v]:
-            prev = [e for e in prev_next[v][t] if e < t]
+            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
         t_contri = pointer2[(v,t)][1]
         #if t not in contri[v]:
         #    t_contri = pointer[(v,t)][1]
@@ -5606,7 +5664,7 @@ class StreamGraph:
             return nppol.Polynomial([0])
 
         prev = [contri[v][t_contri][0]] + prev
-        #prev.sort()
+        prev.sort(reverse = True)
         if t in prev_next[v]:
             next = [e for e in prev_next[v][t] if e > t]
         next = next + [contri[v][t_contri][1]]
@@ -5654,21 +5712,26 @@ class StreamGraph:
                 print("contrib",contrib)
                 if (v,a_right) in sigma_r:
                     right += sigma_r[pointer[(v,a_right)]][1]
+                else:
+                    right = 0
                 a_prime = a_right
             if (v,s_left) in sigma_r:
                 left += sigma_r[pointer[(v,s_left)]][1]
+            else:
+                left = 0
             s_prime = s_left
         print("end svvt", contrib)
         return contrib
 
 
-    def delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2):
+    def delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
         if s == v:
             return nppol.Polynomial([0])
 
         print("new_call, vt",(v,t))
-        s = self.delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2)
+        s = self.delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
         t_sigma = pointer[(v,t)][1]
+        #t_sigma = pointer3[(v,t)][1]
         visit = list(G[(v,t_sigma)])
         for i in range(0,len(visit)):
             if visit[i][1] >= t:
@@ -5689,9 +5752,17 @@ class StreamGraph:
                 swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
 
                 res = nppol.polydiv(svt_high,swtp_high)
-                s += nppol.Polynomial(res[0]) * self.delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2)
+                s += nppol.Polynomial(res[0]) * self.delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
 
         return s
+
+    def contri_delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
+        (x,y) = pointer3[(v,t)]
+        if (x,y) != 1:
+            res = self.delta_svt(s, x, y, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
+            return res - self.delta_svvt()
+
+
 
 
 
