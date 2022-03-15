@@ -5757,12 +5757,64 @@ class StreamGraph:
 
         return s
 
-    # def contri_delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3):
-    #     (x,y) = pointer3[(v,t)]
-    #     if (x,y) != 1:
-    #         res = self.delta_svt(s, x, y, G, lat, contri, prev_next, sigma_r, pointer, pointer2,pointer3)
-    #         return res - self.delta_svvt()
 
+    def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer_sigma, pointer_contri, contri):
+        return
+
+    def contri_delta_svt(self, s, v, t, G, lat, contri, prev_next, sigma_r, pointer_sigma, pointer_contri, partial_sum, contribution):
+        if (v,t) not in contri:
+            svvt = self.contri_delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, pointer_sigma, pointer_contri)
+            # normally only called on graph edges
+            visit = list(G[(v,t)])
+            dic_nodes = dict()
+            for (x,y) in visit:
+                if x in dic_nodes:
+                    dic_nodes[x].append(y)
+                else:
+                    dic_nodes[x] = [y]
+            partial_sum[(v,t)] = dict()
+            s = nppol.Polynomial([0])
+            for u in dic_nodes.keys():
+                #normally it should be sorted
+                for ii in range( len(dic_nodes[u]) - 1, -1, -1):
+                    svt = sigma_r[(v,t)][1]
+                    swtp = sigma_r[(u,dic_nodes[u][ii])][1]
+
+                    print("svt", svt)
+                    tmp = svt
+                    svt_degree = self.actual_degree(tmp)
+                    print("actual svt", svt_degree)
+                    svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+                    print("swtp", swtp)
+                    tmp = swtp
+                    swtp_degree = self.actual_degree(tmp)
+                    print("actual swtp", swtp_degree)
+                    swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+                    res = nppol.polydiv(svt_high,swtp_high)
+
+                    s += nppol.Polynomial(res[0]) * self.contri_delta_svt(s, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, partial_sum, contribution)
+                    partial_sum[(v,t)][dic_nodes[u][ii]] = s
+
+        return contri[(v,t)] = s
+
+    def closest_arrival(self, cur_best, events):
+        res = [ dict() for k in self.nodes ]
+        for k in self.nodes:
+            last_arrival = -1
+            for i in events:
+                if cur_best[k][i][0] != - numpy.Infinity:
+                    dep = cur_best[k][i][0]
+                    if last_arrival != dep:
+                        
+
+
+
+    def contri_link_stream(self, contribution, partial_sum, events):
+        for k in self.nodes:
+            for i in event:
+                if (k,i) not in contribution:
+                    if cur_best[k][i][0] != - numpy.Infinity:
+                        dep = cur_best[k][i][0]
 
 
 
