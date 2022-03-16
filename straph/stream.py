@@ -5897,12 +5897,16 @@ class StreamGraph:
 
                     #appel recursif
                     w,t_p = (u,dic_nodes[u][ii])
+                    print("(w,t')",(w,t_p))
                     self.contri_delta_svt(s, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer)
                     s += nppol.Polynomial(res[0]) * contribution[w][t_p]
                     partial_sum[(v,t)][dic_nodes[u][ii]] = s
+                    # if v not in contribution:
+                    #     contribution[v] = dict()
+                    # contribution[v][dic_nodes[u][ii]] = s
             if v not in contribution:
                 contribution[v] = dict()
-            contribution[v][t] = s
+            contribution[v][t] = s + svvt
         print("end contri_delta_svt")
         return contribution, partial_sum
 
@@ -5925,15 +5929,24 @@ class StreamGraph:
 
 
 
-    def contri_link_stream(self, contribution, partial_sum, events, events_reverse, close_arrival):
+    def contri_link_stream(self, contribution, partial_sum, event, event_reverse, close_arrival):
+        contri_finale = [dict() for k in self.nodes]
         for k in self.nodes:
-            for i in contribution[v]:
-                times = partial_sum[(k,i)].keys()
-                for j in times[0:-1]:
-                    jj = event_reverse[j]
-                    for jjj in range(jj+1,event_reverse[times[j+1]]):
-                        contribution[k][event[jjj]] = parital_sum[(k,i)][event[jjj]]
-        return contribution
+            if k in contribution:
+                for i in contribution[k]:
+                    contri_finale[k][i] = contribution[k][i]
+                    times = partial_sum[(k,i)].keys()
+                    times = list(times)
+                    times.reverse()
+                    times = [i] + times
+                    print("nodes",k,"i",i,"partial_times",times)
+                    for j in range(0,len(times) -1):
+                        jj = event_reverse[times[j]]
+                        print("jj",jj,times[j+1],event_reverse[times[j+1]])
+                        for jjj in range(jj+1,event_reverse[times[j+1]]+1):
+                            #if not (j==0 and jjj==jj):
+                            contri_finale[k][event[jjj]] = partial_sum[(k,i)][times[j+1]]
+        return contri_finale
 
 
 
