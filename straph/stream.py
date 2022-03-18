@@ -5642,11 +5642,18 @@ class StreamGraph:
                     pointer2[(k,i)] = last
         return pointer2
 
-        
+    def latencies_rev(self, lat, events):
+        res = [dict() for k in self.nodes]
+        for k in self.nodes:
+            for j in lat[k].keys():
+                res[k][lat[k][j][0]] = j
+            res[k][events[0]] = events[0]
+        return res
 
 
 
-    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, deltasvvt):
+
+    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, deltasvvt, lat_rev):
         if (v,t) in deltasvvt:
             return deltasvvt[(v,t)]
         print("call svvt, ","s",s,"v",v,"t",t)
@@ -5698,6 +5705,7 @@ class StreamGraph:
             #     left = 0
 
             a_prime = t
+            right = 0
             for a_right in next:
                 # if (v,a_right) in sigma_r:
                 #     right += sigma_r[pointer[(v,a_right)]][1]
@@ -5735,8 +5743,8 @@ class StreamGraph:
                 # else:
                 #     right = 0
                 a_prime = a_right
-            if (v,s_left) in sigma_r:
-                left += sigma_r[pointer[(v,s_left)]][1]
+            if (v,lat_rev[v][s_left]) in sigma_r:
+                left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
             # else:
             #     left = 0
             s_prime = s_left
@@ -5745,12 +5753,12 @@ class StreamGraph:
         return contrib
 
 
-    def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2):
+    def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev):
         if node == v:
             return 0
 
         print("****** new_call, vt ********",(v,t))
-        s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {})
+        s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {}, lat_rev)
         t_sigma = pointer[(v,t)][1]
         visit = list(G[(v,t_sigma)])
         for i in range(0,len(visit)):
@@ -5779,11 +5787,11 @@ class StreamGraph:
                 else:
                     res = [0]
                 print("division poly", res[0])
-                s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2)
+                s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
 
         return s
 
-    def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer):
+    def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
         if (v,t) in deltasvvt:
             return deltasvvt[(v,t)]
         print("call svvt, ","s",s,"v",v,"t",t)
@@ -5834,6 +5842,7 @@ class StreamGraph:
             #     left = 0
 
             a_prime = t
+            right = 0
             for a_right in next:
                 # if pointer[(v,a_right)] in sigma_r:
                 #     right += sigma_r[pointer[(v,a_right)]][1]
@@ -5870,8 +5879,8 @@ class StreamGraph:
                 # else:
                 #     right = 0
                 a_prime = a_right
-            if pointer[(v,s_left)] in sigma_r:
-                left += sigma_r[pointer[(v,s_left)]][1]
+            if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+                left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
             # else:
             #     left = 0
             s_prime = s_left
@@ -5882,10 +5891,10 @@ class StreamGraph:
 
 
 
-    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer):
+    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev):
         print("new call contri_delta_svt","v", v, "t", t, "contribution", contribution)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer)
+            svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
             # normally only called on graph edges
             visit = list(G[(v,t)])
             dic_nodes = dict()
@@ -5925,7 +5934,7 @@ class StreamGraph:
                     #appel recursif
                     w,t_p = (u,dic_nodes[u][ii])
                     print("(w,t')",(w,t_p))
-                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer)
+                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev)
                     s += nppol.Polynomial(res[0]) * contribution[w][t_p]
                     partial_sum[(v,t)][dic_nodes[u][ii]] = s
                     # if v not in contribution:
