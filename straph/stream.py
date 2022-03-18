@@ -5429,11 +5429,12 @@ class StreamGraph:
                     b = False
                     if last_x == blastx and last_y == blasty:
                         chevau += 1
-                        res[pow_actual] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2) + res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=2)
+                        res[pow_actual] = res[pow_actual - 1] *numpy.around((last_y - last_x)/(chevau), decimals=2)
+                        #+ res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=2)
                         res[pow_actual - 1] = 0
                     else:
                         chevau = 1
-                        res[pow_actual] = res[pow_actual - 1] + numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2)
+                        res[pow_actual] = res[pow_actual - 1] * numpy.around((last_y - last_x)/(chevau), decimals=2)
                         res[pow_actual - 1] = 0
         #add to sigma
         print("node", node)
@@ -5473,7 +5474,7 @@ class StreamGraph:
 
 
     def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
-        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter)
+        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar)
         # nodes are the same as before we add paths
         (su, boolo, d) = sigma[e]
         if pred_node[0] == e[0] and pred_depar == actual_depar:
@@ -5491,17 +5492,34 @@ class StreamGraph:
         visit = list(G[e])
         visit.sort()
         print("succ")
-        for ii in visit:
-            print("next ",ii)
-        for i in range(0,len(visit)):
-            if i == 0:
-                pred = (-1,-1)
-                pred_depar = -1
+        dic_nodes = dict()
+        for (x,y) in visit:
+            if x in dic_nodes:
+                dic_nodes[x].append(y)
             else:
-                pred = visit[i-1]
-                pred_depar = pred[1]
-            poly = [0 for i in range(len(self.nodes))]
-            self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], last_inter, pred, sigma, sigma_r, poly, depth + 1, pred_depar, visit[i][1])
+                dic_nodes[x] = [y]
+        for u in dic_nodes.keys():
+            #normally it should be sorted
+            for ii in range( 0, len(dic_nodes[u])):
+                if ii == 0:
+                    pred_node = (-1,-1)
+                    pred_depar = -1
+                else:
+                    pred_node = (u,dic_nodes[u][ii-1])
+                    pred_depar = actual_depar
+                poly = [0 for jj in range(len(self.nodes))]
+                self.trav_resting(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
+        # for ii in visit:
+        #     print("next ",ii)
+        # for i in range(0,len(visit)):
+        #     if i == 0:
+        #         pred = (-1,-1)
+        #         pred_depar = -1
+        #     else:
+        #         pred = visit[i-1]
+        #         pred_depar = pred[1]
+        #     poly = [0 for i in range(len(self.nodes))]
+
 
         return
 
@@ -5523,15 +5541,25 @@ class StreamGraph:
         sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
         visit = list(G[node])
         visit.sort()
-        for i in range(0,len(visit)):
-            if i == 0:
-                pred = (-1,-1)
-                pred_depar = -1
+        dic_nodes = dict()
+        for (x,y) in visit:
+            if x in dic_nodes:
+                dic_nodes[x].append(y)
             else:
-                pred = visit[i-1]
-                pred_depar = pred[1]
-            poly = [0 for i in range(len(self.nodes))]
-            self.trav_resting(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, 0, pred_depar, visit[i][1])
+                dic_nodes[x] = [y]
+        for u in dic_nodes.keys():
+            #normally it should be sorted
+            for ii in range( 0, len(dic_nodes[u])):
+                if ii == 0:
+                    pred_node = (-1,-1)
+                    actual_depar = dic_nodes[u][ii]
+                    pred_depar = -1
+                else:
+                    pred_node = (u,dic_nodes[u][ii-1])
+                    pred_depar = actual_depar
+                    actual_depar = dic_nodes[u][ii]
+                poly = [0 for jj in range(len(self.nodes))]
+                self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
         return sigma_r
 
 
@@ -5764,8 +5792,9 @@ class StreamGraph:
         for i in range(0,len(visit)):
             if visit[i][1] >= t:
                 print("succ", visit[i])
-                svt = sigma_r[pointer[v,t]][1]
-                swtp = sigma_r[pointer[visit[i]]][1]
+                #svt = sigma_r[pointer[v,t]][1]
+                svt = sigma_r[v,t][1]
+                swtp = sigma_r[visit[i]][1]
 
                 print("svt", svt)
                 tmp = svt
@@ -6005,6 +6034,8 @@ class StreamGraph:
                 if sigma_r[(node,latencies[j][0])][2] == True or sigma_r[(node,latencies[i][0])][2] == True:
                     print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
                     return 2
+            else:
+                return 1
         if latj < lati:
             return 1
         elif latj == lati:
