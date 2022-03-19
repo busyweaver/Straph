@@ -5392,7 +5392,7 @@ class StreamGraph:
         last_x, last_y = last_inter
         if depth == 1:
             if last_x != last_y:
-                res[1] = numpy.around((last_y - last_x), decimals=2)
+                res[1] = numpy.around((last_y - last_x), decimals=5)
                 # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
                 pow_actual = 1
                 chevau = 1
@@ -5406,11 +5406,11 @@ class StreamGraph:
                     pow_actual += 1
                     chevau += 1
                     #chevau ou pow_actual ne devrait rien changer ici
-                    res[chevau] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=2)
+                    res[chevau] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=5)
                 else:
                     instantenous = False
                     if last_x != last_y:
-                        res[1] = numpy.around((last_y - last_x), decimals=2)
+                        res[1] = numpy.around((last_y - last_x), decimals=5)
                         pow_actual = 1
                         chevau = 1
                         b = False
@@ -5429,12 +5429,12 @@ class StreamGraph:
                     b = False
                     if last_x == blastx and last_y == blasty:
                         chevau += 1
-                        res[pow_actual] = res[pow_actual - 1] *numpy.around((last_y - last_x)/(chevau), decimals=2)
-                        #+ res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=2)
+                        res[pow_actual] = res[pow_actual - 1] *numpy.around((last_y - last_x)/(chevau), decimals=5)
+                        #+ res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=5)
                         res[pow_actual - 1] = 0
                     else:
                         chevau = 1
-                        res[pow_actual] = res[pow_actual - 1] * numpy.around((last_y - last_x)/(chevau), decimals=2)
+                        res[pow_actual] = res[pow_actual - 1] * numpy.around((last_y - last_x)/(chevau), decimals=5)
                         res[pow_actual - 1] = 0
         #add to sigma
         print("node", node)
@@ -5443,7 +5443,7 @@ class StreamGraph:
 
 
         if node not in sigma:
-            if instantenous2 == False:
+            if instantenous == False:
                 sigma[node] = (nppol.Polynomial(res),False,-1)
             else:
                 sigma[node] = (nppol.Polynomial([1]),True,depth-1)
@@ -5452,8 +5452,8 @@ class StreamGraph:
             sigma[node] = (su + nppol.Polynomial(res), boolo, d)
 
 
-        if res[0] == 1:
-            res[0] = 0
+        # if res[0] == 1:
+        #     res[0] = 0
 
         if instantenous:
             for e in G[node]:
@@ -5488,6 +5488,8 @@ class StreamGraph:
             if e not in sigma_r:
                 #no resting path here
                 sigma_r[e] = ((-1,-1),su,boolo,d)
+
+
 
         visit = list(G[e])
         visit.sort()
@@ -5793,8 +5795,8 @@ class StreamGraph:
             if visit[i][1] >= t:
                 print("succ", visit[i])
                 #svt = sigma_r[pointer[v,t]][1]
-                svt = sigma_r[v,t][1]
-                swtp = sigma_r[visit[i]][1]
+                svt = sigma_r[pointer[v,t]][1]
+                swtp = sigma_r[pointer[visit[i]]][1]
 
                 print("svt", svt)
                 tmp = svt
@@ -5817,13 +5819,13 @@ class StreamGraph:
                     res = [0]
                 print("division poly", res[0])
                 s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
-
+        print("****** end_call, vt ********",(v,t), s)
         return s
 
     def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
         if (v,t) in deltasvvt:
             return deltasvvt[(v,t)]
-        print("call svvt, ","s",s,"v",v,"t",t)
+        print("///////// call svvt, ","s",s,"v",v,"t",t)
         if s == v:
             return nppol.Polynomial([0])
         #voir papier matthieu clemence pour l'algo
@@ -5917,62 +5919,164 @@ class StreamGraph:
         deltasvvt[(v,t)] = contrib
         return contrib
 
+    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre):
+        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
+        if v == x :
+            return nppol.Polynomial([1])
+        pv,pt = pointer[(v,t)]
+        (t1,t2) = pre[w][t_p][pv,pt]
+        if t1 < t:
+            (t1,t2) = (t2,t2)
+        st1t2 = 1
+        if t2 > t1:
+            st1t2 = nppol.Polynomial([0,t2-t1])
+        print("st1t2",st1t2)
+        if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
+            return nppol.Polynomial([0])
+
+        svt = sigma_r[pointer[(v,t)]][1]
+        swtp = sigma_r[pointer[(w,t_p)]][1]
+
+        print("svt", svt)
+        tmp = nppol.polymul(svt, st1t2)
+        tmp = tmp[0]
+        print("svt*st1t2", tmp)
+        svt_degree = self.actual_degree(tmp)
+        print("actual svt", svt_degree)
+        svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+        if svt_high == ():
+            svt_high = (0)
+        print("svt_hight",svt_high)
+        print("swtp", swtp)
+        tmp = swtp
+        swtp_degree = self.actual_degree(tmp)
+        print("actual swtp", swtp_degree)
+        swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+        print("swtp_high", swtp_high)
+        if swtp_degree != -1:
+            res = nppol.polydiv(svt_high,swtp_high)
+        else:
+            res = [0]
+        print("res_div", res[0])
+        return nppol.Polynomial(res[0])
 
 
 
-    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev):
-        print("new call contri_delta_svt","v", v, "t", t, "contribution", contribution)
+    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre):
+        print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
             # normally only called on graph edges
             visit = list(G[(v,t)])
+            dic_nodes_rev = dict()
             dic_nodes = dict()
             for (x,y) in visit:
+                if y in dic_nodes_rev:
+                    dic_nodes_rev[y].append(x)
+                else:
+                    dic_nodes_rev[y] = [x]
                 if x in dic_nodes:
                     dic_nodes[x].append(y)
                 else:
                     dic_nodes[x] = [y]
-            print("dic_nodes", dic_nodes)
-            partial_sum[(v,t)] = dict()
-            s = nppol.Polynomial([0])
-            for u in dic_nodes.keys():
+            print("dic_nodes", dic_nodes_rev)
+            partial_sum = dict()
+            # for u in dic_nodes:
+            #     dic_nodes[u].sort()
+                # if t not in dic_nodes[u]:
+                #     dic_nodes[u] = [t] + dic_nodes[u]
+
+            s = 0
+            contrib_local = dict()
+            l_ord = list(dic_nodes_rev.keys())
+            l_ord.sort()
+            for ii in range(len(l_ord)-1,-1,-1):
                 #normally it should be sorted
-                for ii in range( len(dic_nodes[u]) - 1, -1, -1):
-                    svt = sigma_r[(v,t)][1]
-                    swtp = sigma_r[(u,dic_nodes[u][ii])][1]
+                for u in dic_nodes_rev[l_ord[ii]]:
+                    # svt = sigma_r[(v,t)][1]
+                    # swtp = sigma_r[(u,dic_nodes[u][ii])][1]
 
-                    print("svt", svt)
-                    tmp = svt
-                    svt_degree = self.actual_degree(tmp)
-                    print("actual svt", svt_degree)
-                    svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-                    if svt_high == ():
-                        svt_high = (0)
-                    print("svt_hight",svt_high)
-                    print("swtp", swtp)
-                    tmp = swtp
-                    swtp_degree = self.actual_degree(tmp)
-                    print("actual swtp", swtp_degree)
-                    swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-                    print("swtp_high", swtp_high)
-                    if swtp_degree != -1:
-                        res = nppol.polydiv(svt_high,swtp_high)
-                    else:
-                        res = [0]
+                    # print("svt", svt)
+                    # tmp = svt
+                    # svt_degree = self.actual_degree(tmp)
+                    # print("actual svt", svt_degree)
+                    # svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+                    # if svt_high == ():
+                    #     svt_high = (0)
+                    # print("svt_hight",svt_high)
+                    # print("swtp", swtp)
+                    # tmp = swtp
+                    # swtp_degree = self.actual_degree(tmp)
+                    # print("actual swtp", swtp_degree)
+                    # swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+                    # print("swtp_high", swtp_high)
+                    # if swtp_degree != -1:
+                    #     res = nppol.polydiv(svt_high,swtp_high)
+                    # else:
+                    #     res = [0]
 
-                    #appel recursif
-                    w,t_p = (u,dic_nodes[u][ii])
+                    w,t_p = (u,l_ord[ii])
                     print("(w,t')",(w,t_p))
-                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev)
-                    s += nppol.Polynomial(res[0]) * contribution[w][t_p]
-                    partial_sum[(v,t)][dic_nodes[u][ii]] = s
+                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre)
+                    #appel recursif
+                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre)
+                    s += res * contribution[w][t_p]
+                    if l_ord[ii] not in partial_sum:
+                        partial_sum[l_ord[ii]] = s
+                    else:
+                        partial_sum[l_ord[ii]] += s
+
+                    print("******** half call contri_delta_svt","v", v, "t", t)
+                    if ii != 0:
+                        jj = event_reverse[l_ord[ii-1]]
+                    else:
+                        jj = event_reverse[t]
+                    print("u", u, "dic_nodes[u]", dic_nodes[u])
+                    print("******** half call contri_delta_svt","v", v, "t", t)
+                    print("dic_nodes[u]",dic_nodes[u],"u",u)
+                    if True:#ii != len(dic_nodes[u])-1:
+                        for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
+                            #if not (j==0 and jjj==jj):
+
+                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+                            print("comp vol", sigma_r[pointer[v,t]][1], sigma_r[pointer[v,event[jjj]]][1])
+
+                            if v not in contrib_local:
+                                contrib_local[v] = dict()
+                            if not (v in contribution and event[jjj] in contribution[v]):
+                                if sigma_r[pointer[v,t]][1] != sigma_r[pointer[v,event[jjj]]][1]:
+                                    print("erreur")
+                                #if event[jjj] in contrib_local[v]:
+                                print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
+                                    #contrib_local[v][event[jjj]] += contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+                                if event[jjj] != t_p:
+                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
+                                else:
+                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+                                print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+                                # else:
+                                #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
+                                #     if event[jjj] != t_p:
+                                #         contrib_local[v][event[jjj]] = partial_sum[dic_nodes[u][ii]]
+                                #     else:
+                                    #contrib_local[v][event[jjj]] = contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+                    # else:
+                    #     for jjj in range(jj+1,len(event_reverse)):
+                    #         if not (j==0 and jjj==jj):
+                    #         contribution[v][event[jjj]] = s*(self.coef_volume(v,event[jjj],w,t_p,sigma_r, pointer))
+
+
                     # if v not in contribution:
                     #     contribution[v] = dict()
                     # contribution[v][dic_nodes[u][ii]] = s
             if v not in contribution:
                 contribution[v] = dict()
+            for vv in contrib_local:
+                for ss in contrib_local[vv]:
+                    contribution[vv][ss] = contrib_local[vv][ss]
+            
             contribution[v][t] = s + svvt
-        print("end contri_delta_svt")
+        print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
         return contribution, partial_sum
 
 
@@ -5993,8 +6097,7 @@ class StreamGraph:
 
 
 
-
-    def contri_link_stream(self, contribution, partial_sum, event, event_reverse, close_arrival):
+    def contri_link_stream(self, contribution, partial_sum, event, event_reverse, close_arrival, sigma_r, pointer):
         contri_finale = [dict() for k in self.nodes]
         for k in self.nodes:
             if k in contribution:
@@ -6010,7 +6113,7 @@ class StreamGraph:
                         print("jj",jj,times[j+1],event_reverse[times[j+1]])
                         for jjj in range(jj+1,event_reverse[times[j+1]]+1):
                             #if not (j==0 and jjj==jj):
-                            contri_finale[k][event[jjj]] = partial_sum[(k,i)][times[j+1]]
+                            contri_finale[k][event[jjj]] = partial_sum[(k,i)][times[j+1]]*(self.coef_volume(k,event[jjj],k,i,sigma_r, pointer))
         return contri_finale
 
 
