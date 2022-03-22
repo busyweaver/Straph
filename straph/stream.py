@@ -5521,11 +5521,74 @@ class StreamGraph:
         #         pred = visit[i-1]
         #         pred_depar = pred[1]
         #     poly = [0 for i in range(len(self.nodes))]
-
-
         return
 
+    def trav_bet_vol(self, x, G, e, vol_bet, pre):
+        print("***** start *****", e)
+        vv,tt = e
+        if (vv in vol_bet) and (tt in vol_bet[vv]):
+            return
+        if vv not in vol_bet:
+            vol_bet[vv] = dict()
+        vol_bet[vv][tt] = dict()
+        print("noder",e, "vv,tt", (vv,tt))
+        visit = list(G[e])
+        print("visit",visit)
 
+        visit.sort()
+        dic_nodes = dict()
+        for (x,y) in visit:
+            if x in dic_nodes:
+                dic_nodes[x].append(y)
+            else:
+                dic_nodes[x] = [y]
+        print("dic_nodes",dic_nodes)
+        for u in dic_nodes.keys():
+            l_ord = list(dic_nodes[u])
+            l_ord.sort()
+            #normally it should be sorted
+            for ii in range( 0, len(l_ord)):
+                print("u",u,"dic_nodes[u][ii]", dic_nodes[u][ii], "ii", ii, "l_ord[ii]",l_ord[ii], "l_ord[ii-1]",l_ord[ii-1])
+                if ii == 0:
+                    print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
+                    pred_node = (-1,-1)
+                    vol_bet[vv][tt] = dict()
+                    if vv != x:
+                        t1, t2 = pre[u][l_ord[ii]][vv,tt]
+                    else:
+                        t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
+                    if t1 == t2:
+                        vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([1])
+                    else:
+                        vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([0,t2-t1])
+                else:
+                    #pred_node = (u,dic_nodes[u][ii-1])
+                    print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
+                    if vv != x:
+                        t1, t2 = pre[u][l_ord[ii]][vv,tt]
+                    else:
+                        t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
+                    if t1 == t2:
+                        vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]]
+                    else:
+                        print("vol_bet[vv][tt]",vol_bet[vv][tt],"l_ord[ii]", l_ord[ii], "l_ord[ii-1]", l_ord[ii-1], "vv", vv, "tt", tt)
+                        vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]] + nppol.Polynomial([0,t2-t1])
+                self.trav_bet_vol(x, G, (u,dic_nodes[u][ii]), vol_bet, pre)
+                print("vol_bet[vv][tt]",vol_bet[vv][tt], "vv", vv, "tt", tt)
+                print("vol_bet", vol_bet)
+        print("**** end ****", "e", e)
+
+
+
+    def volume_between_direct_arrivals(self, x, G, pre):
+        vol_bet = dict()
+        #visited = [(x,0)]
+        node = (x,0)
+        vol_bet[x] = dict()
+        vol_bet[x][0] = dict()
+        for e in G[node]:
+            self.trav_bet_vol(x, G, e, vol_bet, pre)
+        return vol_bet
 
     def volume_metapaths(self, x, G):
         sigma = dict()
@@ -5919,12 +5982,14 @@ class StreamGraph:
         deltasvvt[(v,t)] = contrib
         return contrib
 
-    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre):
+    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre, chevauchement):
         print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
         if v == x :
             return nppol.Polynomial([1])
         pv,pt = pointer[(v,t)]
+        #st1t2 = bet_vol[pv][pt][(w,t_p)]
         (t1,t2) = pre[w][t_p][pv,pt]
+        (t1p,t2p) = pre[w][t_p][pv,pt]
         if t1 < t:
             (t1,t2) = (t2,t2)
         st1t2 = 1
@@ -5934,11 +5999,27 @@ class StreamGraph:
         if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
             return nppol.Polynomial([0])
 
+        #partie chevauchement
+        print("chevauchement")
+        for vvv in chevauchement:
+            for ttt in chevauchement[vvv]:
+                print(vvv,ttt,chevauchement[vvv][ttt])
+        if (w in chevauchement) and (t_p in chevauchement[w]):
+            coef_chevau = chevauchement[w][t_p]
+            if t1 == t2:
+                coef_chevau = nppol.Polynomial([1])
+            else:
+                deg = self.actual_degree(coef_chevau)
+                coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
+        else:
+            coef_chevau = nppol.Polynomial([1])
+        
+
         svt = sigma_r[pointer[(v,t)]][1]
         swtp = sigma_r[pointer[(w,t_p)]][1]
 
         print("svt", svt)
-        tmp = nppol.polymul(svt, st1t2)
+        tmp = nppol.polymul(svt, coef_chevau)
         tmp = tmp[0]
         print("svt*st1t2", tmp)
         svt_degree = self.actual_degree(tmp)
@@ -5962,11 +6043,13 @@ class StreamGraph:
 
 
 
-    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre):
+    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, chevauchement):
         print("******** new call contri_delta_svt","v", v, "t", t)
-        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+        #if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+        if True:
             svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
             # normally only called on graph edges
+
             visit = list(G[(v,t)])
             dic_nodes_rev = dict()
             dic_nodes = dict()
@@ -6014,12 +6097,12 @@ class StreamGraph:
                     #     res = nppol.polydiv(svt_high,swtp_high)
                     # else:
                     #     res = [0]
-
                     w,t_p = (u,l_ord[ii])
                     print("(w,t')",(w,t_p))
-                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre)
+                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, chevauchement)
+
+                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre, chevauchement)
                     #appel recursif
-                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre)
                     s += res * contribution[w][t_p]
                     if l_ord[ii] not in partial_sum:
                         partial_sum[l_ord[ii]] = s
@@ -6052,8 +6135,8 @@ class StreamGraph:
                                 if event[jjj] != t_p:
                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
                                 else:
-                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
-                                print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, chevauchement))
+                                print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
                                 # else:
                                 #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
                                 #     if event[jjj] != t_p:
@@ -6069,6 +6152,44 @@ class StreamGraph:
                     # if v not in contribution:
                     #     contribution[v] = dict()
                     # contribution[v][dic_nodes[u][ii]] = s
+                    print("chevauchement_contri")
+                    for vvv in chevauchement:
+                        for ttt in chevauchement[vvv]:
+                            print(vvv,ttt,chevauchement[vvv][ttt])
+                    t1,t2 = pre[u][l_ord[ii]][v,t]
+                    if (w in chevauchement) and (t_p in chevauchement[w]):
+                        coef_chevau = chevauchement[w][t_p]
+                        if t1 == t2:
+                            coef_chevau = nppol.Polynomial([1])
+                        else:
+                            deg = self.actual_degree(coef_chevau)
+                            coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
+                            chevauchement[v][t] = coef_chevau
+                        else:
+                            if (w not in chevauchement):
+                                chevauchement[w] = dict()
+                            if t1 == t2 :
+                                chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
+                            else:
+                                chevauchement[u][l_ord[ii]] = nppol.Polynomial([0,t2-t1])
+                    if t == tp:
+                        t1,t2 = pre[u][l_ord[ii]][v,t]
+                        if (w in chevauchement) and (t_p in chevauchement[w]):
+                            coef_chevau = chevauchement[w][t_p]
+                            if t1 == t2:
+                                coef_chevau = nppol.Polynomial([1])
+                            else:
+                                deg = self.actual_degree(coef_chevau)
+                                coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
+                            chevauchement[v][t] = coef_chevau
+                        else:
+                            if (w not in chevauchement):
+                                chevauchement[w] = dict()
+                            if t1 == t2 :
+                                chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
+                            else:
+                                chevauchement[u][l_ord[ii]] = nppol.Polynomial([0,t2-t1])
+
             if v not in contribution:
                 contribution[v] = dict()
             for vv in contrib_local:
