@@ -6157,38 +6157,25 @@ class StreamGraph:
                         for ttt in chevauchement[vvv]:
                             print(vvv,ttt,chevauchement[vvv][ttt])
                     t1,t2 = pre[u][l_ord[ii]][v,t]
-                    if (w in chevauchement) and (t_p in chevauchement[w]):
-                        coef_chevau = chevauchement[w][t_p]
+                    if len(visit) == 0 or not ((w in chevauchement) and (t_p in chevauchement[w])):
                         if t1 == t2:
                             coef_chevau = nppol.Polynomial([1])
                         else:
+                            coef_chevau = nppol.Polynomial([0,t2-t1])
+                        if v not in chevauchement:
+                            chevauchement[v] = dict()
+                        chevauchement[v][t_p] = coef_chevau
+
+                    else:
+                        coef_chevau = chevauchement[w][t_p]
+                        if (v not in chevauchement):
+                            chevauchement[v] = dict()
+                        if t1 == t2 :
+                            chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
+                        else:
                             deg = self.actual_degree(coef_chevau)
                             coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
-                            chevauchement[v][t] = coef_chevau
-                        else:
-                            if (w not in chevauchement):
-                                chevauchement[w] = dict()
-                            if t1 == t2 :
-                                chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
-                            else:
-                                chevauchement[u][l_ord[ii]] = nppol.Polynomial([0,t2-t1])
-                    if t == tp:
-                        t1,t2 = pre[u][l_ord[ii]][v,t]
-                        if (w in chevauchement) and (t_p in chevauchement[w]):
-                            coef_chevau = chevauchement[w][t_p]
-                            if t1 == t2:
-                                coef_chevau = nppol.Polynomial([1])
-                            else:
-                                deg = self.actual_degree(coef_chevau)
-                                coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
-                            chevauchement[v][t] = coef_chevau
-                        else:
-                            if (w not in chevauchement):
-                                chevauchement[w] = dict()
-                            if t1 == t2 :
-                                chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
-                            else:
-                                chevauchement[u][l_ord[ii]] = nppol.Polynomial([0,t2-t1])
+                        chevauchement[v][t_p] = coef_chevau
 
             if v not in contribution:
                 contribution[v] = dict()
