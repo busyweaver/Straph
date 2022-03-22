@@ -6012,9 +6012,18 @@ class StreamGraph:
                 deg = self.actual_degree(coef_chevau)
                 coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
         else:
-            coef_chevau = nppol.Polynomial([1])
-        
-
+            if t1 == t2:
+                coef_chevau = nppol.Polynomial([1])
+            else:
+                coef_chevau = nppol.Polynomial([0,t2-t1])
+        degg = self.actual_degree(coef_chevau)
+        if degg > 1:
+            coeff = tuple(coef_chevau.coef)
+            max_coeff = coeff[degg]
+            coef_chevau = nppol.Polynomial([0,max_coeff])
+            coef_chevau += st1t2
+            
+        print("coef_chevau", coef_chevau, "st1t2", st1t2)
         svt = sigma_r[pointer[(v,t)]][1]
         swtp = sigma_r[pointer[(w,t_p)]][1]
 
@@ -6109,16 +6118,16 @@ class StreamGraph:
                     else:
                         partial_sum[l_ord[ii]] += s
 
-                    print("******** half call contri_delta_svt","v", v, "t", t)
+                    print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
                     if ii != 0:
                         jj = event_reverse[l_ord[ii-1]]
                     else:
                         jj = event_reverse[t]
                     print("u", u, "dic_nodes[u]", dic_nodes[u])
-                    print("******** half call contri_delta_svt","v", v, "t", t)
+                    print("******** half after call contri_delta_svt","v", v, "t", t)
                     print("dic_nodes[u]",dic_nodes[u],"u",u)
                     if True:#ii != len(dic_nodes[u])-1:
-                        for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
+                        for jjj in range(jj,event_reverse[l_ord[ii]]):
                             #if not (j==0 and jjj==jj):
 
                             print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
@@ -6133,8 +6142,10 @@ class StreamGraph:
                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
                                     #contrib_local[v][event[jjj]] += contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
                                 if event[jjj] != t_p:
+                                    print("ici")
                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
                                 else:
+                                    print("la")
                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, chevauchement))
                                 print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
                                 # else:
@@ -6171,7 +6182,7 @@ class StreamGraph:
                         if (v not in chevauchement):
                             chevauchement[v] = dict()
                         if t1 == t2 :
-                            chevauchement[u][l_ord[ii]] =  nppol.Polynomial([1])
+                            coef_chevau =  nppol.Polynomial([1])
                         else:
                             deg = self.actual_degree(coef_chevau)
                             coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
