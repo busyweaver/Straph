@@ -5579,6 +5579,52 @@ class StreamGraph:
         print("**** end ****", "e", e)
 
 
+    def trav_instant_graphs(self, G, e, GG):
+        print("***** start *****", e)
+        visit = list(G[e])
+        print("visit",visit)
+        for (w,t_p) in visit:
+            inter_act = G[e][w,t_p]['interval']
+            t1,t2 = inter_act
+            if t1 != t2:
+                if inter_act not in GG:
+                    GG[inter_act] = nx.DiGraph()
+                GG[inter_act].add_edge(e,(w,t_p),weight=1)
+            self.trav_instant_graphs(G,(w,t_p), GG)
+
+    def descendants_at_distance(self, G, source, distance):
+        current_distance = 0
+        current_layer = {(source,0)}
+        visited = {(source,0)}
+
+        # this is basically BFS, except that the current layer only stores the nodes at
+        # current_distance from source at each iteration
+        while current_distance < distance:
+            next_layer = set()
+            for node,dis in current_layer:
+                for child in G[node]:
+                    if child not in visited:
+                        visited.add((child,dis+G[node][child]["weight"]))
+                        next_layer.add((child,dis+G[node][child]["weight"]))
+            current_layer = next_layer
+            current_distance += 1
+
+        return current_layer
+
+    def transitive_closure_dag(self, G, topo_order=None):
+        """variant from networkx"""
+        if topo_order is None:
+            topo_order = list(nx.topological_sort(G))
+
+        TC = G.copy()
+
+        # idea: traverse vertices following a reverse topological order, connecting
+        # each vertex to its descendants at distance 2 as we go
+        for v in reversed(topo_order):
+            l = list(self.descendants_at_distance(TC, v, 2)) 
+            for (e,d) in l:
+                TC.add_edge(v,e,wieght = d)
+        return TC
 
     def volume_between_direct_arrivals(self, x, G, pre):
         vol_bet = dict()
@@ -5589,6 +5635,14 @@ class StreamGraph:
         for e in G[node]:
             self.trav_bet_vol(x, G, e, vol_bet, pre)
         return vol_bet
+
+    def instant_metaedge_graphs(self, x, G):
+        GG = dict()
+        #visited = [(x,0)]
+        node = (x,0)
+        for e in G[node]:
+            self.trav_instant_graphs(G, e, GG)
+        return GG
 
     def volume_metapaths(self, x, G):
         sigma = dict()
