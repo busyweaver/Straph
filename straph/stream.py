@@ -5939,6 +5939,33 @@ class StreamGraph:
         print("****** end_call, vt ********",(v,t), s)
         return s
 
+    def polymul(self, v, w):
+        if self.actual_degree(w) == -1 or self.actual_degree(v) == -1:
+            return (0,0)
+        else:
+            degv = self.actual_degree(v)
+            degw = self.actual_degree(w)
+            vl = list(v.coef)
+            wl = list(w.coef)
+            if degv == 0 and vl[degv] == 0:
+                return (0,0)
+            if degw == 0 and wl[degw] == 0:
+                return (0,0)
+            return (vl[degv]*wl[degw], degv + degw)
+
+
+    def polydiv(self, v, w):
+        if self.actual_degree(w) == -1:
+            return -1
+        else:
+            degv = self.actual_degree(v)
+            degw = self.actual_degree(w)
+            vl = list(v.coef)
+            wl = list(w.coef)
+            if degv == -1:
+                return (0,0)
+            return (vl[degv]/wl[degw], degv - degw)
+
     def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
         if (v,t) in deltasvvt:
             return deltasvvt[(v,t)]
@@ -6002,10 +6029,11 @@ class StreamGraph:
                 print("enum poly", tmp)
                 enum_degree = self.actual_degree(tmp)
                 print("actual enum", enum_degree)
-                if enum_degree == -1:
-                    enum = tuple([0])
-                else:
-                    enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+                enum = tmp
+                # if enum_degree == -1:
+                #     enum = tuple([0])
+                # else:
+                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
 
 
 
@@ -6014,13 +6042,19 @@ class StreamGraph:
                 print("denum poly", tmp)
                 denum_degree = self.actual_degree(tmp)
                 print("actual denum", denum_degree)
-                denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+                denum = tmp
+                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
 
                 print("enum", enum, "denum", denum)
+                print("enum-denum degree",enum_degree, denum_degree)
 
-                res = nppol.polydiv(enum,denum)
-
-                contrib += nppol.Polynomial(res[0])
+                res = self.polydiv(enum,denum)
+                if res[1] < 0:
+                    ress = [0]
+                else:
+                    ress =[0 for i in range(res[1]+1)]
+                    ress[res[1]] = res[0]
+                contrib += nppol.Polynomial(ress)
                 print("contrib",contrib)
                 if pointer[(v,a_right)] in sigma_r:
                     right += sigma_r[pointer[(v,a_right)]][1]
@@ -6036,8 +6070,8 @@ class StreamGraph:
         deltasvvt[(v,t)] = contrib
         return contrib
 
-    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre):
-        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
+    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre, t1, t2, chev):
+        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "t1", t1, "t2", t2, "chev", chev)
         if v == x :
             return nppol.Polynomial([1])
         # pv,pt = pointer[(v,t)]
@@ -6046,10 +6080,12 @@ class StreamGraph:
         # (t1p,t2p) = pre[w][t_p][pv,pt]
         # if t1 < t:
         #     (t1,t2) = (t2,t2)
-        # st1t2 = 1
-        # if t2 > t1:
-        #     st1t2 = nppol.Polynomial([0,t2-t1])
-        # print("st1t2",st1t2)
+        st1t2 = nppol.Polynomial([1])
+        if t2 > t1:
+            rr = [0 for ii in range(chev+1)]
+            rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+            st1t2 = nppol.Polynomial([0,t2-t1])
+        print("st1t2",st1t2)
         # if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
         #     return nppol.Polynomial([0])
 
@@ -6081,35 +6117,43 @@ class StreamGraph:
         swtp = sigma_r[pointer[(w,t_p)]][1]
 
         print("svt", svt)
-        #tmp = nppol.polymul(svt, coef_chevau)
-        tmp = svt
+        tmp = self.polymul(svt, st1t2)
         #tmp = tmp[0]
-        print("svt", tmp)
-        svt_degree = self.actual_degree(tmp)
-        print("actual svt", svt_degree)
-        svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-        if svt_high == ():
-            svt_high = (0)
+        print("svt*st1t2", tmp)
+        svt_high = [0 for jj in range(tmp[1]+1)]
+        svt_high[tmp[1]] = tmp[0]
+        svt_high = nppol.Polynomial(svt_high)
+        svt_degree = self.actual_degree(svt_high)
+        print("actual svt*st1t2", svt_degree)
+        
+        #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+        #if svt_high == ():
+        #    svt_high = (0)
         print("svt_hight",svt_high)
         print("swtp", swtp)
         tmp = swtp
         swtp_degree = self.actual_degree(tmp)
         print("actual swtp", swtp_degree)
-        swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+        swtp_high = tmp
+        #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
         print("swtp_high", swtp_high)
         if swtp_degree != -1:
-            res = nppol.polydiv(svt_high,swtp_high)
+            cof,puis = self.polydiv(svt_high,swtp_high)
+            if puis < 0:
+                res = [0]
+            else:
+                res = [0 for i in range(puis+1)]
+                res[puis] = cof
         else:
             res = [0]
-        print("res_div", res[0])
-        return nppol.Polynomial(res[0])
+        print("res_div", res)
+        return nppol.Polynomial(res)
 
 
 
     def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT):
         print("******** new call contri_delta_svt","v", v, "t", t)
-        #if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-        if True:
+        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
             # normally only called on graph edges
 
@@ -6162,17 +6206,20 @@ class StreamGraph:
                     # else:
                     #     res = [0]
                     w,t_p = (u,l_ord[ii])
-                    (t1,t2) = pre[w][t_p][v,t]
-                    if t1 != t2:
-                        for yp,tpp in GT[t1,t2][w,t_p]:
-                            self.contri_delta_svt(node, yp, tpp, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
-                            res2 = self.coef_volume(node, v, t, yp, tpp, sigma_r, pointer, pre)
-                            s += res2 * contribution[yp][tpp]
 
                     print("(w,t')",(w,t_p))
                     self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
 
-                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre)
+                    (t1,t2) = pre[w][t_p][v,t]
+                    if t1 != t2:
+                        for yp,tpp in GT[t1,t2][w,t_p]:
+                            print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
+                            self.contri_delta_svt(node, yp, tpp, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
+                            res2 = self.coef_volume(node, v, t, yp, tpp, sigma_r, pointer, pre, t1, t2, GT[t1,t2][w,t_p][yp,tpp]["weight"]+1)
+                            s += res2 * contribution[yp][tpp]
+
+
+                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre, t1, t2, 1)
                     #appel recursif
                     s += res * contribution[w][t_p]
                     if l_ord[ii] not in partial_sum:
@@ -6199,7 +6246,7 @@ class StreamGraph:
                                 contrib_local[v] = dict()
                             if not (v in contribution and event[jjj] in contribution[v]):
                                 if sigma_r[pointer[v,t]][1] != sigma_r[pointer[v,event[jjj]]][1]:
-                                    print("erreur")
+                                    print("ERREUUUUUUUR ",sigma_r[pointer[v,t]][1],sigma_r[pointer[v,event[jjj]]][1])
                                 #if event[jjj] in contrib_local[v]:
                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
                                     #contrib_local[v][event[jjj]] += contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
@@ -6208,7 +6255,7 @@ class StreamGraph:
                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
                                 else:
                                     print("la")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
                                 print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
                                 # else:
                                 #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
