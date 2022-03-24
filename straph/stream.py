@@ -6078,13 +6078,13 @@ class StreamGraph:
         # #st1t2 = bet_vol[pv][pt][(w,t_p)]
         # (t1,t2) = pre[w][t_p][pv,pt]
         # (t1p,t2p) = pre[w][t_p][pv,pt]
-        # if t1 < t:
-        #     (t1,t2) = (t2,t2)
+        if t1 < t:
+            (t1,t2) = (t2,t2)
         st1t2 = nppol.Polynomial([1])
         if t2 > t1:
             rr = [0 for ii in range(chev+1)]
             rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
-            st1t2 = nppol.Polynomial([0,t2-t1])
+            st1t2 = nppol.Polynomial(rr)
         print("st1t2",st1t2)
         # if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
         #     return nppol.Polynomial([0])
@@ -6255,7 +6255,10 @@ class StreamGraph:
                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
                                 else:
                                     print("la")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]] - res * contribution[w][t_p] + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
+                                    if ii == len(l_ord)-1:
+                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
+                                    else:
+                                        contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
                                 print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
                                 # else:
                                 #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
