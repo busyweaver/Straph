@@ -5375,6 +5375,15 @@ class StreamGraph:
                             G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
         return G
 
+    def predecessor_graph_dis(self,pre, node):
+        G = nx.DiGraph()
+        for k in self.nodes:
+            if k != node:
+                for key in pre[k].keys():
+                    for v2 in pre[k][key].keys():
+                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+        return G
+
     def metapaths_from_predecessor(self,G):
         l = []
         paths = nx.all_simple_paths(G,(0,0.0))
@@ -5474,7 +5483,7 @@ class StreamGraph:
 
 
     def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
-        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar)
+        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
         # nodes are the same as before we add paths
         (su, boolo, d) = sigma[e]
         if pred_node[0] == e[0] and pred_depar == actual_depar:
@@ -5521,6 +5530,46 @@ class StreamGraph:
         #         pred = visit[i-1]
         #         pred_depar = pred[1]
         #     poly = [0 for i in range(len(self.nodes))]
+        return
+
+    def trav_resting_dis(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
+        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
+        # nodes are the same as before we add paths
+        su = sigma[e]
+        if pred_node[0] == e[0] and pred_depar == actual_depar:
+
+            if e not in sigma_r:
+                sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
+            else:
+                if pred_node > sigma_r[e][0]:
+                    sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
+        else:
+            if e not in sigma_r:
+                #no resting path here
+                sigma_r[e] = ((-1,-1),su)
+
+
+
+        visit = list(G[e])
+        visit.sort()
+        print("succ")
+        dic_nodes = dict()
+        for (x,y) in visit:
+            if x in dic_nodes:
+                dic_nodes[x].append(y)
+            else:
+                dic_nodes[x] = [y]
+        for u in dic_nodes.keys():
+            #normally it should be sorted
+            for ii in range( 0, len(dic_nodes[u])):
+                if ii == 0:
+                    pred_node = (-1,-1)
+                    pred_depar = -1
+                else:
+                    pred_node = (u,dic_nodes[u][ii-1])
+                    pred_depar = actual_depar
+                poly = [0 for jj in range(len(self.nodes))]
+                self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
         return
 
     def trav_bet_vol(self, x, G, e, vol_bet, pre):
@@ -5626,6 +5675,12 @@ class StreamGraph:
                 TC.add_edge(v,e,wieght = d)
         return TC
 
+    def sinks(self, G):
+        return list((node for node, out_degree in G.out_degree() if out_degree == 0))
+
+    def sources(self, G):
+        return list((node for node, in_degree in G.in_degree() if in_degree == 0))
+
     def volume_between_direct_arrivals(self, x, G, pre):
         vol_bet = dict()
         #visited = [(x,0)]
@@ -5652,6 +5707,90 @@ class StreamGraph:
             poly = [0 for i in range(len(self.nodes))]
             self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
         return sigma
+
+    def vol_rec(self, s, e, G_rev, sigma):
+        l = list(G_rev[e])
+        print(e,l,sigma)
+        if len(l) == 1:
+            w,tp = l[0]
+            if w == s:
+                sigma[e] = 1
+            else:
+                self.vol_rec(s, (w,tp), G_rev, sigma)
+                sigma[e] = sigma[(w,tp)]
+        else:
+            res = 0
+            for (w,tp) in l:
+                self.vol_rec(s, (w,tp), G_rev, sigma)
+                res += sigma[(w,tp)]
+
+            sigma[e] = res
+
+
+
+    def volume_metapaths_dis(self, G, s):
+        sigma = dict()
+        sink = self.sinks(G)
+        G_rev = G.reverse(copy=True)
+        for e in sink:
+            self.vol_rec(s, e, G_rev, sigma)
+        return sigma
+
+    def volume_metapaths_with_restingpaths_dis(self, G, sigma):
+        sigma_r = dict()
+        source = list(self.sources(G))
+        for (v,t) in source:
+            sigma_r[(v,t)] = ((-1,-1),nppol.Polynomial([0]))
+            visit = list(G[(v,t)])
+            visit.sort()
+            dic_nodes = dict()
+            for (x,y) in visit:
+                if x in dic_nodes:
+                    dic_nodes[x].append(y)
+                else:
+                    dic_nodes[x] = [y]
+            for u in dic_nodes.keys():
+                #normally it should be sorted
+                for ii in range( 0, len(dic_nodes[u])):
+                    if ii == 0:
+                        pred_node = (-1,-1)
+                        actual_depar = dic_nodes[u][ii]
+                        pred_depar = -1
+                    else:
+                        pred_node = (u,dic_nodes[u][ii-1])
+                        pred_depar = actual_depar
+                        actual_depar = dic_nodes[u][ii]
+                    poly = [0 for jj in range(len(self.nodes))]
+                    self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[(v,t)][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
+        return sigma_r
+
+
+    def volume_metapaths_with_restingpaths(self, x, G, sigma):
+        sigma_r = dict()
+        node = (x,0)
+        sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
+        visit = list(G[node])
+        visit.sort()
+        dic_nodes = dict()
+        for (x,y) in visit:
+            if x in dic_nodes:
+                dic_nodes[x].append(y)
+            else:
+                dic_nodes[x] = [y]
+        for u in dic_nodes.keys():
+            #normally it should be sorted
+            for ii in range( 0, len(dic_nodes[u])):
+                if ii == 0:
+                    pred_node = (-1,-1)
+                    actual_depar = dic_nodes[u][ii]
+                    pred_depar = -1
+                else:
+                    pred_node = (u,dic_nodes[u][ii-1])
+                    pred_depar = actual_depar
+                    actual_depar = dic_nodes[u][ii]
+                poly = [0 for jj in range(len(self.nodes))]
+                self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
+        return sigma_r
 
 
     def volume_metapaths_with_restingpaths(self, x, G, sigma):
