@@ -5375,14 +5375,7 @@ class StreamGraph:
                             G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
         return G
 
-    def predecessor_graph_dis(self,pre, node):
-        G = nx.DiGraph()
-        for k in self.nodes:
-            if k != node:
-                for key in pre[k].keys():
-                    for v2 in pre[k][key].keys():
-                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
-        return G
+
 
     def metapaths_from_predecessor(self,G):
         l = []
@@ -6039,44 +6032,44 @@ class StreamGraph:
         return contrib
 
 
-    def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev):
-        if node == v:
-            return 0
+    # def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev):
+    #     if node == v:
+    #         return 0
 
-        print("****** new_call, vt ********",(v,t))
-        s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {}, lat_rev)
-        t_sigma = pointer[(v,t)][1]
-        visit = list(G[(v,t_sigma)])
-        for i in range(0,len(visit)):
-            if visit[i][1] >= t:
-                print("succ", visit[i])
-                #svt = sigma_r[pointer[v,t]][1]
-                svt = sigma_r[pointer[v,t]][1]
-                swtp = sigma_r[pointer[visit[i]]][1]
+    #     print("****** new_call, vt ********",(v,t))
+    #     s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {}, lat_rev)
+    #     t_sigma = pointer[(v,t)][1]
+    #     visit = list(G[(v,t_sigma)])
+    #     for i in range(0,len(visit)):
+    #         if visit[i][1] >= t:
+    #             print("succ", visit[i])
+    #             #svt = sigma_r[pointer[v,t]][1]
+    #             svt = sigma_r[pointer[v,t]][1]
+    #             swtp = sigma_r[pointer[visit[i]]][1]
 
-                print("svt", svt)
-                tmp = svt
-                svt_degree = self.actual_degree(tmp)
-                print("actual svt", svt_degree)
-                svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-                if svt_high == ():
-                        svt_hight = (0)
+    #             print("svt", svt)
+    #             tmp = svt
+    #             svt_degree = self.actual_degree(tmp)
+    #             print("actual svt", svt_degree)
+    #             svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+    #             if svt_high == ():
+    #                     svt_hight = (0)
 
-                print("svt_hight",svt_high)
-                print("swtp", swtp)
-                tmp = swtp
-                swtp_degree = self.actual_degree(tmp)
-                print("actual swtp", swtp_degree)
-                swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-                print("swtp_high", swtp_high)
-                if swtp_degree != -1:
-                    res = nppol.polydiv(svt_high,swtp_high)
-                else:
-                    res = [0]
-                print("division poly", res[0])
-                s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
-        print("****** end_call, vt ********",(v,t), s)
-        return s
+    #             print("svt_hight",svt_high)
+    #             print("swtp", swtp)
+    #             tmp = swtp
+    #             swtp_degree = self.actual_degree(tmp)
+    #             print("actual swtp", swtp_degree)
+    #             swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+    #             print("swtp_high", swtp_high)
+    #             if swtp_degree != -1:
+    #                 res = nppol.polydiv(svt_high,swtp_high)
+    #             else:
+    #                 res = [0]
+    #             print("division poly", res[0])
+    #             s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
+    #     print("****** end_call, vt ********",(v,t), s)
+    #     return s
 
     def polymul(self, v, w):
         if self.actual_degree(w) == -1 or self.actual_degree(v) == -1:
@@ -6610,6 +6603,181 @@ class StreamGraph:
                         self.extend_paths(x,b,a,t1,t2,final_paths, tmp_paths)
 
         return final_paths
+
+    #############################################################################
+    #                       discrete                                            #
+    #############################################################################
+
+    def predecessor_graph_dis(self,pre, node):
+        G = nx.DiGraph()
+        for k in self.nodes:
+            if k != node:
+                for key in pre[k].keys():
+                    for v2 in pre[k][key].keys():
+                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+        return G
+    def check_contri_dis(self, j, i,latencies, node):
+        lati = (self.cal_lat(i,latencies),latencies[i][1])
+        latj = (self.cal_lat(j,latencies),latencies[j][1])
+        if latj < lati:
+            return 1
+        elif latj == lati:
+            return 0
+        else:
+            return -1
+
+    def contribution_each_latency_dis(self,latencies):
+        maxi = max(self.times)
+        #        contri = [dict() for i in range(len(self.nodes))]
+        contri = [dict() for i in range(len(self.nodes))]
+        prev_next = [dict() for i in range(len(self.nodes))]
+        for k in self.nodes:
+            # l contains first arrival times
+            l = [e for e in latencies[k].keys() ]
+            l.sort()
+            for i in range(0,len(l)):
+                #check left contribution
+                j = i - 1
+                S = -1
+                b = True
+                while(j >= 0 and b):
+                    cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    if  cond == 1:
+                        S = latencies[k][l[j]][0]
+                        b = False
+                    else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
+                        j = j - 1
+                if S == -1:
+                    S = 0
+                #check right contribution
+                j = i + 1
+                A = -1
+                b = True
+                while(j < len(l) and b):
+                    cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    if cond == 1:
+                        A = l[j]
+                        b = False
+                    else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
+                        j = j + 1
+                if A == -1:
+                    A = maxi
+                contri[k][l[i]] = (S,A)
+        return contri,prev_next
+
+    def contri_delta_svvt_dis(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
+        # if (v,t) in deltasvvt:
+        #     return deltasvvt[(v,t)]
+        print("///////// call svvt, ","s",s,"v",v,"t",t)
+        if s == v:
+            return nppol.Polynomial([0])
+        #voir papier matthieu clemence pour l'algo
+
+        if t not in lat[v]:
+            return nppol.Polynomial([0])
+        prev = []
+        next = []
+
+
+        if t in prev_next[v]:
+            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+        #if t not in contri[v]:
+        #    t = pointer[(v,t)][1]
+
+        t_sigma = pointer[(v,t)][1]
+        #if (v,t) not in sigma_r:
+        #    t_sigma = pointer[(v,t)][1]
+        print("t_contri",v,t)
+        print("t_sigma",v,t_sigma)
+
+
+        prev = [contri[v][t][0]] + prev
+        prev.sort(reverse = True)
+        if t in prev_next[v]:
+            next = [e for e in prev_next[v][t] if e > t]
+        next = next + [contri[v][t][1]]
+        #prev.sort()
+        print("prev", prev)
+        print("next", next)
+
+        left = 0
+        right = 0
+
+        contrib = 0
+        s_prime = lat[v][t][0]
+        vol_tv = sigma_r[(v,t_sigma)][1]
+        print("vol_tv",vol_tv, vol_tv.coef)
+        if self.zero_array(vol_tv.coef):
+            return nppol.Polynomial([0])
+        for s_left in prev:
+            # if pointer[(v,s_left)] in sigma_r:
+            #     left += sigma_r[pointer[(v,s_left)]][1]
+            # else:
+            #     left = 0
+
+            a_prime = t
+            right = 0
+            for a_right in next:
+                # if pointer[(v,a_right)] in sigma_r:
+                #     right += sigma_r[pointer[(v,a_right)]][1]
+                # else:
+                #     right = 0
+
+                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+                tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+                print("enum poly", tmp)
+                enum_degree = self.actual_degree(tmp)
+                print("actual enum", enum_degree)
+                enum = tmp
+                # if enum_degree == -1:
+                #     enum = tuple([0])
+                # else:
+                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+                print("left", left, "vol_tv", vol_tv, "right", right)
+                tmp = left + vol_tv + right
+                print("denum poly", tmp)
+                denum_degree = self.actual_degree(tmp)
+                print("actual denum", denum_degree)
+                denum = tmp
+                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+                print("enum", enum, "denum", denum)
+                print("enum-denum degree",enum_degree, denum_degree)
+
+                res = self.polydiv(enum,denum)
+                if res[1] < 0:
+                    ress = [0]
+                else:
+                    ress =[0 for i in range(res[1]+1)]
+                    ress[res[1]] = res[0]
+                contrib += nppol.Polynomial(ress)
+                print("contrib",contrib)
+                if pointer[(v,a_right)] in sigma_r:
+                    right += sigma_r[pointer[(v,a_right)]][1]
+                # else:
+                #     right = 0
+                a_prime = a_right
+            if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+                left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
+            # else:
+            #     left = 0
+            s_prime = s_left
+        print("end svvt", contrib)
+        deltasvvt[(v,t)] = contrib
+        return contrib
 
     #############################################################################
     #                       END                                                 #
