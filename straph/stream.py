@@ -26,6 +26,7 @@ import matplotlib.patches as mpatch
 import matplotlib.pyplot as plt
 import matplotlib.font_manager
 import networkx as nx
+import networkit as nk
 import numpy
 import numpy.polynomial.polynomial as nppol
 from operator import itemgetter
@@ -5334,6 +5335,7 @@ class StreamGraph:
                         # #pre[a][t2] = {(a,0.0):(t1,t2)}
                     #else:
                         #extending rested paths to t1,t2
+                    #a,b = self.node_to_label[a], self.node_to_label[b]
                     self.relax_paper(a,b,t1,t2,pre,cur_best)
                     self.relax_resting_paths(b,t1,t2,pre,cur_best)
                     self.relax_paper(b,a,t1,t2,pre,cur_best)
@@ -6614,7 +6616,8 @@ class StreamGraph:
             if k != node:
                 for key in pre[k].keys():
                     for v2 in pre[k][key].keys():
-                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                        v,t = v2
+                        G.add_edge((v,t),(k,key),weight=pre[k][key][v2][0])
         return G
     def check_contri_dis(self, j, i,latencies, node):
         lati = (self.cal_lat(i,latencies),latencies[i][1])
