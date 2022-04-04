@@ -6617,7 +6617,7 @@ class StreamGraph:
                 for key in pre[k].keys():
                     for v2 in pre[k][key].keys():
                         v,t = v2
-                        G.add_edge((v,t),(k,key),weight=pre[k][key][v2][0])
+                        G.add_edge((self.node_to_label[v],t),(self.node_to_label[k],key),interval=pre[k][key][v2][0])
         return G
     def check_contri_dis(self, j, i,latencies, node):
         lati = (self.cal_lat(i,latencies),latencies[i][1])
