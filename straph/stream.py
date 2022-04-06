@@ -6516,6 +6516,7 @@ class StreamGraph:
     #                       discrete                                            #
     #############################################################################
 
+
     def predecessor_graph_dis(self,pre, node):
         G = nx.DiGraph()
         for k in self.nodes:
@@ -6526,6 +6527,46 @@ class StreamGraph:
                         G.add_edge((v,t),(k,key),interval=pre[k][key][v2][0])
                         #G.add_edge((self.node_to_label[v],t),(self.node_to_label[k],key),interval=pre[k][key][v2][0])
         return G
+
+    def cur_best_to_array(self, cur_best, ev, ev_rev):
+        cur_b_arr = [ [0 for t in ev    ]   for k in self.nodes]
+        for v in self.nodes:
+            for t in cur_best[v]:
+                cur_b_arr[v][ev_rev[t]] = (t,cur_best[v][t][0],cur_best[v][t][1])
+        return cur_b_arr
+
+    def latencies_dis(self,cur_b_arr, ev, ev_rev):
+        latencies = [ [0 for t in ev    ]   for k in self.nodes]
+        last_depr = [ [numpy.Infinity for t in ev    ]   for k in self.nodes]
+        for k in self.nodes:
+            for i in range(0,len(cur_b_arr[k])):
+                if cur_b_arr[k][i][1] != -numpy.Infinity:
+                    if latencies[k][ev_rev[cur_b_arr[k][i][1]]] == 0:
+                        latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
+                    if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] == numpy.Infinity:
+                        last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
+                    else:
+                        #we already have one element for the departure
+                        if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] > cur_b_arr[k][i][0]:
+                            last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
+                            #print("i",i,"cur_b_arr[k][i][0]",cur_b_arr[k][i][0],"ev_rev[cur_b_arr[k][i][1]]",ev_rev[cur_b_arr[k][i][1]])
+                            latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
+
+        return latencies
+
+    def latencies_without_0_and_rev(self, lat, ev):
+        latency = [[] for k in self.nodes]
+        latency_rev = [[] for k in self.nodes]
+        for k in self.nodes:
+            for i in range(0,len(ev)):
+                if lat[k][i] != 0:
+                    latency[k].append([ev[i],lat[k][i][0], lat[k][i][1]])
+                    latency_rev[k].append([lat[k][i][0],ev[i],lat[k][i][1]])
+        return latency, latency_rev
+
+
+
+
 
 
     def trav_resting_dis(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
@@ -6568,13 +6609,13 @@ class StreamGraph:
                 self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
         return
 
-    def first_edge_rec(self e, edge, f_edge, G):
+    def first_edge_rec(self, e, edge, f_edge, G):
         f_edge[e] = edge
         l = list(G[e])
         for ee in l:
             self.first_edge_rec(ee, edge, f_edge, G)
-            
-    def dictionary_first_edge(G):
+
+    def dictionary_first_edge(self, G):
         f_edge = dict()
         source = self.sources(G)
         for sou in source:
@@ -6582,6 +6623,36 @@ class StreamGraph:
             for e in list(G[sou]):
                 self.first_edge_rec(e, sou[1], f_edge, G)
         return f_edge
+
+    def optimal_with_resting(self, node, f_edge, events, G, sigma):
+        sigma_r = dict()
+        for k in self.nodes:
+            pred = -1
+            for t in events:
+                if k == node:
+                    sigma_r[(k,t)] = 0
+                else:
+                    if pred == -1:
+                        if (k,t) in G:
+                            sigma_r[(k,t)] = sigma[(k,t)]
+                            pred = t
+                            edge = f_edge[(k,t)]
+                        else:
+                            sigma_r[(k,t)] = 0
+                    else:
+                        if (k,t) in G:
+                            edge2 = f_edge[(k,t)]
+                            if edge == edge2:
+                                sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)]
+                                pred = t
+                            else:
+                                sigma_r[(k,t)] = sigma[(k,t)]
+                                pred = t
+                                edge = f_edge[(k,t)]
+                        else:
+                            sigma_r[(k,t)] = sigma_r[(k,pred)]
+        return sigma_r
+
 
 
     def vol_rec(self, s, e, G_rev, sigma):
@@ -6640,10 +6711,14 @@ class StreamGraph:
                     self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[(v,t)][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
         return sigma_r
 
+    def cal_lat_dis(self, arr,latencies):
+        #return latency
+        return latencies[arr][0] - latencies[arr][1]
 
-    def check_contri_dis(self, j, i,latencies, node):
-        lati = (self.cal_lat(i,latencies),latencies[i][1])
-        latj = (self.cal_lat(j,latencies),latencies[j][1])
+
+    def check_contri_dis(self, j, i,latencies):
+        lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
+        latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
         if latj < lati:
             return 1
         elif latj == lati:
@@ -6670,17 +6745,20 @@ class StreamGraph:
         prev_next = [dict() for i in range(len(self.nodes))]
         for k in self.nodes:
             # l contains first arrival times
-            l = [e for e in latencies[k].keys() ]
-            l.sort()
+            #l = [e for e in latencies[k].keys() ]
+            #l.sort()
+            l = [x for (x,y,z) in latencies[k] ]
             for i in range(0,len(l)):
                 #check left contribution
                 j = i - 1
                 S = -1
                 b = True
                 while(j >= 0 and b):
-                    cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    cond = self.check_contri_dis(j, i, latencies[k])
                     if  cond == 1:
-                        S = latencies[k][l[j]][0]
+                        #S = latencies[k][l[j]][0]
+                        S = latencies[k][j][1]
                         b = False
                     else:
                         if cond == 0:
@@ -6696,7 +6774,8 @@ class StreamGraph:
                 A = -1
                 b = True
                 while(j < len(l) and b):
-                    cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    cond = self.check_contri_dis(j, i, latencies[k])
                     if cond == 1:
                         A = l[j]
                         b = False
