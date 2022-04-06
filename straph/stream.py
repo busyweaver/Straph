@@ -6738,6 +6738,15 @@ class StreamGraph:
             return 0
         return (svt/swtp)
 
+    def lat_to_dic(self, lat):
+        latency = [ dict()  for k in self.nodes]
+        latency_rev = [ dict()  for k in self.nodes]
+        for k in self.nodes:
+            for (x,y,z) in lat[k]:
+                latency[k][y] = (x,z)
+                latency_rev[k][x] = (y,z)
+        return latency, latency_rev
+
     def contribution_each_latency_dis(self,latencies):
         maxi = max(self.times)
         #        contri = [dict() for i in range(len(self.nodes))]
