@@ -6805,9 +6805,9 @@ class StreamGraph:
                 contri[k][l[i]] = (S,A)
         return contri,prev_next
 
-    def contri_delta_svvt_dis(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, lat_rev):
-        if (v,t) in deltasvvt:
-            return deltasvvt[(v,t)]
+    def contri_delta_svvt_dis(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
+        #if (v,t) in deltasvvt:
+            #return deltasvvt[(v,t)]
         print("///////// call svvt, ","s",s,"v",v,"t",t)
         if s == v:
             return 0
@@ -6909,7 +6909,7 @@ class StreamGraph:
             #     left = 0
             s_prime = s_left
         print("end svvt", contrib)
-        deltasvvt[(v,t)] = contrib
+        #deltasvvt[(v,t)] = contrib
         return contrib
 
     # def contri_rest_nodes_dis(self, node, v, t, contribution, partial_sum, event, event_reverse, G, sigma_r, pointer):
@@ -6967,8 +6967,8 @@ class StreamGraph:
     def contri_delta_svt_dis(self, node, v, t, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt, lat_rev, event, event_reverse, pre):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
-            print("svvt = ",svvt)
+            #svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
+            #print("svvt = ",svvt)
             # normally only called on graph edges
             visit = list(G[(v,t)])
             dic_nodes_rev = dict()
@@ -7037,7 +7037,7 @@ class StreamGraph:
             for vv in contrib_local:
                 for ss in contrib_local[vv]:
                     contribution[vv][ss] = contrib_local[vv][ss]
-            contribution[v][t] = s + svvt
+            contribution[v][t] = s + deltasvvt[(v,t)]
         print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
         return contribution
 
