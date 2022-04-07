@@ -4962,23 +4962,22 @@ class StreamGraph:
             #pre[b][arrival].add((a,e,edge_taken1))
             #pre[b][arrival][(a,e)] = edge_taken
 
-    def relax_resting_paths(self, b, t1, t2, pre, cur_best):
+    def relax_resting_paths(self, b, t1, t2, pre, cur_best, events, events_rev):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals_b = [e for e in list(pre[b].keys()) if pre[b][e] != {} ]
-        arrivals_b.sort()
-        l = list(self.event_times())
-        l.sort()
-        D = dict()
-        for i in range(0,len(l)):
-            D[l[i]] = i
+        arrivals_b = [e for e in events if (e in pre[b]) and (pre[b][e] != {}) ]
+        #arrivals_b.sort()
+        #l = events
+        # D = dict()
+        # for i in range(0,len(events)):
+        #     D[l[i]] = i
         #print("relaxing_paths", b, t1, t2)
         #print("resting",arrivals_b)
         close_arrival = self.closest_arrival(t2, arrivals_b)
         #print("close_arrival",close_arrival, t2)
         if close_arrival != -1:
             last_depar = cur_best[b][close_arrival][0]
-            for i in range(D[close_arrival],len(l)):
-                self.relax_resting_aux(b, last_depar, l[i], close_arrival, cur_best, pre)
+            for i in range(events_rev[close_arrival],len(events)):
+                self.relax_resting_aux(b, last_depar, events[i], close_arrival, cur_best, pre)
 
             #e = pre[b][close_arrival][1]
             #aa = pre[b][close_arrival][0]
@@ -5095,9 +5094,9 @@ class StreamGraph:
             pre[b][arrival][(a,e)] = edge_taken
 
 
-    def relax_paper(self, a, b, t1, t2, pre, cur_best):
+    def relax_paper(self, a, b, t1, t2, pre, cur_best, events):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals = [e for e in list(pre[a].keys()) if pre[a][e] != {}]
+        arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
         # print(a,b,t1,t2)
         # print("cur_besta",cur_best[a])
         # print("cur_bestb",cur_best[b])
@@ -5253,9 +5252,9 @@ class StreamGraph:
     #                 pre[b][t2][(a,0.0)] = (t1,t2)
     #                 #pre[b][t2] = {(b,0.0):(t1,t2)}
 
-    def count_walks_paper(self,x):
-        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in list(self.event_times())} for i in range(len(self.nodes)) ]
-        pre = [{t:{}   for t in list(self.event_times())} for i in range(len(self.nodes))]
+    def count_walks_paper(self,x, events, events_rev):
+        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
         for e in cur_best[x]:
             cur_best[x][e] = (e,0)
             pre[x][e]={(0,0):(-1,-1)}
@@ -5336,10 +5335,10 @@ class StreamGraph:
                     #else:
                         #extending rested paths to t1,t2
                     #a,b = self.node_to_label[a], self.node_to_label[b]
-                    self.relax_paper(a,b,t1,t2,pre,cur_best)
-                    self.relax_resting_paths(b,t1,t2,pre,cur_best)
-                    self.relax_paper(b,a,t1,t2,pre,cur_best)
-                    self.relax_resting_paths(a,t1,t2,pre,cur_best)
+                    self.relax_paper(a,b,t1,t2,pre,cur_best, events)
+                    self.relax_resting_paths(b,t1,t2,pre,cur_best, events, events_rev)
+                    self.relax_paper(b,a,t1,t2,pre,cur_best, events)
+                    self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
         return (pre, cur_best)
@@ -6610,6 +6609,8 @@ class StreamGraph:
         return
 
     def first_edge_rec(self, e, edge, f_edge, G):
+        if e in f_edge:
+            return
         f_edge[e] = edge
         l = list(G[e])
         for ee in l:
@@ -6656,6 +6657,8 @@ class StreamGraph:
 
 
     def vol_rec(self, s, e, G_rev, sigma):
+        if e in sigma:
+            return
         l = list(G_rev[e])
         print(e,l,sigma)
         if len(l) == 1:
