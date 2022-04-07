@@ -6964,55 +6964,55 @@ class StreamGraph:
 
 
 
-    def contri_delta_svt_dis(self, node, v, t, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt, lat_rev, event, event_reverse, pre):
+    def contri_delta_svt_dis(self, node, v, t, l_nei, lat, contri, prev_next, sigma_r, contribution, deltasvvt, lat_rev, event, event_reverse, pre):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             #svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
             #print("svvt = ",svvt)
             # normally only called on graph edges
-            visit = list(G[(v,t)])
-            dic_nodes_rev = dict()
-            dic_nodes = dict()
-            for (x,y) in visit:
-                if y in dic_nodes_rev:
-                    dic_nodes_rev[y].append(x)
-                else:
-                    dic_nodes_rev[y] = [x]
-                if x in dic_nodes:
-                    dic_nodes[x].append(y)
-                else:
-                    dic_nodes[x] = [y]
-            print("v", v, "t", t, "dic_nodes_rev", dic_nodes_rev)
+            # visit = list(G[(v,t)])
+            # dic_nodes_rev = dict()
+            # dic_nodes = dict()
+            # for (x,y) in visit:
+            #     if y in dic_nodes_rev:
+            #         dic_nodes_rev[y].append(x)
+            #     else:
+            #         dic_nodes_rev[y] = [x]
+            #     if x in dic_nodes:
+            #         dic_nodes[x].append(y)
+            #     else:
+            #         dic_nodes[x] = [y]
+            # print("v", v, "t", t, "dic_nodes_rev", dic_nodes_rev)
             partial_sum = dict()
             s = 0
             contrib_local = dict()
-            l_ord = list(dic_nodes_rev.keys())
-            l_ord.sort()
-            for ii in range(len(l_ord)-1,-1,-1):
+            # l_ord = list(dic_nodes_rev.keys())
+            # l_ord.sort()
+            for ii in range(len(l_nei[(v,t)])-1,-1,-1):
                 #normally it should be sorted
-                for u in dic_nodes_rev[l_ord[ii]]:
-                    w,t_p = (u,l_ord[ii])
+                for u in l_nei[v,t][ii][1]:
+                    w,t_p = (u,l_nei[v,t][ii][0])
                     print("(w,t')",(w,t_p))
-                    self.contri_delta_svt_dis(node, w, t_p, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt,  lat_rev, event, event_reverse, pre)
+                    self.contri_delta_svt_dis(node, w, t_p, l_nei, lat, contri, prev_next, sigma_r, contribution, deltasvvt,  lat_rev, event, event_reverse, pre)
                     res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r)
                     #appel recursif
                     s += res * contribution[w][t_p]
-                    if l_ord[ii] not in partial_sum:
-                        partial_sum[l_ord[ii]] = s
+                    if l_nei[v,t][ii][0] not in partial_sum:
+                        partial_sum[l_nei[v,t][ii][0]] = s
                     else:
-                        partial_sum[l_ord[ii]] += s
+                        partial_sum[l_nei[v,t][ii][0]] += s
 
                     print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
                     if ii != 0:
-                        jj = event_reverse[l_ord[ii-1]]
+                        jj = event_reverse[l_nei[v,t][ii-1][0]]
                     else:
                         jj = event_reverse[t]
-                    print("u", u, "dic_nodes[u]", dic_nodes[u])
+                    print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
                     print("******** half after call contri_delta_svt","v", v, "t", t)
-                    print("dic_nodes[u]",dic_nodes[u],"u",u)
+                    print("dic_nodes[u]",l_nei[v,t],"u",u)
                     if True:#ii != len(dic_nodes[u])-1:
-                        for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
-                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+                        for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
                             print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
 
                             if v not in contrib_local:
@@ -7023,14 +7023,14 @@ class StreamGraph:
                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
                                 if event[jjj] != t_p:
                                     print("ici")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
+                                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
                                 else:
                                     print("la")
-                                    if ii == len(l_ord)-1:
+                                    if ii == len(l_nei[v,t])-1:
                                         contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
                                     else:
-                                        contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
-                                print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
+                                        contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
+                                #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
 
             if v not in contribution:
                 contribution[v] = dict()
