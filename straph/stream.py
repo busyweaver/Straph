@@ -45,6 +45,7 @@ from straph.paths import paths as ap
 from straph.paths import meta_walks as mw
 from straph.utils import get_cmap
 
+from straph import ordgraphdis as org
 
 def DFS_iterative(v, Neighborhood):
     """
@@ -6515,7 +6516,6 @@ class StreamGraph:
     #                       discrete                                            #
     #############################################################################
 
-
     def predecessor_graph_dis(self,pre, node):
         G = nx.DiGraph()
         for k in self.nodes:
@@ -6526,6 +6526,9 @@ class StreamGraph:
                         G.add_edge((v,t),(k,key),interval=pre[k][key][v2][0])
                         #G.add_edge((self.node_to_label[v],t),(self.node_to_label[k],key),interval=pre[k][key][v2][0])
         return G
+
+    def graph_to_ordered(self, G, ev, ev_rev):
+        return org.OrdGraphDis(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
 
     def cur_best_to_array(self, cur_best, ev, ev_rev):
         cur_b_arr = [ [0 for t in ev    ]   for k in self.nodes]
@@ -6560,7 +6563,7 @@ class StreamGraph:
             for i in range(0,len(ev)):
                 if lat[k][i] != 0:
                     latency[k].append([ev[i],lat[k][i][0], lat[k][i][1]])
-                    latency_rev[k].append([lat[k][i][0],ev[i],lat[k][i][1]])
+                    latency_rev[k].append([ lat[k][i][0],ev[i],lat[k][i][1] ])
         return latency, latency_rev
 
 
@@ -6729,12 +6732,12 @@ class StreamGraph:
         else:
             return -1
 
-    def coef_volume_dis(self, x, v, t, w, t_p, sigma_r, pointer):
+    def coef_volume_dis(self, x, v, t, w, t_p, sigma_r):
         print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
         if v == x :
             return 1
-        svt = sigma_r[pointer[(v,t)]][1]
-        swtp = sigma_r[pointer[(w,t_p)]][1]
+        svt = sigma_r[(v,t)]
+        swtp = sigma_r[(w,t_p)]
         print("svt", svt)
         print("swtp", swtp)
         if svt == 0:
@@ -6747,11 +6750,10 @@ class StreamGraph:
         for k in self.nodes:
             for (x,y,z) in lat[k]:
                 latency[k][y] = (x,z)
-                latency_rev[k][x] = (y,z)
+                latency_rev[k][x] = y
         return latency, latency_rev
 
-    def contribution_each_latency_dis(self,latencies):
-        maxi = max(self.times)
+    def contribution_each_latency_dis(self,latencies, mini, maxi):
         #        contri = [dict() for i in range(len(self.nodes))]
         contri = [dict() for i in range(len(self.nodes))]
         prev_next = [dict() for i in range(len(self.nodes))]
@@ -6780,7 +6782,7 @@ class StreamGraph:
                                 prev_next[k][l[i]].append(l[j])
                         j = j - 1
                 if S == -1:
-                    S = 0
+                    S = mini
                 #check right contribution
                 j = i + 1
                 A = -1
@@ -6843,7 +6845,7 @@ class StreamGraph:
 
         contrib = 0
         s_prime = lat[v][t][0]
-        vol_tv = sigma_r[(v,t)][1]
+        vol_tv = sigma_r[(v,t)]
         # print("vol_tv",vol_tv, vol_tv.coef)
         # if self.zero_array(vol_tv.coef):
         #     return nppol.Polynomial([0])
@@ -6895,13 +6897,14 @@ class StreamGraph:
                 print("contrib",contrib)
                 #if pointer[(v,a_right)] in sigma_r:
                 if a_right in lat[v]:
-                    right += sigma_r[(v,a_right)][1]
+                    right += sigma_r[(v,a_right)]
                 # else:
                 #     right = 0
                 a_prime = a_right
             #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
-            if lat_rev[v][s_left] in lat[v]:
-                left += sigma_r[(v,lat_rev[v][s_left])][1]
+            if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
+            #if lat_rev[v][s_left] in lat[v]:
+                left += sigma_r[(v,lat_rev[v][s_left])]
             # else:
             #     left = 0
             s_prime = s_left
@@ -6959,7 +6962,9 @@ class StreamGraph:
     #     return contribution
 
 
-    def contri_delta_svt_dis(self, node, v, t, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre):
+
+
+    def contri_delta_svt_dis(self, node, v, t, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt, lat_rev, event, event_reverse, pre):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
@@ -6988,8 +6993,8 @@ class StreamGraph:
                 for u in dic_nodes_rev[l_ord[ii]]:
                     w,t_p = (u,l_ord[ii])
                     print("(w,t')",(w,t_p))
-                    self.contri_delta_svt_dis(node, w, t_p, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre)
-                    res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r, pointer)
+                    self.contri_delta_svt_dis(node, w, t_p, G, lat, contri, prev_next, sigma_r, contribution, deltasvvt,  lat_rev, event, event_reverse, pre)
+                    res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r)
                     #appel recursif
                     s += res * contribution[w][t_p]
                     if l_ord[ii] not in partial_sum:
@@ -7008,13 +7013,13 @@ class StreamGraph:
                     if True:#ii != len(dic_nodes[u])-1:
                         for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
                             print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
-                            print("comp vol", sigma_r[pointer[v,t]][1], sigma_r[pointer[v,event[jjj]]][1])
+                            print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
 
                             if v not in contrib_local:
                                 contrib_local[v] = dict()
                             if not (v in contribution and event[jjj] in contribution[v]):
-                                if sigma_r[pointer[v,t]][1] != sigma_r[pointer[v,event[jjj]]][1]:
-                                    print("ERREUUUUUUUR ",sigma_r[pointer[v,t]][1],sigma_r[pointer[v,event[jjj]]][1])
+                                if sigma_r[v,t] != sigma_r[v,event[jjj]]:
+                                    print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
                                 if event[jjj] != t_p:
                                     print("ici")
@@ -7022,9 +7027,9 @@ class StreamGraph:
                                 else:
                                     print("la")
                                     if ii == len(l_ord)-1:
-                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r, pointer))
+                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
                                     else:
-                                        contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r, pointer))
+                                        contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
                                 print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
 
             if v not in contribution:
