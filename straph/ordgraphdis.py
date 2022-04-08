@@ -12,15 +12,6 @@ class OrdGraphDis:
                  sinks=None
     ):
         """
-        A basic constructor for a ``StreamGraph`` object
-        
-        :param id: A parameter to identify a stream graph.
-        :param times: Continous interval of time during the stream graph exists 
-        :param nodes: A list of nodes present in  the stream graph
-        :param node_presence : List of lists in the same order as the nodes. Each list contains 
-        succescively the time of apparition and time of disparition of the node.
-        :param links : A list of links present in the stream graph
-        :param link_presence : same as node_presence
         """
         self.nodes = nodes
         self.links = links

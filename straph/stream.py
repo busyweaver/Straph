@@ -46,6 +46,7 @@ from straph.paths import meta_walks as mw
 from straph.utils import get_cmap
 
 from straph import ordgraphdis as org
+from straph import ordgraphcon as con
 
 def DFS_iterative(v, Neighborhood):
     """
@@ -6912,77 +6913,10 @@ class StreamGraph:
         #deltasvvt[(v,t)] = contrib
         return contrib
 
-    # def contri_rest_nodes_dis(self, node, v, t, contribution, partial_sum, event, event_reverse, G, sigma_r, pointer):
-    #     visit = list(G[(v,t)])
-    #     dic_nodes_rev = dict()
-    #     dic_nodes = dict()
-    #     contrib_local = dict()
-    #     for (x,y) in visit:
-    #         if y in dic_nodes_rev:
-    #             dic_nodes_rev[y].append(x)
-    #         else:
-    #             dic_nodes_rev[y] = [x]
-    #         if x in dic_nodes:
-    #             dic_nodes[x].append(y)
-    #         else:
-    #             dic_nodes[x] = [y]
-    #     l_ord = list(dic_nodes_rev.keys())
-    #     l_ord.sort()
-    #     print("l_ord", l_ord)
-    #     for ii in range(len(l_ord)-1,-1,-1):
-    #         for u in dic_nodes_rev[l_ord[ii]]:
-    #             print("boucle ii",ii)
-    #             w,t_p = (u,l_ord[ii])
-    #             self.contri_rest_nodes_dis(node, w, t_p, contribution, partial_sum, event, event_reverse, G, sigma_r, pointer)
-    #             if ii != 0:
-    #                 jj = event_reverse[l_ord[ii-1]]
-    #             else:
-    #                 jj = event_reverse[t]
-    #             for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
-    #                 print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj], "partial_sum[v]",partial_sum[v], "dic_nodes_rev", dic_nodes_rev, "l_ord", l_ord, "ii", ii)
-    #                 print("comp vol", sigma_r[pointer[v,t]][1], sigma_r[pointer[v,event[jjj]]][1])
-    #                 if not (v in contribution and event[jjj] in contribution[v]):
-    #                     if v not in contrib_local:
-    #                         contrib_local[v] = dict()
-    #                     print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
-    #                     if event[jjj] != t_p:
-    #                         print("ici")
-    #                         contrib_local[v][event[jjj]] = partial_sum[v][l_ord[ii]]
-    #                     else:
-    #                         print("la","ii",ii,"len(l_lord)-1", len(l_ord)-1)
-    #                         if ii == len(l_ord)-1:
-    #                             contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r, pointer))
-    #                         else:
-    #                             contrib_local[v][event[jjj]] = partial_sum[v][l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r, pointer))
-    #                     print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[v][l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p], "l_ord", l_ord, "ii", ii)
-
-    #     for vv in contrib_local:
-    #         for ss in contrib_local[vv]:
-    #             contribution[vv][ss] = contrib_local[vv][ss]
-    #     return contribution
-
-
-
 
     def contri_delta_svt_dis(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            #svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
-            #print("svvt = ",svvt)
-            # normally only called on graph edges
-            # visit = list(G[(v,t)])
-            # dic_nodes_rev = dict()
-            # dic_nodes = dict()
-            # for (x,y) in visit:
-            #     if y in dic_nodes_rev:
-            #         dic_nodes_rev[y].append(x)
-            #     else:
-            #         dic_nodes_rev[y] = [x]
-            #     if x in dic_nodes:
-            #         dic_nodes[x].append(y)
-            #     else:
-            #         dic_nodes[x] = [y]
-            # print("v", v, "t", t, "dic_nodes_rev", dic_nodes_rev)
             partial_sum = dict()
             s = 0
             contrib_local = dict()
@@ -7040,6 +6974,58 @@ class StreamGraph:
             contribution[v][t] = s + deltasvvt[(v,t)]
         print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
         return contribution
+
+
+    #############################################################################
+    #                       continuous                                          #
+    #############################################################################
+
+    def predecessor_graph_con(self,pre, node):
+        G = nx.DiGraph()
+        for k in self.nodes:
+            if k != node:
+                for key in pre[k].keys():
+                    for v2 in pre[k][key].keys():
+                        if v2[0] != node:
+                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+                        else:
+                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
+        return G
+
+    def graph_to_ordered_con(self, G, ev, ev_rev):
+        return con.OrdGraphCon(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
+
+    def vol_rec_con(self, s, e, G_rev, sigma):
+        if e in sigma:
+            return
+        l = list(G_rev[e])
+        print(e,l,sigma)
+        if len(l) == 1:
+            w,tp = l[0]
+            if w == s:
+                sigma[e] = 1
+            else:
+                self.vol_rec_con(s, (w,tp), G_rev, sigma)
+                sigma[e] = sigma[(w,tp)]
+        else:
+            res = 0
+            for (w,tp) in l:
+                self.vol_rec_con(s, (w,tp), G_rev, sigma)
+                res += sigma[(w,tp)]
+
+            sigma[e] = res
+
+
+
+    def volume_metapaths_con(self, G, s):
+        sigma = dict()
+        sink = self.sinks(G)
+        G_rev = G.reverse(copy=True)
+        for e in sink:
+            self.vol_rec_con(s, e, G_rev, sigma)
+        return sigma
+
+
 
     #############################################################################
     #                       END                                                 #
