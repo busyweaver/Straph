@@ -6964,7 +6964,7 @@ class StreamGraph:
 
 
 
-    def contri_delta_svt_dis(self, node, v, t, l_nei, lat, contri, prev_next, sigma_r, contribution, deltasvvt, lat_rev, event, event_reverse, pre):
+    def contri_delta_svt_dis(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             #svvt = self.contri_delta_svvt_dis(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt,  lat_rev)
@@ -6993,7 +6993,7 @@ class StreamGraph:
                 for u in l_nei[v,t][ii][1]:
                     w,t_p = (u,l_nei[v,t][ii][0])
                     print("(w,t')",(w,t_p))
-                    self.contri_delta_svt_dis(node, w, t_p, l_nei, lat, contri, prev_next, sigma_r, contribution, deltasvvt,  lat_rev, event, event_reverse, pre)
+                    self.contri_delta_svt_dis(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse)
                     res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r)
                     #appel recursif
                     s += res * contribution[w][t_p]
