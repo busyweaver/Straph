@@ -5585,7 +5585,9 @@ class StreamGraph:
         print("**** end ****", "e", e)
 
 
-    def trav_instant_graphs(self, G, e, GG):
+    def trav_instant_graphs(self, G, e, GG, visited):
+        if e in visited:
+            return
         print("***** start *****", e)
         visit = list(G[e])
         print("visit",visit)
@@ -6985,11 +6987,10 @@ class StreamGraph:
         for k in self.nodes:
             if k != node:
                 for key in pre[k].keys():
-                    for v2 in pre[k][key].keys():
-                        if v2[0] != node:
-                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
-                        else:
-                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
+                    for v2 in pre[k][key].keys(): 
+                        v,t = v2
+                        G.add_edge((v,t),(k,key),interval=pre[k][key][v2])
+
         return G
 
     def graph_to_ordered_con(self, G, ev, ev_rev):
