@@ -46,7 +46,7 @@ from straph.paths import meta_walks as mw
 from straph.utils import get_cmap
 
 from straph import ordgraphdis as org
-from straph import ordgraphcon as con
+#from straph import ordgraphcon as con
 
 def DFS_iterative(v, Neighborhood):
     """
@@ -5595,7 +5595,7 @@ class StreamGraph:
         for (w,t_p) in visit:
             inter_act = G[e][w,t_p]['interval']
             t1,t2 = inter_act
-            if t1 != t2 :
+            if t1 != t2 and t2 == e[1]:
                 if inter_act not in GG:
                     GG[inter_act] = nx.DiGraph()
                 GG[inter_act].add_edge(e,(w,t_p),weight=1)
@@ -6998,34 +6998,99 @@ class StreamGraph:
     def graph_to_ordered_con(self, G, ev, ev_rev):
         return con.OrdGraphCon(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
 
-    def vol_rec_con(self, s, e, G_rev, sigma):
-        if e in sigma:
-            return
+    def vol_rec_con_inst(self, s, e, G_rev, sigma):
         l = list(G_rev[e])
         print(e,l,sigma)
-        if len(l) == 1:
-            w,tp = l[0]
-            if w == s:
-                sigma[e] = 1
+        w,tp = l[0]
+        sigma[e] = dict()
+        if w == s:
+            t1,t2 = G_rev[e][(w,tp)]['interval']
+            if t1 == t2:
+                sigma[e][-1] = 1
             else:
-                self.vol_rec_con(s, (w,tp), G_rev, sigma)
-                sigma[e] = sigma[(w,tp)]
+                sigma[e][-1] = nppol.Polynomial([1,(t2 - t1)])
         else:
             res = 0
             for (w,tp) in l:
-                self.vol_rec_con(s, (w,tp), G_rev, sigma)
-                res += sigma[(w,tp)]
+                self.vol_rec_con_inst(s, (w,tp), G_rev, sigma)
+                if self.actual_degree(sigma[(w,tp)][-1]) == 0:
+                    res += sigma[(w,tp)][-1]
+                else:
+                    t1,t2 = G_rev[e][(w,tp)]['interval']
+                    coef_zero = sigma[(w,tp)][-1].coef[0]
+                    if t1 == t2:
+                        coef_zero = sigma[(w,tp)][-1].coef[0]
+                        res += nppol.Polynomial([coef_zero])
+                    else:
+                        d = self.actual_degree(sigma[(w,tp)][-1])
+                        coef_max = sigma[(w,tp)][-1].coef[d]
+                        coef_res = [0 for j in range(d+2)]
+                        coef_res[d+1] = coef_max*(t2 - t1)/(d+1)
+                        res += nppol.Polynomial([coef_res])
+            sigma[e][-1] = res
 
-            sigma[e] = res
+    def vol_rec_con(self, s, e, G_rev, sigma, cur_best, mx):
+        if e in sigma:
+            return
+        if e[0] == s:
+            sigma[e] = dict()
+            sigma[e][-1] = 0
+            return
+
+        if cur_best[e[0]][e[1]][0] == e[1]:
+            #instantenous metapaths
+            self.vol_rec_con_inst(s, e, G_rev, sigma)
+        else:
+            sigma[e] = dict()
+            for j in range(0,mx+1):
+                if j == 0:
+                    l = list(G_rev[e])
+                    print(e,l,sigma)
+                    res = 0
+                    for (w,tp) in l:
+                        self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+                        if cur_best[w][tp][0] == tp:
+                            coef_zero = sigma[(w,tp)][-1].coef[0]
+                            res += nppol.Polynomial([coef_zero])
+                        else:
+                            res += sigma[(w,tp)][-1]
+                    sigma[e][0] = res
+                elif j == 1:
+                    l = list(G_rev[e])
+                    print(e,l,sigma)
+                    res = 0
+                    for (w,tp) in l:
+                        t1,t2 = G_rev[e][(w,tp)]['interval']
+                        if t1 != t2 and tp <= t1:
+                            self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+                            if cur_best[w][tp][0] == tp:
+                                coef_zero = sigma[(w,tp)][-1].coef[0]
+                                res += nppol.Polynomial([0,coef_zero*(t2 - t1)])
+                            else:
+                                res += sigma[(w,tp)][-1] * nppol.Polynomial([0,(t2 - t1)])
+                    sigma[e][1] = res
+                else:
+                    l = list(G_rev[e])
+                    print(e,l,sigma)
+                    res = 0
+                    for (w,tp) in l:
+                        t1,t2 = G_rev[e][(w,tp)]['interval']
+                        if t1 != t2 and tp == t2:
+                            self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+                            if (j-1) in sigma[(w,tp)]:
+                                res += sigma[(w,tp)][j-1] * nppol.Polynomial([0,(t2 - t1)/j])
+                    sigma[e][j] = res
+            sigma[e][-1] = sum( sigma[e][jj]  for jj in range(0,mx+1))
 
 
 
-    def volume_metapaths_con(self, G, s):
+
+    def volume_metapaths_con(self, G, s, cur_best, mx):
         sigma = dict()
         sink = self.sinks(G)
         G_rev = G.reverse(copy=True)
         for e in sink:
-            self.vol_rec_con(s, e, G_rev, sigma)
+            self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
         return sigma
 
 
