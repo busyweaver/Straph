@@ -7006,7 +7006,7 @@ class StreamGraph:
         if w == s:
             t1,t2 = G_rev[e][(w,tp)]['interval']
             if t1 == t2:
-                sigma[e][-1] = 1
+                sigma[e][-1] = nppol.Polynomial([1])
             else:
                 sigma[e][-1] = nppol.Polynomial([1,(t2 - t1)])
         else:
@@ -7034,7 +7034,7 @@ class StreamGraph:
             return
         if e[0] == s:
             sigma[e] = dict()
-            sigma[e][-1] = 0
+            sigma[e][-1] = nppol.Polynomial([0])
             return
 
         if cur_best[e[0]][e[1]][0] == e[1]:
