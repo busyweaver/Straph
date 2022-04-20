@@ -6633,7 +6633,7 @@ class StreamGraph:
                 self.first_edge_rec(e, sou[1], f_edge, G)
         return f_edge
 
-    def optimal_with_resting(self, node, f_edge, events, G, sigma):
+    def optimal_with_resting_dis(self, node, f_edge, events, G, sigma):
         sigma_r = dict()
         for k in self.nodes:
             pred = -1
@@ -7092,6 +7092,88 @@ class StreamGraph:
         for e in sink:
             self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
         return sigma
+
+    def optimal_with_resting_con(self, node, f_edge, events, G, sigma):
+        sigma_r = dict()
+        for k in self.nodes:
+            pred = -1
+            for t in events:
+                if k == node:
+                    sigma_r[(k,t)] = nppol.Polynomial([0])
+                else:
+                    if pred == -1:
+                        if (k,t) in G:
+                            sigma_r[(k,t)] = sigma[(k,t)][-1]
+                            pred = t
+                            edge = f_edge[(k,t)]
+                        else:
+                            sigma_r[(k,t)] = nppol.Polynomial([0])
+                    else:
+                        if (k,t) in G:
+                            edge2 = f_edge[(k,t)]
+                            if edge == edge2:
+                                sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
+                                pred = t
+                            else:
+                                sigma_r[(k,t)] = sigma[(k,t)][-1]
+                                pred = t
+                                edge = f_edge[(k,t)]
+                        else:
+                            sigma_r[(k,t)] = sigma_r[(k,pred)]
+        return sigma_r
+
+    def contribution_each_latency_con(self,latencies, mini, maxi):
+        #        contri = [dict() for i in range(len(self.nodes))]
+        contri = [dict() for i in range(len(self.nodes))]
+        prev_next = [dict() for i in range(len(self.nodes))]
+        for k in self.nodes:
+            # l contains first arrival times
+            #l = [e for e in latencies[k].keys() ]
+            #l.sort()
+            l = [x for (x,y,z) in latencies[k] ]
+            for i in range(0,len(l)):
+                #check left contribution
+                j = i - 1
+                S = -1
+                b = True
+                while(j >= 0 and b):
+                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    cond = self.check_contri_dis(j, i, latencies[k])
+                    if  cond == 1:
+                        #S = latencies[k][l[j]][0]
+                        S = latencies[k][j][1]
+                        b = False
+                    else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
+                        j = j - 1
+                if S == -1:
+                    S = mini
+                #check right contribution
+                j = i + 1
+                A = -1
+                b = True
+                while(j < len(l) and b):
+                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+                    cond = self.check_contri_dis(j, i, latencies[k])
+                    if cond == 1:
+                        A = l[j]
+                        b = False
+                    else:
+                        if cond == 0:
+                            if l[i] not in prev_next[k]:
+                                prev_next[k][l[i]] = [l[j]]
+                            else:
+                                prev_next[k][l[i]].append(l[j])
+                        j = j + 1
+                if A == -1:
+                    A = maxi
+                contri[k][l[i]] = (S,A)
+        return contri,prev_next
+
 
 
 
