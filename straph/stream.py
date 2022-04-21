@@ -6001,7 +6001,7 @@ class StreamGraph:
 
     def polydiv(self, v, w):
         if self.actual_degree(w) == -1:
-            return -1
+            return (0,0)
         else:
             degv = self.actual_degree(v)
             degw = self.actual_degree(w)
@@ -6770,7 +6770,7 @@ class StreamGraph:
             for i in range(0,len(l)):
                 #check left contribution
                 j = i - 1
-                S = -1
+                S = -numpy.Infinity
                 b = True
                 while(j >= 0 and b):
                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
@@ -6786,11 +6786,11 @@ class StreamGraph:
                             else:
                                 prev_next[k][l[i]].append(l[j])
                         j = j - 1
-                if S == -1:
+                if S == -numpy.Infinity:
                     S = mini
                 #check right contribution
                 j = i + 1
-                A = -1
+                A = -numpy.Infinity
                 b = True
                 while(j < len(l) and b):
                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
@@ -6805,7 +6805,7 @@ class StreamGraph:
                             else:
                                 prev_next[k][l[i]].append(l[j])
                         j = j + 1
-                if A == -1:
+                if A == -numpy.Infinity:
                     A = maxi
                 contri[k][l[i]] = (S,A)
         return contri,prev_next
@@ -7006,27 +7006,51 @@ class StreamGraph:
         if w == s:
             t1,t2 = G_rev[e][(w,tp)]['interval']
             if t1 == t2:
-                sigma[e][-1] = nppol.Polynomial([1])
+                sigma[e][0] = nppol.Polynomial([1])
+                sigma[e][-1] = sigma[e][0]
             else:
-                sigma[e][-1] = nppol.Polynomial([1,(t2 - t1)])
+                sigma[e][0] = nppol.Polynomial([1])
+                sigma[e][1] = nppol.Polynomial([0,(t2-t1)])
+                sigma[e][-1] = sigma[e][0] + sigma[e][1]
         else:
             res = 0
             for (w,tp) in l:
                 self.vol_rec_con_inst(s, (w,tp), G_rev, sigma)
                 if self.actual_degree(sigma[(w,tp)][-1]) == 0:
                     res += sigma[(w,tp)][-1]
+                    if 0 not in sigma[e]:
+                        sigma[e][0] = sigma[(w,tp)][-1]
+                    else:
+                        sigma[e][0] += sigma[(w,tp)][-1]
+
                 else:
                     t1,t2 = G_rev[e][(w,tp)]['interval']
                     coef_zero = sigma[(w,tp)][-1].coef[0]
                     if t1 == t2:
                         coef_zero = sigma[(w,tp)][-1].coef[0]
+                        if 0 not in sigma[e]:
+                            sigma[e][0] = nppol.Polynomial([sigma[(w,tp)].coef[0]])
+                        else:
+                            sigma[e][0] += nppol.Polynomial([sigma[(w,tp)].coef[0]])
+
                         res += nppol.Polynomial([coef_zero])
                     else:
                         d = self.actual_degree(sigma[(w,tp)][-1])
                         coef_max = sigma[(w,tp)][-1].coef[d]
                         coef_res = [0 for j in range(d+2)]
                         coef_res[d+1] = coef_max*(t2 - t1)/(d+1)
-                        res += nppol.Polynomial([coef_res])
+                        coef_res[0] = sigma[(w,tp)][-1].coef[0]
+                        if 0 not in sigma[e]:
+                            sigma[e][0] = nppol.Polynomial([coef_res[0]])
+                        else:
+                            sigma[e][0] += nppol.Polynomial([coef_res[0]])
+                        if d+1 not in sigma[e]:
+                            sigma[e][d+1] = nppol.Polynomial([coef_res[d+1]])
+                        else:
+                            sigma[e][d+1] += nppol.Polynomial([coef_res[d+1]])
+
+
+                        res += nppol.Polynomial(coef_res)
             sigma[e][-1] = res
 
     def vol_rec_con(self, s, e, G_rev, sigma, cur_best, mx):
@@ -7093,7 +7117,7 @@ class StreamGraph:
             self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
         return sigma
 
-    def optimal_with_resting_con(self, node, f_edge, events, G, sigma):
+    def optimal_with_resting_con(self, node, f_edge, events, G, sigma, cur_best):
         sigma_r = dict()
         for k in self.nodes:
             pred = -1
@@ -7115,14 +7139,47 @@ class StreamGraph:
                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
                                 pred = t
                             else:
-                                sigma_r[(k,t)] = sigma[(k,t)][-1]
+                                #instant paths occur only here
+                                if cur_best[k][t][0] == t and self.actual_degree(sigma[(k,t)][-1])>0:
+                                    sigma_r[(k,t)] = nppol.Polynomial([sigma[(k,t)][-1].coef[0]])
+                                else:
+                                    sigma_r[(k,t)] = sigma[(k,t)][-1]
                                 pred = t
                                 edge = f_edge[(k,t)]
                         else:
                             sigma_r[(k,t)] = sigma_r[(k,pred)]
         return sigma_r
 
-    def contribution_each_latency_con(self,latencies, mini, maxi):
+    def check_contri_con(self, j, i,latencies, sigma, node, sigma_p):
+        lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
+        latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
+
+        if (lati[0] == 0) and lati[1] != 0 and j < i:
+            # latencies are instantenous
+            print("lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+            x = -numpy.Infinity
+            if (node,latencies[i][0]) in sigma_p:
+                x = self.actual_degree(sigma_p[(node,latencies[i][0])][-1])
+            if x > 0:
+                print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+                return 2
+
+        if latj < lati:
+            return 1
+        elif latj == lati:
+            x = -numpy.Infinity
+            if (node,latencies[j][0]) in sigma_p:
+                x = self.actual_degree(sigma_p[(node,latencies[j][0])][-1])
+            if x > 0 and j == i+1:
+                return 2
+            elif x > 0 and not (j == i+1):
+                return 1
+            else:
+                return 0
+        else:
+            return -1
+
+    def contribution_each_latency_con(self,latencies, mini, maxi, sigma, sigma_p):
         #        contri = [dict() for i in range(len(self.nodes))]
         contri = [dict() for i in range(len(self.nodes))]
         prev_next = [dict() for i in range(len(self.nodes))]
@@ -7134,11 +7191,14 @@ class StreamGraph:
             for i in range(0,len(l)):
                 #check left contribution
                 j = i - 1
-                S = -1
+                S = -numpy.Infinity
                 b = True
                 while(j >= 0 and b):
                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_dis(j, i, latencies[k])
+                    cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
+                    if cond == 2:
+                        S = latencies[k][i][1]
+                        b = False
                     if  cond == 1:
                         #S = latencies[k][l[j]][0]
                         S = latencies[k][j][1]
@@ -7150,15 +7210,18 @@ class StreamGraph:
                             else:
                                 prev_next[k][l[i]].append(l[j])
                         j = j - 1
-                if S == -1:
+                if S == -numpy.Infinity:
                     S = mini
                 #check right contribution
                 j = i + 1
-                A = -1
+                A = -numpy.Infinity
                 b = True
                 while(j < len(l) and b):
                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_dis(j, i, latencies[k])
+                    cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
+                    if cond == 2:
+                        A = l[i]
+                        b = False
                     if cond == 1:
                         A = l[j]
                         b = False
@@ -7169,10 +7232,251 @@ class StreamGraph:
                             else:
                                 prev_next[k][l[i]].append(l[j])
                         j = j + 1
-                if A == -1:
+                if A == -numpy.Infinity:
                     A = maxi
                 contri[k][l[i]] = (S,A)
         return contri,prev_next
+
+    def contri_delta_svvt_con(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
+        #if (v,t) in deltasvvt:
+            #return deltasvvt[(v,t)]
+        print("///////// call svvt, ","s",s,"v",v,"t",t)
+        if s == v:
+            return 0
+        #voir papier matthieu clemence pour l'algo
+
+        if t not in lat[v]:
+            return 0
+        prev = []
+        next = []
+
+
+        if t in prev_next[v]:
+            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+            next = [e for e in prev_next[v][t] if e > t]
+        #if t not in contri[v]:
+        #    t = pointer[(v,t)][1]
+
+        #t_sigma = pointer[(v,t)][1]
+        #if (v,t) not in sigma_r:
+        #    t_sigma = pointer[(v,t)][1]
+        #print("t_contri",v,t)
+        #print("t_sigma",v,t_sigma)
+
+
+        #prev.sort(reverse = True)
+        #prev.reverse()
+        prev =  prev + [contri[v][t][0]]
+        next = next + [contri[v][t][1]]
+        #prev.sort()
+        print("prev", prev)
+        print("next", next)
+
+        left = 0
+        right = 0
+
+        contrib = 0
+        s_prime = lat[v][t][0]
+        vol_tv = sigma_r[(v,t)]
+        # print("vol_tv",vol_tv, vol_tv.coef)
+        # if self.zero_array(vol_tv.coef):
+        #     return nppol.Polynomial([0])
+        for s_left in prev:
+            # if pointer[(v,s_left)] in sigma_r:
+            #     left += sigma_r[pointer[(v,s_left)]][1]
+            # else:
+            #     left = 0
+
+            a_prime = t
+            right = 0
+            for a_right in next:
+                # if pointer[(v,a_right)] in sigma_r:
+                #     right += sigma_r[pointer[(v,a_right)]][1]
+                # else:
+                #     right = 0
+
+                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+                enum = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+                # print("enum poly", tmp)
+                # enum_degree = self.actual_degree(tmp)
+                # print("actual enum", enum_degree)
+                # enum = tmp
+                # if enum_degree == -1:
+                #     enum = tuple([0])
+                # else:
+                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+                print("left", left, "vol_tv", vol_tv, "right", right)
+                denum = left + vol_tv + right
+                # print("denum poly", tmp)
+                # denum_degree = self.actual_degree(tmp)
+                # print("actual denum", denum_degree)
+                # denum = tmp
+                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+                print("enum", enum, "denum", denum)
+                #print("enum-denum degree",enum_degree, denum_degree)
+
+                res = self.polydiv(enum,denum)
+                if res[1] < 0:
+                    ress = [0]
+                else:
+                    ress =[0 for i in range(res[1]+1)]
+                    ress[res[1]] = res[0]
+                #contrib += (enum/denum)
+                contrib += nppol.Polynomial(ress)
+                print("contrib",contrib)
+                #if pointer[(v,a_right)] in sigma_r:
+                if a_right in lat[v]:
+                    right += sigma_r[(v,a_right)]
+                # else:
+                #     right = 0
+                a_prime = a_right
+            #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+            if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
+            #if lat_rev[v][s_left] in lat[v]:
+                left += sigma_r[(v,lat_rev[v][s_left])]
+            # else:
+            #     left = 0
+            s_prime = s_left
+        print("end svvt", contrib)
+        #deltasvvt[(v,t)] = contrib
+        return contrib
+
+    def coef_volume_con(self, x, v, t, w, t_p, sigma_r, pre, st1t2):
+        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "st1t2", st1t2)
+        # (t1,t2) = pre[w][t_p][v,t]
+        # if v == x :
+        #     return nppol.Polynomial([1])
+        # if t1 < t:
+        #     (t1,t2) = (t2,t2)
+        # st1t2 = nppol.Polynomial([1])
+        # if t2 > t1:
+        #     rr = [0 for ii in range(chev+1)]
+        #     rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+        #     st1t2 = nppol.Polynomial(rr)
+        # print("st1t2",st1t2)
+        if x == v:
+            return nppol.Polynomial([1])
+        svt = sigma_r[(v,t)]
+        swtp = sigma_r[(w,t_p)]
+
+        print("svt", svt)
+        tmp = self.polymul(svt, st1t2)
+        #tmp = tmp[0]
+        print("svt*st1t2", tmp)
+        svt_high = [0 for jj in range(tmp[1]+1)]
+        svt_high[tmp[1]] = tmp[0]
+        svt_high = nppol.Polynomial(svt_high)
+        svt_degree = self.actual_degree(svt_high)
+        print("actual svt*st1t2", svt_degree)
+        
+        #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+        #if svt_high == ():
+        #    svt_high = (0)
+        print("svt_hight",svt_high)
+        print("swtp", swtp)
+        tmp = swtp
+        swtp_degree = self.actual_degree(tmp)
+        print("actual swtp", swtp_degree)
+        swtp_high = tmp
+        #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+        print("swtp_high", swtp_high)
+        if swtp_degree != -1:
+            cof,puis = self.polydiv(svt_high,swtp_high)
+            if puis < 0:
+                res = [0]
+            else:
+                res = [0 for i in range(puis+1)]
+                res[puis] = cof
+        else:
+            res = [0]
+        print("res_div", res)
+        return nppol.Polynomial(res)
+
+
+    def contri_delta_svt_con(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT):
+        print("******** new call contri_delta_svt","v", v, "t", t)
+        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+            partial_sum = dict()
+            s = 0
+            contrib_local = dict()
+            # l_ord = list(dic_nodes_rev.keys())
+            # l_ord.sort()
+            for ii in range(len(l_nei[(v,t)])-1,-1,-1):
+                #normally it should be sorted
+                for u in l_nei[v,t][ii][1]:
+                    w,t_p = (u,l_nei[v,t][ii][0])
+                    print("(w,t')",(w,t_p))
+                    self.contri_delta_svt_con(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
+                    (t1,t2) = pre[w][t_p][v,t]
+                    if t1 != t2 and t_p > t:
+                        for yp,tpp in GT[t1,t2][w,t_p]:
+                            print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
+                            self.contri_delta_svt_con(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
+                            chev = GT[t1,t2][w,t_p][yp,tpp]["weight"]+1
+                            rr = [0 for ii in range(chev+1)]
+                            rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+                            res2 = self.coef_volume_con(node, v, t, yp, tpp, sigma_r, pre, nppol.Polynomial(rr))
+
+                            #res2 *= nppol.Polynomial(rr)
+                            s += res2 * contribution[yp][tpp]
+                    if t_p > t and t2 > t1:
+                        res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([0,(t2-t1)]))
+                    else:
+                        res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([1]))
+
+                    
+                    #appel recursif
+                    s += res * contribution[w][t_p]
+                    if l_nei[v,t][ii][0] not in partial_sum:
+                        partial_sum[l_nei[v,t][ii][0]] = s
+                    else:
+                        partial_sum[l_nei[v,t][ii][0]] += s
+
+                    print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
+                    if ii != 0:
+                        jj = event_reverse[l_nei[v,t][ii-1][0]]
+                    else:
+                        jj = event_reverse[t]
+                    print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
+                    print("******** half after call contri_delta_svt","v", v, "t", t)
+                    print("dic_nodes[u]",l_nei[v,t],"u",u)
+                    if True:#ii != len(dic_nodes[u])-1:
+                        for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+                            print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
+
+                            if v not in contrib_local:
+                                contrib_local[v] = dict()
+                            if not (v in contribution and event[jjj] in contribution[v]):
+                                if sigma_r[v,t] != sigma_r[v,event[jjj]]:
+                                    print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
+                                print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
+                                if event[jjj] != t_p:
+                                    print("ici")
+                                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
+                                else:
+                                    print("la")
+                                    if ii == len(l_nei[v,t])-1:
+                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1]) ))
+                                    else:
+                                        contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1])))
+                                #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
+
+            if v not in contribution:
+                contribution[v] = dict()
+            for vv in contrib_local:
+                for ss in contrib_local[vv]:
+                    contribution[vv][ss] = contrib_local[vv][ss]
+            contribution[v][t] = s + deltasvvt[(v,t)]
+        print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
+        return contribution
+
+
+
 
 
 
