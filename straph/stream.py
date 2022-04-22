@@ -7044,10 +7044,12 @@ class StreamGraph:
                             sigma[e][0] = nppol.Polynomial([coef_res[0]])
                         else:
                             sigma[e][0] += nppol.Polynomial([coef_res[0]])
+                        cof_fin = coef_res[:]
+                        cof_fin[0] = 0
                         if d+1 not in sigma[e]:
-                            sigma[e][d+1] = nppol.Polynomial([coef_res[d+1]])
+                            sigma[e][d+1] = nppol.Polynomial(cof_fin)
                         else:
-                            sigma[e][d+1] += nppol.Polynomial([coef_res[d+1]])
+                            sigma[e][d+1] += nppol.Polynomial(cof_fin)
 
 
                         res += nppol.Polynomial(coef_res)
