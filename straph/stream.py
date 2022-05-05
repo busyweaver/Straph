@@ -38,7 +38,7 @@ from joblib import Parallel, delayed
 from matplotlib import animation
 from matplotlib import cm
 from sortedcontainers import SortedSet
-
+import heapq
 from straph import components as cmp
 from straph import etf
 from straph.paths import paths as ap
@@ -5266,77 +5266,6 @@ class StreamGraph:
                 a,b = self.links[i]
                 for j in range(0,len(self.link_presence[i]),2):
                     t1,t2 = self.link_presence[i][j:j+2]
-                    #typ1,typ2 = self.interval_type[i][j:j+2]
-                    #add commented line for both directions of edges
-                    # if a == x:
-                    #     cur_best[a][t1] = (t1,0)
-                    #     cur_best[a][t2] = (t2,0)
-                        #self.add_from_origin(a, b, t1, t2, pre, cur_best)
-                        # if t1 not in cur_best[b]:
-                        #     cur_best[b][t1] = (t1,1)
-                        # else:
-                        #     if (0.0,1) < (t1 - cur_best[b][t1][0],cur_best[b][t1][1]):
-                        #         cur_best[b][t1] = (t1,1)
-                        #         pre[b][t1] = dict()
-                        # if t2 not in cur_best[b]:
-                        #     cur_best[b][t2] = (t2,1)
-                        # else:
-                        #     if (0.0,1) < (t2 - cur_best[b][t2][0],cur_best[b][t2][1]):
-                        #         cur_best[b][t2] = (t2,1)
-                        #         pre[b][t2] = dict()
-
-                        # if t1 not in pre[b]:
-                        #     pre[b][t1] = {(a,0.0):(t1,t1)}
-                        # else:
-                        #     if (a,0.0) not in pre[b][t1]:
-                        #         # e1,e2 = pre[b][t1][(a,0.0)]
-                        #         # if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                        #         pre[b][t1][(a,0.0)] = (t1,t1)
-
-                        # if t2 not in pre[b]:
-                        #     pre[b][t2] = {(a,0.0):(t1,t2)}
-                        # else:
-                        #     if (a,0.0) in pre[b][t2]:
-                        #          e1,e2 = pre[b][t2][(a,0.0)]
-                        #          if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                        #              pre[b][t2][(a,0.0)] = (t1,t2)
-                        # #pre[b][t2] = {(b,0.0):(t1,t2)}
-                    # if b == x:
-                    #     cur_best[b][t1] = (t1,0)
-                    #     cur_best[b][t2] = (t2,0)
-                        #self.add_from_origin(b, a, t1, t2, pre, cur_best)
-                        # if t1 not in cur_best[a]:
-                        #     cur_best[a][t1] = (t1,1)
-                        # else:
-                        #     if (0.0,1) < (t1 - cur_best[a][t1][0],cur_best[a][t1][1]):
-                        #         cur_best[a][t1] = (t1,1)
-                        #         pre[a][t1] = dict()
-                        # if t2 not in cur_best[a]:
-                        #     cur_best[a][t2] = (t2,1)
-                        # else:
-                        #     if (0.0,1) < (t2 - cur_best[a][t2][0],cur_best[a][t2][1]):
-                        #         cur_best[a][t2] = (t2,1)
-                        #         pre[a][t2] = dict()
-
-                        # #cur_best[a][t2] = (t2,1.0)
-                        # if t1 not in pre[a]:
-                        #     pre[a][t1] = {(b,0.0):(t1,t1)}
-                        # else:
-                        #     if (b,0.0) not in pre[a][t1]:
-                        #         pre[a][t1][(b,0.0)] = (t1,t1)
-
-                        # if t2 not in pre[a]:
-                        #     pre[a][t2] = {(b,0.0):(t1,t2)}
-                        # else:
-                        #     if (b,0.0) in pre[a][t2]:
-                        #         e1,e2 = pre[a][t2][(b,0.0)]
-                        #         if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-                        #             pre[a][t2][(b,0.0)] = (t1,t2)
-                        # #pre[a][t1] = {(b,0.0):(t1,t2)}
-                        # #pre[a][t2] = {(a,0.0):(t1,t2)}
-                    #else:
-                        #extending rested paths to t1,t2
-                    #a,b = self.node_to_label[a], self.node_to_label[b]
                     self.relax_paper(a,b,t1,t2,pre,cur_best, events)
                     self.relax_resting_paths(b,t1,t2,pre,cur_best, events, events_rev)
                     self.relax_paper(b,a,t1,t2,pre,cur_best, events)
@@ -5344,6 +5273,53 @@ class StreamGraph:
                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
 
         return (pre, cur_best)
+
+    def neighbors(self):
+        res =[[] for i in range(len(self.nodes))]
+        for e in self.links:
+            x,y = e
+            res[x].append(y)
+            res[y].append(x)
+        return res
+    def link_index(self):
+        d = dict()
+        for i in range(0, len(self.links)):
+            d[self.links[i]] = i
+        return d
+
+    def dijkstra_temporal(self, s, events, events_rev, neighbors, d):
+        Q = []
+        for v in self.nodes:
+            cur_best[v] = dict()
+            pre[v] = dict()
+            for t in events:
+                cur_best[v][t] = (-numpy.Infinity,numpy.Infinity)
+                pre[v][t] = {}
+                if v == s:
+                    cur_best[v][t] = (t,0)
+                Q = heapq.heappush(Q, (cur_best[v][t],(v,t)))
+        while Q != []:
+            (x,y) = heapq.heappop(Q)
+            (a,t) = x
+            (t,d) = y
+            for b in neighbors[a]:
+                for j in range(0,len(self.link_presence[d[(a,b)]]),2):
+                    t1,t2 = self.link_presence[i][j:j+2]
+                    #we can check for times if we'd like
+                    if not (t > t2):
+                        self.relax_paper(a,b,t1,t2,pre,cur_best, events)
+                        self.relax_resting_paths(b,t1,t2,pre,cur_best, events, events_rev)
+                        self.relax_paper(b,a,t1,t2,pre,cur_best, events)
+                        self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
+
+        return (pre, cur_best)
+
+
+
+
+
+
+
 
 
 
