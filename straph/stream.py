@@ -5276,39 +5276,39 @@ class StreamGraph:
         return (pre, cur_best)
 
 
-    def relax_resting_aux_dij(self, b, last_depar, arrival, e, cur_best, pre, Q, Q_nod, P, distance):
+    def relax_resting_aux_dij(self, b, t, arrival, cur_best, pre, Q, Q_nod, P, distance):
         #if arrival in P[b]:
         #    return
-        #cnew = self.compute_c(last_depar, arrival, cur_best[b][e][1])
+        cnew = self.compute_c(cur_best[b][t][0], arrival, cur_best[b][t][1])
         cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-        dist_ancient = cur_best[b][arrival][1]
-        print("dist_ancient",dist_ancient)
-        if   (last_depar not in distance[b]) or  (dist_ancient not in distance[b][last_depar]):
-            return
-        if distance[b][last_depar][dist_ancient] < arrival: 
+        #dist_ancient = cur_best[b][arrival][1]
+        #print("dist_ancient",dist_ancient)
+        #if   (last_depar not in distance[b]) or  (dist_ancient not in distance[b][last_depar]):
+        #    return
+        #if distance[b][last_depar][dist_ancient] < arrival: 
         #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
-        #if cnew < cold:
+        if cnew < cold:
             #pre[b][arrival] = set()
             pre[b][arrival] = dict()
-            cur_best[b][arrival] = (last_depar,-1)
+            cur_best[b][arrival] = (cur_best[b][t][0],cur_best[b][t][1])
             #Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)) )
-            print(arrival, last_depar, cold)
-            #if (b,arrival) in Q_nod:
-            #    Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
-            #else:
-            #    Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
+            #print(arrival, last_depar, cold)
+            # if (b,arrival) in Q_nod:
+            #     Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
+            # else:
+            #     Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
 
-    def relax_resting_paths_dij(self, b, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod, P, distance):
+    def relax_resting_paths_dij(self, b, t, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod, P, distance):
         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
         #arrivals_b = [e for e in events if (e in pre[b]) and (pre[b][e] != {}) ]
         #close_arrival = self.closest_arrival(t2, arrivals_b)
         #print("close_arrival",close_arrival, t2)
         #close_arrival = dernier_arrive[b]
         #if close_arrival != -1:
-        last_depar = cur_best[b][t1][0]
+        #last_depar = cur_best[b][t1][0]
         #for i in range(events_rev[close_arrival],len(events)):
         for i in [events_rev[t1],events_rev[t2]]:
-            self.relax_resting_aux_dij(b, last_depar, events[i], -1, cur_best, pre, Q, Q_nod, P, distance)
+            self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod, P, distance)
 
         return
 
@@ -5330,9 +5330,9 @@ class StreamGraph:
                 Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
             else:
                 Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
-            if last_depar not in distance[b]:
-                distance[b][last_depar] = dict()
-            distance[b][last_depar][cnew[1]] = arrival
+            #if last_depar not in distance[b]:
+            #    distance[b][last_depar] = dict()
+            #distance[b][last_depar][cnew[1]] = arrival
 
             #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
         if cnew == cold:
@@ -5412,8 +5412,6 @@ class StreamGraph:
                     nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
                     distance[s][t] = dict()
                     distance[s][t][numpy.Infinity] = t
-                    
-
             print(Q.total_nodes)
             while Q.total_nodes != 0:
                 #mm = Q.find_min()
@@ -5437,14 +5435,15 @@ class StreamGraph:
                     if (a,b) not in d:
                         (xx,yy) = (b,a)
 
-                    #for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
-                    for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
-                        #t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
-                        t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
+                    for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+                    #for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
+                        t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
+                        #t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
                         #we can check for times if we'd like
                         if not (t > t2):
                             print("salut",(a,t),(b,t1,t2))
-                            self.relax_resting_paths_dij(b,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+                            self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+                            #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
                             print(cur_best)
                             self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod, P, distance)
                             print("resting", cur_best)
