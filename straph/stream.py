@@ -5308,7 +5308,8 @@ class StreamGraph:
         #last_depar = cur_best[b][t1][0]
         #for i in range(events_rev[close_arrival],len(events)):
         for i in [events_rev[t1],events_rev[t2]]:
-            self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod, P, distance)
+            if events[i] >= t:
+                self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod, P, distance)
 
         return
 
@@ -5409,46 +5410,47 @@ class StreamGraph:
                 for t in l:
                     cur_best[s][t] = (t,0)
                     pre[s][t] = {(0,0):(-1,-1)}
-                    nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
-                    distance[s][t] = dict()
-                    distance[s][t][numpy.Infinity] = t
-            print(Q.total_nodes)
-            while Q.total_nodes != 0:
-                #mm = Q.find_min()
-                #print("total_nodes",Q.total_nodes,"mm",mm.key)
-                #q = Q.extract_min()
-                #(x,y) = q.key
-                print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
-                (x,y) = Q.extract_min().data
-                del nod[y]
-                for jjj in self.nodes:
-                    print("pre", jjj,pre[jjj])
-                    print("cur", jjj,cur_best[jjj])
-                    #print("dernier", jjj,dernier_arrive[jjj])
-                print(Q.total_nodes, "extracted", y,x)
+                    if (s,t) not in nod:
+                        nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
+                        distance[s][t] = dict()
+                        distance[s][t][numpy.Infinity] = t
+        print(Q.total_nodes)
+        while Q.total_nodes != 0:
+            #mm = Q.find_min()
+            #print("total_nodes",Q.total_nodes,"mm",mm.key)
+            #q = Q.extract_min()
+            #(x,y) = q.key
+            print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+            (x,y) = Q.extract_min().data
+            del nod[y]
+            for jjj in self.nodes:
+                print("pre", jjj,pre[jjj])
+                print("cur", jjj,cur_best[jjj])
+                #print("dernier", jjj,dernier_arrive[jjj])
+            print(Q.total_nodes, "extracted", y,x)
 
-                (a,t) = y
-                P[a].add(t)
-                (tp,dis) = x
-                for b in neighbors[a]:
-                    (xx,yy) = (a,b)
-                    if (a,b) not in d:
-                        (xx,yy) = (b,a)
+            (a,t) = y
+            P[a].add(t)
+            (tp,dis) = x
+            for b in neighbors[a]:
+                (xx,yy) = (a,b)
+                if (a,b) not in d:
+                    (xx,yy) = (b,a)
 
-                    for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
-                    #for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
-                        t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
-                        #t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
-                        #we can check for times if we'd like
-                        if not (t > t2):
-                            print("salut",(a,t),(b,t1,t2))
-                            self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
-                            #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
-                            print(cur_best)
-                            self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod, P, distance)
-                            print("resting", cur_best)
-                            #self.relax_paper(b,a,t1,t2,pre,cur_best, events)
-                            #self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
+                for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+                #for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
+                    t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
+                    #t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
+                    #we can check for times if we'd like
+                    if not (t > t2):
+                        print("salut",(a,t),(b,t1,t2))
+                        self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+                        #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+                        print(cur_best)
+                        self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod, P, distance)
+                        print("resting", cur_best)
+                        #self.relax_paper(b,a,t1,t2,pre,cur_best, events)
+                        #self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
 
         return (pre, cur_best)
 
