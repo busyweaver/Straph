@@ -5276,44 +5276,29 @@ class StreamGraph:
         return (pre, cur_best)
 
 
-    def relax_resting_aux_dij(self, b, t, arrival, cur_best, pre, Q, Q_nod, P, distance):
+    def relax_resting_aux_dij(self, b, t, arrival, cur_best, pre, Q, Q_nod):
         #if arrival in P[b]:
         #    return
         cnew = self.compute_c(cur_best[b][t][0], arrival, cur_best[b][t][1])
         cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-        #dist_ancient = cur_best[b][arrival][1]
-        #print("dist_ancient",dist_ancient)
-        #if   (last_depar not in distance[b]) or  (dist_ancient not in distance[b][last_depar]):
-        #    return
-        #if distance[b][last_depar][dist_ancient] < arrival: 
-        #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
         if cnew < cold:
             #pre[b][arrival] = set()
             pre[b][arrival] = dict()
             cur_best[b][arrival] = (cur_best[b][t][0],cur_best[b][t][1])
-            #Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)) )
-            #print(arrival, last_depar, cold)
-            # if (b,arrival) in Q_nod:
-            #     Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
-            # else:
-            #     Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
 
-    def relax_resting_paths_dij(self, b, t, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod, P, distance):
-        #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        #arrivals_b = [e for e in events if (e in pre[b]) and (pre[b][e] != {}) ]
-        #close_arrival = self.closest_arrival(t2, arrivals_b)
-        #print("close_arrival",close_arrival, t2)
-        #close_arrival = dernier_arrive[b]
-        #if close_arrival != -1:
-        #last_depar = cur_best[b][t1][0]
-        #for i in range(events_rev[close_arrival],len(events)):
+    def relax_resting_paths_dij(self, b, t, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod):
         for i in [events_rev[t1],events_rev[t2]]:
             if events[i] >= t:
-                self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod, P, distance)
+                self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod)
 
         return
 
-    def relax_paths_aux_dij(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod, P, distance):
+    def relax_resting_paths_dij2(self, b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod):
+        self.relax_resting_aux_dij(b, t, tp, cur_best, pre, Q, Q_nod)
+
+        return
+
+    def relax_paths_aux_dij(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
         print("a",a,"e",e,"b",b,"arrival",arrival)
         #if arrival in P[b]:
         #    return
@@ -5346,7 +5331,7 @@ class StreamGraph:
                 if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
                     pre[b][arrival][(a,e)] = edge_taken
 
-    def relax_paper_dij(self, a, b, t, t1, t2, pre, cur_best, events, Q, Q_nod, P, distance):
+    def relax_paper_dij(self, a, b, t, t1, t2, pre, cur_best, events, Q, Q_nod):
         #arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
         arrivals = []
         if pre[a][t] != {}:
@@ -5357,10 +5342,18 @@ class StreamGraph:
             last_depar = cur_best[a][e][0]
             first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
             if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
-                self.relax_paths_aux_dij(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre, Q, Q_nod, P, distance)
+                self.relax_paths_aux_dij(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre, Q, Q_nod)
 
                 if second_arrival != -1:
-                    self.relax_paths_aux_dij(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre, Q, Q_nod, P, distance)
+                    self.relax_paths_aux_dij(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre, Q, Q_nod)
+        return
+
+    def relax_paper_dij2(self, a, b, t, tp, pre, cur_best, events, Q, Q_nod, edge):
+        if pre[a][t] == {}:
+            return
+        #print("arrivals",arrivals)
+        last_depar = cur_best[a][t][0]
+        self.relax_paths_aux_dij(a, b, last_depar, tp, t, edge, cur_best, pre, Q, Q_nod)
         return
 
 
@@ -5371,6 +5364,32 @@ class StreamGraph:
             res[x].append(y)
             res[y].append(x)
         return res
+    def neighbors2(self):
+        res ={ i:dict() for i in self.nodes}
+        for i in range(len(self.links)):
+            x,y = self.links[i]
+            if y not in res[x]:
+                res[x][y] = []
+            if x not in res[y]:
+                res[y][x] = []
+            #print(self.link_presence[i])
+            for j in range(0,len(self.link_presence[i]),2):
+                t1,t2 = self.link_presence[i][j:j+2]
+                if t1 != t2:
+                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+                        res[x][y].append([t1, (t1,t1)])
+                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+                        res[y][x].append([t1, (t1,t1)])
+                    res[x][y].append([t2, (t1,t2)])
+                    res[y][x].append([t2, (t1,t2)])
+                else:
+                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+                        res[x][y].append([t1, (t1,t1)])
+                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+                        res[y][x].append([t1, (t1,t1)])
+
+        return res
+
     def link_index(self):
         d = dict()
         for i in range(0, len(self.links)):
@@ -5444,14 +5463,61 @@ class StreamGraph:
                     #we can check for times if we'd like
                     if not (t > t2):
                         print("salut",(a,t),(b,t1,t2))
-                        self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+                        self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod)
                         #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
                         print(cur_best)
-                        self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod, P, distance)
+                        self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod)
                         print("resting", cur_best)
                         #self.relax_paper(b,a,t1,t2,pre,cur_best, events)
                         #self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
 
+        return (pre, cur_best)
+
+    def dijkstra_temporal2(self, s, events, events_rev, neighbors, d):
+        Q = fib.FibonacciHeap()
+        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
+        nod = dict()
+        P = dict()
+        for v in self.nodes:
+            P[v] = set()
+        for e in neighbors[s].keys():
+            (xx,yy) = (s,e)
+            if (s,e) not in d:
+                (xx,yy) = (e,s)
+            for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+            #for j in range(0,2,2):
+                if self.link_presence[d[(xx,yy)]][j] != self.link_presence[d[(xx,yy)]][j+1]:
+                    l = self.link_presence[d[(xx,yy)]][j:j+2]
+                else:
+                    l = self.link_presence[d[(xx,yy)]][j:j+1]
+                for t in l:
+                    cur_best[s][t] = (t,0)
+                    pre[s][t] = {(0,0):(-1,-1)}
+                    if (s,t) not in nod:
+                        nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
+        print(Q.total_nodes)
+        while Q.total_nodes != 0:
+            print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+            (x,y) = Q.extract_min().data
+            del nod[y]
+            for jjj in self.nodes:
+                print("pre", jjj,pre[jjj])
+                print("cur", jjj,cur_best[jjj])
+                #print("dernier", jjj,dernier_arrive[jjj])
+            print(Q.total_nodes, "extracted", y,x)
+            (a,t) = y
+            P[a].add(t)
+            (tpp,dis) = x
+            for b in neighbors[a].keys():
+                for (tp,edge) in neighbors[a][b]:
+                    if tp >= t:
+                        print("tp",tp)
+                        print("salut2",(a,t),(b,tp))
+                        self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
+                        print(cur_best)
+                        self.relax_paper_dij2(a,b,t,tp,pre,cur_best, events, Q, nod, edge)
+                        print("relax paths", cur_best)
         return (pre, cur_best)
 
 
