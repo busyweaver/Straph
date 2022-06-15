@@ -5335,6 +5335,34 @@ class StreamGraph:
                 if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
                     pre[b][arrival][(a,e)] = edge_taken
 
+    def relax_paths_aux_dij2(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
+        print("a",a,"e",e,"b",b,"arrival",arrival)
+        #if arrival in P[b]:
+        #    return
+        cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
+        cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+        print("cnew",cnew,"cold",cold)
+        #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+        if cnew < cold:
+            #pre[b][arrival] = set()
+            pre[b][arrival] = dict()
+            cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
+            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+            #print("Q_nod[b,arrival]",Q_nod[b,arrival])
+            if (b,arrival) in Q_nod:
+                Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
+            else:
+                Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
+            #if last_depar not in distance[b]:
+            #    distance[b][last_depar] = dict()
+            #distance[b][last_depar][cnew[1]] = arrival
+
+            #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
+        if cnew == cold:
+            #pre[b][arrival].add((a,e,edge_taken))
+            #if (a,e) not in pre[b][arrival]:
+            pre[b][arrival][(a,e)] = edge_taken
+
     def relax_paper_dij(self, a, b, t, t1, t2, pre, cur_best, events, Q, Q_nod):
         #arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
         arrivals = []
@@ -5357,7 +5385,7 @@ class StreamGraph:
             return
         #print("arrivals",arrivals)
         last_depar = cur_best[a][t][0]
-        self.relax_paths_aux_dij(a, b, last_depar, tp, t, edge, cur_best, pre, Q, Q_nod)
+        self.relax_paths_aux_dij2(a, b, last_depar, tp, t, edge, cur_best, pre, Q, Q_nod)
         return
 
 
@@ -5584,7 +5612,7 @@ class StreamGraph:
             print(Q.total_nodes, "extracted", y,x)
             (a,t) = y
             P[a].add(t)
-            (tpp,dis) = x
+            #(tpp,dis) = x
             for b in neighbors_inv[a].keys():
                 for (tp,edge) in neighbors_inv[a][b]:
                     if tp >= t:
