@@ -5580,7 +5580,21 @@ class StreamGraph:
                         print("relax paths", cur_best)
         return (pre, cur_best)
 
-    def dijkstra_temporal2_direc(self, s, events, events_rev, neighbors, d, neighbors_inv):
+    def until(self, events, events_rev):
+        unt = dict()
+        for v in self.nodes:
+            unt[v] = dict()
+            for i in range(0,len(self.node_presence[v]),2):
+                j = events_rev[self.node_presence[v][i]]
+                while j<len(events) and  events[j] <= self.node_presence[v][i+1]:
+                    unt[v][events[j]] = self.node_presence[v][i+1]
+                    j += 1
+        return unt
+
+
+
+
+    def dijkstra_temporal2_direc(self, s, events, events_rev, neighbors, d, neighbors_inv, unt):
         Q = fib.FibonacciHeap()
         cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
         pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
@@ -5615,7 +5629,7 @@ class StreamGraph:
             #(tpp,dis) = x
             for b in neighbors_inv[a].keys():
                 for (tp,edge) in neighbors_inv[a][b]:
-                    if tp >= t:
+                    if tp >= t and unt[a][t] >= tp:
                         print("tp_inv",tp)
                         print("salut2_inv",(a,t),(b,tp))
                         self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
@@ -5623,7 +5637,7 @@ class StreamGraph:
 
             for b in neighbors[a].keys():
                 for (tp,edge) in neighbors[a][b]:
-                    if tp >= t:
+                    if tp >= t and unt[a][t] >= tp:
                         print("tp",tp)
                         print("salut2",(a,t),(b,tp))
                         self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
@@ -7405,7 +7419,7 @@ class StreamGraph:
             self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
         return sigma
 
-    def optimal_with_resting_con(self, node, f_edge, events, G, sigma, cur_best):
+    def optimal_with_resting_con(self, node, f_edge, events, G, sigma, cur_best, unt):
         sigma_r = dict()
         for k in self.nodes:
             pred = -1
@@ -7423,8 +7437,11 @@ class StreamGraph:
                     else:
                         if (k,t) in G:
                             edge2 = f_edge[(k,t)]
-                            if edge == edge2:
+                            if edge == edge2 and unt[k][pred] >= t:
                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
+                                pred = t
+                            elif edge == edge2 and not(unt[k][pred] >= t):
+                                sigma_r[(k,t)] = sigma[(k,t)][-1]
                                 pred = t
                             else:
                                 #instant paths occur only here
