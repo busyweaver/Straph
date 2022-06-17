@@ -7702,7 +7702,7 @@ class StreamGraph:
         return nppol.Polynomial(res)
 
 
-    def contri_delta_svt_con(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT):
+    def contri_delta_svt_con(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt):
         print("******** new call contri_delta_svt","v", v, "t", t)
         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
             partial_sum = dict()
@@ -7717,7 +7717,7 @@ class StreamGraph:
                     print("(w,t')",(w,t_p))
                     self.contri_delta_svt_con(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
                     (t1,t2) = pre[w][t_p][v,t]
-                    if t1 != t2 and t_p > t:
+                    if t1 != t2 and t_p > t and unt(t) >=tp:
                         for yp,tpp in GT[t1,t2][w,t_p]:
                             print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
                             self.contri_delta_svt_con(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
