@@ -304,15 +304,31 @@ def read_stream_graph(path_links, path_nodes=None, node_label=True,
     links = []
     link_presence = []
     id_to_label, label_to_id = None, None
+    alpha = -numpy.Infinity
+    omega = numpy.Infinity
+
     if node_label:
         id_to_label = {}
         label_to_id = defaultdict(lambda: len(label_to_id))
 
     if path_nodes is not None:
         with open(path_nodes, 'r') as file_input:
+            line_number = 0
             for line in file_input:
+                ordinary_line = True
+                line_copy = line[:]
+                if line_number == 0 or line_number == 1:
+                    ordinary_line = False
+                    line_copy = line_copy.strip().split("=")
+                    if line_copy[0].strip()=="alpha":
+                        alpha = float(line_copy[1])
+                    elif line_copy[0].strip()=="omega":
+                        omega = float(line_copy[1])
+                line_number+=1
+
+
                 line = line.strip().split(" ")
-                if len(line) > 1:
+                if len(line) > 1 and ordinary_line:
                     if node_label:
                         n_label = str(line[0])
                         n = label_to_id[n_label]
@@ -373,7 +389,10 @@ def read_stream_graph(path_links, path_nodes=None, node_label=True,
                     link_presence=link_presence,
                     node_to_label=(id_to_label if id_to_label else None),
                     weights=(weights if weights else None),
-                    trips=(trips if trips else None))
+                    trips=(trips if trips else None),
+                    points = [],
+                    alpha = alpha,
+                    omega = omega)
     return S
 
 
@@ -497,7 +516,8 @@ class StreamGraph:
                  weights=None,
                  trips=None,
                  points=[],
-                 interval_type=None,
+                 alpha = -numpy.Infinity,
+                 omega = numpy.Infinity
     ):
         """
         A basic constructor for a ``StreamGraph`` object
@@ -521,6 +541,15 @@ class StreamGraph:
         self.weights = weights
         self.trips = trips
         self.points = points
+        l = self.event_times()
+        if alpha == -numpy.Infinity:
+            self.alpha = min(l)
+        else:
+            self.alpha = alpha
+        if omega == numpy.Infinity:
+            self.omega = max(l)
+        else:
+            self.omega = omega
 
     def check_integrity(self):
         """
@@ -913,6 +942,55 @@ class StreamGraph:
     #               WRITERS                                            #
     ####################################################################
 
+    def sg_to_streamfig(self, output_file):
+        """
+        tb : time of arrival (b: begin)
+        te : time of departure (e: end)
+        Output format :
+        a preciser
+
+        :param output_file: path to store nodes, links and their time of presence
+        :return:
+        """
+
+
+        if self.node_to_label:
+            with open(output_file + '.py', 'w') as file_output:
+                file_output.write("import streamfig\n")
+                file_output.write("s = streamfig.StreamFig(alpha="+ str(self.alpha) +", omega=" + str(self.omega) + ", directed = True)\n")
+                for n, np in zip(self.nodes, self.node_presence):
+                    file_output.write("s.addNode(\"" +str(self.node_to_label[n]) + "\",[ ")
+                    for i in range(0,len(np)-2,2):
+                        file_output.write( str((np[i],np[i+1]))+", " )
+                    i = len(np)-2
+                    file_output.write( str((np[i],np[i+1]))+"]) " )
+                    file_output.write("\n")
+
+                for j in range(0,len(self.links)):
+                    for i in range(0,len(self.link_presence[j]),2 ):
+                        file_output.write("s.addLink(\"" + str(self.node_to_label[self.links[j][0]]) + "\", \"" + str(self.node_to_label[self.links[j][1]]) + "\", " + str(self.link_presence[j][i]) + ","  + str(self.link_presence[j][i+1]) + ")\n" )
+                    file_output.write("\n")
+                file_output.write("s.save_make_figure(\"png\",0) \n")
+
+        else:
+            with open(output_file + '.py', 'w') as file_output:
+                file_output.write("import streamfig\n")
+                file_output.write("s = streamfig.StreamFig(alpha="+ self.alpha +", omega=" + self.omega + ", directed = True)\n")
+                for n, np in zip(self.nodes, self.node_presence):
+                    file_output.write("s.addNode(\"" +str(n) + "\",[ ")
+                    for i in range(0,len(np)-2,2):
+                        file_output.write( str((np[i],np[i+1]))+", " )
+                    i = len(np)-2
+                    file_output.write( str((np[i],np[i+1]))+"]) " )
+                    file_output.write("\n")
+
+                for j in range(0,self.links):
+                    for i in range(0,len(self.link_presence[l]),2 ):
+                        file_output.write("s.addLink(\"" + str(self.node_to_label[self.links[j][0]]) + "\", \"" + str(self.node_to_label[self.links[j][1]]) + "\", " + str(self.link_presence[j][i]) + ","  + str(self.link_presence[j][i+1]) + ")\n" )
+                    file_output.write("\n")
+                file_output.write("s.save_make_figure(\"png\",0) \n")
+
+
     def write_to_sg(self, output_file):
         """
         tb : time of arrival (b: begin)
@@ -930,8 +1008,15 @@ class StreamGraph:
         :param output_file: path to store nodes, links and their time of presence
         :return:
         """
+
+
         if self.node_to_label:
             with open(output_file + '_nodes.sg', 'w') as file_output:
+                if self.alpha != -numpy.Infinity:
+                    file_output.write("alpha =" + self.alpha +" \n")
+                if self.omega != -numpy.Infinity:
+                    file_output.write("omega =" + self.omega +" \n")
+
                 for n, np in zip(self.nodes, self.node_presence):
                     file_output.write(str(self.node_to_label[n]) + " ")
                     for t in np:
@@ -4648,7 +4733,8 @@ class StreamGraph:
         link_presence = copy.deepcopy(self.link_presence)
         weights = copy.deepcopy(self.weights)
         trips = copy.deepcopy(self.trips)
-        return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips)
+        points = self.points[:]
+        return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips,points,self.alpha,self.omega)
 
     def duplicate_elem_in_list(self, l):
         res = l + l
@@ -4660,12 +4746,9 @@ class StreamGraph:
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()
-        s.interval_type = []
         for i in range(0,len(self.links)):
             a,b = self.links[i]
-            s.interval_type.append([])
             decalage = 0
-            s.interval_type[i] = [ 1 for  k in range(len(s.link_presence[i]))]
             for j in range(0,len(self.link_presence[i]),2):
                 t1,t2 = self.link_presence[i][j:j+2]
                 #print("t1,t2",a,b,(t1,t2))
@@ -4675,7 +4758,6 @@ class StreamGraph:
                 dup = self.duplicate_elem_in_list(portion)
                 dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
                 s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
-                s.interval_type[i] = s.interval_type[i][0:j+1+decalage] + dup_interval + s.interval_type[i][j+1+decalage:len(s.interval_type[i])]
                 decalage += len(dup)
 
         return s
