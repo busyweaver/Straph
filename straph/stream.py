@@ -318,11 +318,12 @@ def read_stream_graph(path_links, path_nodes=None, node_label=True,
                 ordinary_line = True
                 line_copy = line[:]
                 if line_number == 0 or line_number == 1:
-                    ordinary_line = False
                     line_copy = line_copy.strip().split("=")
                     if line_copy[0].strip()=="alpha":
+                        ordinary_line = False
                         alpha = float(line_copy[1])
                     elif line_copy[0].strip()=="omega":
+                        ordinary_line = False
                         omega = float(line_copy[1])
                 line_number+=1
 
@@ -942,7 +943,7 @@ class StreamGraph:
     #               WRITERS                                            #
     ####################################################################
 
-    def sg_to_streamfig(self, output_file):
+    def sg_to_streamfig(self, output_file, language):
         """
         tb : time of arrival (b: begin)
         te : time of departure (e: end)
@@ -970,7 +971,8 @@ class StreamGraph:
                     for i in range(0,len(self.link_presence[j]),2 ):
                         file_output.write("s.addLink(\"" + str(self.node_to_label[self.links[j][0]]) + "\", \"" + str(self.node_to_label[self.links[j][1]]) + "\", " + str(self.link_presence[j][i]) + ","  + str(self.link_presence[j][i+1]) + ")\n" )
                     file_output.write("\n")
-                file_output.write("s.save_make_figure(\"png\",0) \n")
+                file_output.write("s.addTimeLine(ticks=2) \n")
+                file_output.write("s.save_make_figure(\""+language+"\",0) \n")
 
         else:
             with open(output_file + '.py', 'w') as file_output:
@@ -988,7 +990,8 @@ class StreamGraph:
                     for i in range(0,len(self.link_presence[l]),2 ):
                         file_output.write("s.addLink(\"" + str(self.node_to_label[self.links[j][0]]) + "\", \"" + str(self.node_to_label[self.links[j][1]]) + "\", " + str(self.link_presence[j][i]) + ","  + str(self.link_presence[j][i+1]) + ")\n" )
                     file_output.write("\n")
-                file_output.write("s.save_make_figure(\"png\",0) \n")
+                file_output.write("s.addTimeLine(ticks=2) \n")
+                file_output.write("s.save_make_figure(\""+language+"\",0) \n")
 
 
     def write_to_sg(self, output_file):
