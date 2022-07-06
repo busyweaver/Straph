@@ -22,6 +22,7 @@ setup(name='straph',
                 'straph.generators',
                 'straph.parser',
                 'straph.paths',
+                'straph.betweenness',
                 'straph.utils'
                 ],
       classifiers=[

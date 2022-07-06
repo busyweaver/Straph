@@ -347,7 +347,7 @@ def read_stream_graph(path_links, path_nodes=None, node_label=True,
                     u_label = str(line[0])
                     v_label = str(line[1])
                     if u_label not in label_to_id or v_label not in label_to_id:
-                        #  Probably an empty node...
+                        #  Probably an empty node...
                         continue
                     # assert u_label in label_to_id
                     # assert v_label in label_to_id
@@ -797,7 +797,7 @@ class StreamGraph:
         nodes = []
         for n, np in zip(self.nodes, self.node_presence):
             for t0, t1 in zip(np[::2], np[1::2]):
-                nodes.append((2, t0, t1, n))  #  code a node arrival with a 2
+                nodes.append((2, t0, t1, n))  #  code a node arrival with a 2
         if free_memory:
             self.nodes = []
             self.node_presence = []
@@ -1256,7 +1256,7 @@ class StreamGraph:
                         prop_to_clusters[prop[n]].append((sc.times[0], sc.times[1], n))
                     elif n in node_list:
                         prop_to_clusters[prop[n]].append((sc.times[0], sc.times[1], n))
-            else:  #  Isolated nodes (default value 0)
+            else:  #  Isolated nodes (default value 0)
                 for n in sc.nodes:
                     if node_list is None:
                         prop_to_clusters[0].append((sc.times[0], sc.times[1], n))
@@ -1296,7 +1296,7 @@ class StreamGraph:
                     elif n in node_list:
                         node_to_signals[n][t0] = prop[n]
                         node_to_signals[n][t1] = prop[n]
-            else:  #  Isolated nodes (default value 0)
+            else:  #  Isolated nodes (default value 0)
                 for n in sc.nodes:
                     if node_list is None:
                         node_to_signals[n][t0] = 0
@@ -1360,7 +1360,7 @@ class StreamGraph:
                 # for i,c in enumerate(communities):
                 #     clusters.append([(sc.times[0], sc.times[1], n) for n in c])
                 # print("clusters :",clusters)
-            else:  #  Isolated nodes (default value 0)
+            else:  #  Isolated nodes (default value 0)
                 # for n in sc.nodes:
                 #     clusters.append([(sc.times[0], sc.times[1], n)])
                 sc.clusters = [{n} for n in sc.nodes]
@@ -4267,7 +4267,7 @@ class StreamGraph:
                 t0, t1, u = n
                 nodes_average_core_number[u] += (t1 - t0) * c
         for u in nodes_average_core_number:
-            #  TODO : NODES DURATION
+            #  TODO : NODES DURATION
             nodes_average_core_number[u] = nodes_average_core_number[u] / nodes_duration[u]
         return
 
