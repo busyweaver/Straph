@@ -14,6 +14,16 @@ class Volume:
         else:
             res = Volume(sp,dp)
         return res
+    def __sub__(self, y):
+        sp = y.val
+        dp = y.dim
+        if self.dim == dp:
+            res = Volume(self.val-sp,self.dim)
+        elif self.dim > dp:
+            res = Volume(self.val,self.dim)
+        else:
+            res = Volume(sp,dp)
+        return res
     def __iadd__(self, y):
         x = self.__add__(y)
         self.val = x.val
@@ -27,7 +37,7 @@ class Volume:
     def __truediv__(self ,y):
         sp = y.val
         dp = y.dim
-        return (self.val/sp,self.dim-dp)
+        return Volume(self.val/sp,self.dim-dp)
 
     def __radd__(self, y):
         return self.__add__(y)

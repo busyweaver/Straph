@@ -21,7 +21,7 @@ class Graph:
     def out_degree(self):
         return self.graph.out_degree()
     def in_degree(self):
-        return self.grah.in_degree()
+        return self.graph.in_degree()
 
     def sinks(self):
         return list((node for node, out_degree in self.graph.out_degree() if out_degree == 0))
@@ -90,21 +90,27 @@ def predecessor_graph(s, pre, node):
 def graph_to_ordered(G, ev, ev_rev):
     return org.OrdGraph(G.nodes(), G.edges(), ev, ev_rev, G.sinks())
 
-def trav_instant_graphs(G, node, e, GG, visited):
+
+
+def trav_instant_graphs(G, e, GG, visited):
     if e in visited:
         return
-    #print("***** start *****", e)
+    #print("***** start *****", e, G)
     visit = G.successors(e)
     #print("visit",visit)
     visited.add(e)
-    inter_act = G.edge_weight(node,e,"interval")
-    t1,t2 = inter_act
-    if t1 != t2 and t2 == node[1]:
-        if inter_act not in GG:
-            GG[inter_act] = Graph()
-        GG[inter_act].add_edge(node,e,"weight",1)
-    for ee in visit:
-        trav_instant_graphs(G,e, ee, GG, visited)
+    for (w,t_p) in visit:
+        inter_act = G.edge_weight(e,(w,t_p),"interval")
+        t1,t2 = inter_act
+        if t1 != t2 and t2 == e[1]:
+            if inter_act not in GG:
+                GG[inter_act] = Graph()
+            GG[inter_act].add_edge(e,(w,t_p),"weight",1)
+        if t1 != t2 and not t2 == e[1]:
+            if inter_act not in GG:
+                GG[inter_act] = Graph()
+            GG[inter_act].add_edge(e,(w,t_p),"weight",0)
+        trav_instant_graphs(G,(w,t_p), GG, visited)
 
 def instant_graphs(G):
     GG = dict()
@@ -112,7 +118,7 @@ def instant_graphs(G):
     l = G.sources()
     for node in l:
         for e in G.successors(node):
-            trav_instant_graphs(G, node, e, GG, set())
+            trav_instant_graphs(G, e, GG, set())
     return GG
 
 

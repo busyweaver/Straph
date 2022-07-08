@@ -36,6 +36,7 @@ def vol_rec_con(s, e, G_rev, sigma, cur_best, mx):
             if j == 0:
                 for (w,tp) in l:
                     vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+                    #print("e",e,"res",res, "sigma[(w,tp)][-1]",sigma[(w,tp)][-1],"(w,tp)",(w,tp))
                     res += sigma[(w,tp)][-1]
                 sigma[e][0] = res
             elif j == 1:
@@ -50,7 +51,7 @@ def vol_rec_con(s, e, G_rev, sigma, cur_best, mx):
                     t1,t2 = G_rev.edge_weight(e,(w,tp),"interval")
                     if t1 != t2 and tp == t2:
                         vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
-                        if (j-1) in sigma[(w,tp)]:
+                        if (j-1) in sigma[(w,tp)] and sigma[(w,tp)][j-1] != vol.Volume(0,0):
                             res += sigma[(w,tp)][j-1] * vol.Volume((t2-t1)/j,1)
                 sigma[e][j] = res
 
@@ -114,9 +115,15 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
                         sigma_r[(k,t)] = sigma_r[(k,pred)]
     return sigma_r
 
-def volume_instantenuous(s, GI, events):
+def volume_instantenuous(s, G, GI, events, events_rev):
     before = {v:{t: False for t in events} for v in s.nodes}
     after = {v:{t: False for t in events} for v in s.nodes}
+    for e in G.sources():
+        for (v,t) in G.successors(e):
+            t1,t2 = G.edge_weight(e, (v,t), "interval")
+            if t1 != t2:
+                before[v][t] = True
+                after[v][events[events_rev[t]+1]] = True
     for e in GI:
         source = GI[e].sources()
         for (v,t) in GI[e].successors(source[0]):
