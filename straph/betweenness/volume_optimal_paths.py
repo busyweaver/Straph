@@ -118,15 +118,28 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
 def volume_instantenuous(s, G, GI, events, events_rev):
     before = {v:{t: False for t in events} for v in s.nodes}
     after = {v:{t: False for t in events} for v in s.nodes}
+    l = []
     for e in G.sources():
         for (v,t) in G.successors(e):
             t1,t2 = G.edge_weight(e, (v,t), "interval")
             if t1 != t2:
-                before[v][t] = True
-                after[v][events[events_rev[t]+1]] = True
-    for e in GI:
-        source = GI[e].sources()
-        for (v,t) in GI[e].successors(source[0]):
-            before[v][e[1]] = True
-            after[v][e[0]] = True
+                before[v][t2] = True
+                after[v][t1] = True
+                l.append([v,t1,t2])
+    for v,t1,t2 in l:
+        if (t1,t2) in GI and (v,t2) in GI[(t1,t2)].nodes():
+            print(t1,t2)
+            for (w,tp) in GI[(t1,t2)].successors((v,t2)):
+                if tp == t2:
+                    before[w][t2] = True
+                    after[w][t1] = True
+
+    # for e in GI:
+    #     source = GI[e].sources()
+    #     #if before[source[0]][source[1]] == True:
+    #     for (v,t) in GI[e].successors(source[0]):
+    #         if source[1] == e[1]:
+    #             print("v",v,"t",t,"e",e,"source",source)
+    #             before[v][e[1]] = True
+    #             after[v][e[0]] = True
     return before, after

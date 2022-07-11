@@ -72,7 +72,7 @@ def prev_event(tp,event,event_rev):
     return event[i-1]
 
 
-def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse):
+def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution):
     for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
         print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
         print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
@@ -87,11 +87,14 @@ def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local
                 print("ici")
                 contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
             else:
-                print("la")
+                print("la","contribution[w][t_p]",contribution[w][t_p], "ii", ii, "len(l_nei[v,t])-1",len(l_nei[v,t])-1)
                 if ii == len(l_nei[v,t])-1:
-                    contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1]) ))
+                    #contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1]) ))
+                    contrib_local[v][event[jjj]]= (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
                 else:
-                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1])))
+                    print("partial_sum",partial_sum[l_nei[v,t][ii+1][0]], "l_nei[v,t]",l_nei[v,t])
+                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+                    #(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1])))
 
 
 
@@ -124,18 +127,19 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                     s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
 
                 if l_nei[v,t][ii][0] not in partial_sum:
-                    partial_sum[l_nei[v,t][ii][0]] = s
+                    partial_sum[l_nei[v,t][ii][0]] = s.copy()
                 else:
-                    partial_sum[l_nei[v,t][ii][0]] += s
+                    partial_sum[l_nei[v,t][ii][0]] += s.copy()
 
-                print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
+                print("******** half call contri_delta_svt","v", v, "t", t, "sum", s, "ii", ii, "partial_sum", partial_sum)
                 if ii != 0:
                     jj = event_reverse[l_nei[v,t][ii-1][0]]
                 else:
                     jj = event_reverse[t]
                 print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
-                print("******** half after call contri_delta_svt","v", v, "t", t)
                 print("dic_nodes[u]",l_nei[v,t],"u",u)
+
+                contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution)
 
 
 
