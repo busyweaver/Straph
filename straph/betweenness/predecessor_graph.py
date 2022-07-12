@@ -121,5 +121,16 @@ def instant_graphs(G):
             trav_instant_graphs(G, e, GG, set())
     return GG
 
+def interval_graph(Gp):
+    GT = dict()
+    for e in Gp:
+        GT[e] = Gp[e].transitive_closure_dag( topo_order=None)
+    return GT
+
+def max_volume_superposition(GT):
+    length = []
+    for e in GT:
+        length.append(max( GT[e].edge_weight(i,j,"weight") for (i,j) in  GT[e].edges()))
+    return  max(length) +1
 
 

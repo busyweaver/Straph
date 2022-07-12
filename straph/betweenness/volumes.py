@@ -1,3 +1,4 @@
+import numpy
 class Volume:
     def __init__(self, s, d):
         self.val = s
@@ -49,3 +50,13 @@ class Volume:
 
     def copy(self):
         return Volume(self.val,self.dim)
+
+    def norm(self):
+        if self.dim > 0:
+            return numpy.Infinity
+        elif self.dim < 0:
+            return 0
+        else:
+            return self.val
+
+

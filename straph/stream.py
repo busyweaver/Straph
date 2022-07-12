@@ -1015,10 +1015,10 @@ class StreamGraph:
 
         if self.node_to_label:
             with open(output_file + '_nodes.sg', 'w') as file_output:
-                if self.alpha != -numpy.Infinity:
-                    file_output.write("alpha =" + self.alpha +" \n")
-                if self.omega != -numpy.Infinity:
-                    file_output.write("omega =" + self.omega +" \n")
+                # if self.alpha != -numpy.Infinity:
+                #     file_output.write("alpha =" + self.alpha +" \n")
+                # if self.omega != -numpy.Infinity:
+                #     file_output.write("omega =" + self.omega +" \n")
 
                 for n, np in zip(self.nodes, self.node_presence):
                     file_output.write(str(self.node_to_label[n]) + " ")
@@ -4584,3286 +4584,3286 @@ class StreamGraph:
                         isolated_nodes.append((t0, t1, n))
         return isolated_nodes
 
-    ###################################
-    #            MetaWalks            #
-    ###################################
-
-    def metapaths(self,x):
-        """the function returns all metapaths in a link stream
-        and is based on bellman-ford algorithm
-
-        :param x: x the node from which we want the metawalks
-        :return: a list of the metapaths in the link stream 
-        """
-        res = [set() for i in range(len(self.nodes))]
-
-        #the 2 loops inside the first are to iterate over each temporal link 
-        for k in self.nodes:
-            for i in range(0,len(self.links)):
-                a,b = self.links[i]
-                for j in range(0,len(self.link_presence[i]),2):
-                    t1,t2 = self.link_presence[i][j:j+2]
-                    #print("lien actuel",a,b,t1,t2)
-                    if a == x:
-                        res[b].add(mw.Metawalk([(t1,t2)],[a,b]))
-                    else:
-                        if len(res[a]) != 0:
-                            for e in res[a]:
-                                start,end = e.time_intervals[-1]
-                                #print("comp", t1,t2,start,end,e)
-                                # check if the path can be extended
-                                if start <= t1:
-                                    #we should clone the metawalk and add something to it
-                                    m = e.clone()
-                                    m.time_intervals.append((t1,t2))
-                                    m.nodes.append(b)
-                                    res[b].add(m)
-        return res
-
-    def actual_degree(self,p):
-        x = p.degree()
-        for i in range(0,x+1):
-            if p.coef[x-i] != 0:
-                return x-i
-        # polynomial is null
-        return -1
-
-
-    def betweenness_temporal_node(self,t,v):
-        """il faut arranger plein de trucs, genre couper les chemins dès le début mais bon """
-        self.add_point(t)
-        new = self.fragmented_stream_graph()
-        all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
-        fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
-        for i in range(0,len(new.nodes)):
-            l = new.fastest_paths_from_vertex(new.nodes[i])
-            #a changer et couper les chemins en amont
-            for el in l:
-                for e in el.values():
-                    for ee in e:
-                        ee = ee.fastest_meta_walk()
-                        all_fastest[i][ee.last_node()].add(ee)
-                        if ee.passes_through(t,v):
-                            fastest_passing_through[i][ee.last_node()].add(ee)
-        return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
-
-    def get_volume_betweenness(self,all_fast,passing):
-        return [   [   (self.volume_metapaths(list(passing[i][j])),self.volume_metapaths(list(all_fast[i][j])))  for j in range(0,len(self.nodes))]  for i in range(0,len(self.nodes))]
-
-
-    def matthieu_clem_betweenness(self,all_fast,passing):
-        #not including contribution..
-        print("all_fastest",all_fast)
-        print("passing_thruough",passing)
-        res = self.get_volume_betweenness(all_fast,passing)
-        print("res",res)
-        return sum(sum( self.value_betweenness_at(res,i,j)  for j in range(0,len(res[i])) )   for i in range(0,len(res)))
-
-    def betweenneess_interval(self,interval_size):
-        m = max(self.times)
-        for i in range(1,m//interval_size):
-            self.add_point(i*(m//interval_size))
-        new = self.fragmented_stream_graph()
-        all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
-        fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
-        for i in range(0,len(new.nodes)):
-            l = new.fastest_paths_from_vertex(new.nodes[i])
-            #a changer et couper les chemins en amont
-            for el in l:
-                for e in el.values():
-                    for ee in e:
-                        ee = ee.fastest_meta_walk()
-                        all_fastest[i][ee.last_node()].add(ee)
-                        if ee.passes_through(t,v):
-                            fastest_passing_through[i][ee.last_node()].add(ee)
-        return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
-
-
-
-    def value_betweenness_at(self,res,i,j):
-        x,y = res[i][j]
-        p = self.actual_degree(x)
-        q = self.actual_degree(y)
-        if p == -1:
-            return 0
-        if p == q:
-            return x.coef[p]/y.coef[q]
-        else:
-            return 0
-
-
-
-    def volume_metapaths(self,l):
-        if l == []:
-            return nppol.Polynomial([0])
-        return sum(e.volume() for e in l)
-
-    def portion_sorted_list(self,l,a,b):
-        b1 = False
-        b2 = True
-        #we should not have any element
-        if a == b:
-            return (0,0)
-        t1 = 0
-        t2 = len(l)
-        for i in range(0,len(l)):
-            if (l[i] > a) and (not b1):
-                t1 = i
-                b1 = True
-            if (l[i] >= b) and b2:
-                t2 = i 
-                b2 = False
-        return (t1,t2)
-
-    def __deepcopy__(self):
-        """
-        make a deepcopy of a stream graph
-        """
-        id = self.id
-        times = copy.deepcopy(self.times)
-        nodes = copy.deepcopy(self.nodes)
-        #node_to_label = dict()
-        # for e in self.node_to_label.keys():
-        #     node_to_label[e] = self.node_to_label[e]
-        node_to_label = self.node_to_label.copy()
-        #print(type(self.node_to_id))
-        if self.node_to_id != None:
-            node_to_id = self.node_to_id.copy()
-        else:
-            node_to_id = None
-        nodes_presence = copy.deepcopy(self.node_presence)
-        links = copy.deepcopy(self.links)
-        link_presence = copy.deepcopy(self.link_presence)
-        weights = copy.deepcopy(self.weights)
-        trips = copy.deepcopy(self.trips)
-        points = self.points[:]
-        return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips,points,self.alpha,self.omega)
-
-    def duplicate_elem_in_list(self, l):
-        res = l + l
-        res.sort()
-        return res
-
-    def fragmented_stream_graph(self):
-        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream"""
-        s = self.__deepcopy__()
-        l = list(self.event_times())
-        l.sort()
-        for i in range(0,len(self.links)):
-            a,b = self.links[i]
-            decalage = 0
-            for j in range(0,len(self.link_presence[i]),2):
-                t1,t2 = self.link_presence[i][j:j+2]
-                #print("t1,t2",a,b,(t1,t2))
-                por_1, por_2 = self.portion_sorted_list(l,t1,t2)
-                portion = l[por_1:por_2]
-                #print("portion",por_1,por_2,l[por_1:por_2])
-                dup = self.duplicate_elem_in_list(portion)
-                dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
-                s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
-                decalage += len(dup)
-
-        return s
-
-    def add_point(self,t):
-        """
-        Add a point to a StreamGraph
-        :param t: the time to be added in the event times
-        """
-        if t not in self.points:
-            self.points.append(t)
-
-    def create_dictionary_all_metapaths(self, mp):
-        res = [dict() for j in range(len(self.nodes))] 
-        for i in range(0,len(mp)):
-            for m in mp[i]:
-                s,e = (m.last_departure(),m.first_arrival())
-                if (s,e) not in res[i]:
-                    res[i][(s,e)] = set()
-                    res[i][(s,e)].add(m)
-                else:
-                    res[i][(s,e)].add(m)
-
-        return res
-
-    def update_metapaths(self, final_paths,  b, t1, t2, m):
-        #normally there should be no keys (i.e intervals) in the paths included in others
-        intervals = [e for e in list(final_paths[b].keys()) ]
-#        print("update_metapaths",b,t1,t2)
-        boo = True
-        if intervals == []:
-            final_paths[b][(t1,t2)] = set()
-            final_paths[b][(t1,t2)].add(m)
-        else:
-
-            if t2 <= t1:
-                # example (3,1) for t1 t2, in this case t1,t2 is a metaedge and nothing happens in the fls in this time, only in boundaries things can happen. if it is an instantenous metapaths it would be included in this one, else it is not an instantenous metapaths and if it starts during t1,t2 it has to be omitted.
-                for e in intervals:
-                    a,c = e
-                    if a >= t2 and a <= t1 and a <= c: #remove instantenous paths included in this one and non instantenous ones.
- #                       print("******** deleting *******",e)
-                        del final_paths[b][e]
-                    elif c >= t2 and c <= t1 and a <= c:
-                        #on peut en avoir plusieur, ne pas sortir ici
-                        del final_paths[b][e]
-                if (t1,t2) in final_paths[b]:
-                    l = list(final_paths[b][(t1,t2)])
-                    if len(m.time_intervals) < len(l[0].time_intervals):
-                        final_paths[b][e] = set()
-                        final_paths[b][e].add(m)
-                    elif len(m.time_intervals) == len(l[0].time_intervals):
-                        final_paths[b][(t1,t2)].add(m)
-                    return
-
-            else: #non instantenous metawalk
-                for e in intervals:
-                    a,c = e
-                    if (a >= t1 and c < t2) or (a > t1 and c <= t2):
-                        boo = False
-                        return boo
-                    if (t1 >= a and t2 < c) or (t1 > a and t2 <= c):
-                        #on peut en avoir plusieur, ne pas sortir ici
-                        del final_paths[b][e]
-                    if (t1 == a and t2 == c):
-                        l = list(final_paths[b][e])
-                        if len(m.time_intervals) < len(l[0].time_intervals):
-                            final_paths[b][e] = set()
-                            final_paths[b][e].add(m)
-                        elif len(m.time_intervals) == len(l[0].time_intervals):
-                            final_paths[b][e].add(m)
-                        return
-            final_paths[b][(t1,t2)] = set()
-            final_paths[b][(t1,t2)].add(m)
-
-
-    def is_latency(self, res,  b, t1, t2):
-        # the pair is instantenous
-        if t2 <= t1:
-            return True
-        #check for inclusion
-        existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
-        return existing_keys == []
-
-    def filter_fastest_metapaths_slow(self, m):
-        res = self.create_dictionary_all_metapaths(m)
-        res2 = self.create_dictionary_all_metapaths(m)
-        for b in range(0,len(self.nodes)):
-            for (t1,t2) in res[b]:
-                if t1 < t2:
-                    if not self.is_latency(res,b,t1,t2):
-                       # print(b,t1,t2)
-                    # there exists a faster path
-                        if (t1,t2) in res2[b]:
-                            del res2[b][(t1,t2)]
-        return res2
-
-    def filter_metapaths(self,x,b,t1,t2,res):
-        #print("filter",x,b,t1,t2)
-        # for el in res:
-        #     for e in el.items():
-        #         for ee in e:
-        #             print(ee)
-        # print("fin dict")
-
-        # i think we can do better, by filtering on the fly not after
-        # check if latency
-
-            existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
-
-
-            if existing_keys != [] and t1 < t2:
-                #not latency
-                del res[b][(t1,t2)]
-            else:
-                #it is a latency and we need to delete other pairs
-                existing_keys = [e for e in list(res[b].keys()) if ((e[0] == t1) and (e[1] > t2)) or ((e[0] <  t1) and (e[1] == t2)) and (e[0] != e[1]) ]
-               # print("existing",existing_keys)
-                for e in existing_keys:
-                    # its a latency and we remove slowlier paths
-                    del res[b][e]
-#        return res
-
-
-
-    def check_edge(self,x,a,b,t1,t2,res, res2):
-        #print("check_edge",a,b,t1,t2)
-        if a == x:
-                #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
-            if (t2,t1) not in res[b]:
-                res[b][(t2,t1)] = set()
-                res2[b][(t2,t1)] = set()
-            res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-            res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-        else:
-            if len(res2[a]) != 0:
-                ll = f.reduce(lambda a, b: a+b, list(map(list,list(res2[a].values()))))
-                for e in ll:
-                    start,end = e.time_intervals[-1]
-                    # check if the path can be extended
-                    if start <= t1:
-                        #we should clone the metawalk and add something to it
-                        m = e.clone()
-                        m.time_intervals.append((t1,t2))
-                        m.nodes.append(b)
-                        last_depar = m.last_departure()
-                        if (last_depar,t1) not in res[b]:
-                            res[b][(last_depar,t1)] = set()
-                            res[b][(last_depar,t1)].add(m)
-                        else:
-                            res[b][(last_depar,t1)].add(m)
-
-                        if (last_depar,t1) not in res2[b]:
-                            res2[b][(last_depar,t1)] = set()
-                            res2[b][(last_depar,t1)].add(m)
-                        else:
-                            res2[b][(last_depar,t1)].add(m)
-                        #print("edge",m)
-                        self.filter_metapaths(x,b,last_depar,t1,res)
-
-    def sf_paths_check(self,x,a,b,t1,t2,res, res2):
-        if a == x:
-                #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
-            if (t2,t1) not in res[b]:
-                res[b][(t2,t1)] = set()
-                res2[b][(t2,t1)] = set()
-            res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-            res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-
-    def adapt_metawalk(self,start,end,t1,t2,e,b):
-            # check if the path can be extended
-        if start <= t1 and end <= t2: #the extension can be added with no problems
-                                #we should clone the metawalk and add something to it
-            m = e.clone()
-            m.time_intervals.append((t1,t2))
-            m.nodes.append(b)
-        elif start <= t1:
-            m = e.clone()
-            m.time_intervals.append((t1,t2))
-            m.nodes.append(b)
-            m.update_following_last(1)
-        elif end <= t2:
-            m = e.clone()
-            m.time_intervals.append((t1,t2))
-            m.nodes.append(b)
-            m.update_following_last(0)
-        else:
-            m = None
-        return m
-
-    def is_shortest_path(self,last_depar,t1,final_paths,m):
-        if (last_depar,t1) in final_paths[b]:
-            r = list(final_paths[b])[0]
-            if len(r.time_intervals) < len(m.time_intervals):
-                return False
-        return True
-
-    def extend_paths(self,x,a,b,t1,t2,final_paths, tmp_paths):
-        #print("extend_paths",a,b,t1,t2)
-        #print("keys")
-        #for e in final_paths:
-        #    print(e.keys())
-        #print("final",final_paths)
-        if a == x:
-            if (t2,t1) not in final_paths[b]:
-                final_paths[b][(t2,t1)] = set()
-                tmp_paths[b][(t2,t1)] = set()
-            final_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-            tmp_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
-        else:
-            if len(tmp_paths[a]) != 0:
-                ll = f.reduce(lambda a, b: a+b, list(map(list,list(tmp_paths[a].values()))))
-                for e in ll:
-                    start,end = e.time_intervals[-1]
-                    boo = True
-                    m = self.adapt_metawalk(start,end,t1,t2,e,b)
-                    #print("res adapt",e,m)
-                    if m == None :
-                        boo = False
-                    if boo == True:
-                        last_depar = m.last_departure()
-                        if ( b in e.nodes):
-                            return
-                        #in all cases the path is ok, so it is added to tmp paths
-                        if (last_depar,t1) not in tmp_paths[b]:
-                            tmp_paths[b][(last_depar,t1)] = set()
-                            tmp_paths[b][(last_depar,t1)].add(m)
-                        else:
-                            tmp_paths[b][(last_depar,t1)].add(m)
-                        # t1 is first arrival
-                        self.update_metapaths(final_paths,  b, last_depar, t1, m)
-
-    def arrival(self, e, t1, t2):
-        second_arrival = -1
-        edge_taken2 = -1
-        if t2 >= e:
-
-            if t2 == e:
-                edge_taken1 = (t1,t2)
-                first_arrival = e
-            else:
-                if t1 != t2:
-                    second_arrival = t2
-                first_arrival = t1
-                edge_taken1 = (t1,t1)
-                edge_taken2 = (t1,t2)
-            res = (first_arrival, second_arrival, edge_taken1,edge_taken2)
-        else:
-            res = (-1,-1,-1,-1)
-        return res
-
-    def compute_c(self, last_depar, arrival, leng):
-        if arrival - last_depar < 0:
-            return (0.0,leng)
-        else:
-            return (arrival - last_depar,leng)
-
-    def closest_arrival(self,arrival,arrivals_b):
-        if len(arrivals_b) == 0:
-            return -1
-        elif len(arrivals_b) == 1:
-            if arrivals_b[0] <= arrival:
-                return arrivals_b[0]
-            else:
-                return -1
-        else:
-            if arrivals_b[-1] <= arrival:
-                return arrivals_b[-1]
-            for i in range(len(arrivals_b)-1,1,-1):
-                if (arrivals_b[i-1] <= arrival) and (arrivals_b[i] >= arrival):
-                    return arrivals_b[i-1]
-
-            else:
-                return -1
-
-    def relax_resting_aux(self, b, last_depar, arrival, e, cur_best, pre):
-        if arrival in cur_best[b]:
-            cnew = self.compute_c(last_depar, arrival, cur_best[b][e][1])
-            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-            #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
-            if cnew < cold:
-                #pre[b][arrival] = set()
-                pre[b][arrival] = dict()
-                cur_best[b][arrival] = (last_depar,cur_best[b][e][1])
-        else:
-            #pre[b][arrival] = set()
-            pre[b][arrival] = dict()
-            cur_best[b][arrival] =  (last_depar,cur_best[b][e][1])
-            #pre[b][arrival].add((a,e,edge_taken1))
-            #pre[b][arrival][(a,e)] = edge_taken
-
-    def relax_resting_paths(self, b, t1, t2, pre, cur_best, events, events_rev):
-        #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals_b = [e for e in events if (e in pre[b]) and (pre[b][e] != {}) ]
-        #arrivals_b.sort()
-        #l = events
-        # D = dict()
-        # for i in range(0,len(events)):
-        #     D[l[i]] = i
-        #print("relaxing_paths", b, t1, t2)
-        #print("resting",arrivals_b)
-        close_arrival = self.closest_arrival(t2, arrivals_b)
-        #print("close_arrival",close_arrival, t2)
-        if close_arrival != -1:
-            last_depar = cur_best[b][close_arrival][0]
-            for i in range(events_rev[close_arrival],len(events)):
-                self.relax_resting_aux(b, last_depar, events[i], close_arrival, cur_best, pre)
-
-            #e = pre[b][close_arrival][1]
-            #aa = pre[b][close_arrival][0]
-            # if t1 != t2:
-            #     first_arrival, second_arrival= (t1, t2)
-            # else:
-            #     first_arrival, second_arrival= (t1, -1)
-            #print("relaxing_paths")
-            #print(aa,b,t1,t2)
-            #print("cur_bestb",cur_best[b])
-            #print("preb",pre[b])
-            #print("arrivals",arrivals_b)
-            #print("first,second",first_arrival, second_arrival)
-            #print("close_arrival",close_arrival, "last_depar", last_depar)
-
-            #if first_arrival in cur_best[b]:
-            #self.relax_resting_aux(b, last_depar, first_arrival, close_arrival, cur_best, pre)
-            #     cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
-            #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-            #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-            #     if cnew < cold:
-            #         #pre[b][first_arrival] = set()
-            #         pre[b][first_arrival] = dict()
-            #         cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
-            #         #pointer[(b,first_arrival)] = (b,close_arrival) 
-            #         #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-            #         # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
-            #     # if cnew == cold:
-            #     #     if (aa,e) not in pre[b][first_arrival]:
-            #     #         pre[b][first_arrival][(aa,e)] = pre[b][close_arrival][edge_last]
-            #     #         bool = True
-            #     #     else:
-            #     #         e1,e2 = edge_last
-            #     #         x1,x2 = pre[b][first_arrival][(aa,e)]
-            #     #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
-            #     #             pre[b][first_arrival][(aa,e)] = edge_last
-            #     #             bool = True
-
-            # else:
-            #     pre[b][first_arrival] = dict()
-            #     cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
-            #     #pointer[(b,first_arrival)] = (b,close_arrival) 
-            #     #pre[b][first_arrival].add((a,e,edge_taken1))
-            #     # pre[b][first_arrival][(aa,e)] = edge_last
-            #     # bool = True
-
-
-            #if second_arrival != -1:
-            #    self.relax_resting_aux(b, last_depar, second_arrival, close_arrival, cur_best, pre)
-                # if second_arrival in cur_best[b]:
-                #     c2new = self.compute_c(last_depar, second_arrival, cur_best[b][close_arrival][1])
-                #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-                #     # if (second_arrival - last_depar) <= 0:
-                #     #     c2 = (0.0,cur_best[a][e][1] + 1)
-                #     # else:
-                #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-
-                #     if c2new < c2old:
-                #         pre[b][second_arrival] = dict()
-                #         cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
-                #         #pointer[(b,second_arrival)] = (b,close_arrival) 
-                #         # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
-                #         #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-
-                #         # if c2new == c2old:
-                #         #     if (aa,e) not in pre[b][second_arrival]:
-                #         #         if bool:
-                #         #             pre[b][second_arrival][(aa,e)] = edge_last
-                #         #         else:
-                #         #             pre[b][second_arrival][(aa,e)] = edge_last
-                #         #     else:
-                #         #         e1,e2 = edge_last
-                #         #         x1,x2 = pre[b][second_arrival][(aa,e)]
-                #         #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
-                #         #             if bool:
-                #         #                 pre[b][second_arrival][(aa,e)] = edge_last
-                #         #             else:
-                #         #                 pre[b][second_arrival][(aa,e)] = edge_last
-                # else:
-                #     pre[b][second_arrival] = dict()
-                #     cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
-                #     #pointer[(b,second_arrival)] = (b,close_arrival) 
-                #     # if bool:
-                #     #     pre[b][second_arrival][(aa,e)] = edge_last
-                #     # else:
-                #     #     pre[b][second_arrival][(aa,e)] = edge_last
-        return
-
-    def relax_paths_aux(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre):
-        if arrival in cur_best[b]:
-            cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
-            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-            #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
-            if cnew < cold:
-                #pre[b][arrival] = set()
-                pre[b][arrival] = dict()
-                cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
-                cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-            if cnew == cold:
-                #pre[b][arrival].add((a,e,edge_taken))
-                if (a,e) not in pre[b][arrival]:
-                    pre[b][arrival][(a,e)] = edge_taken
-                else:
-                    e1,e2 = edge_taken
-                    x1,x2 = pre[b][arrival][(a,e)]
-                    if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                        pre[b][arrival][(a,e)] = edge_taken
-        else:
-            #pre[b][arrival] = set()
-            pre[b][arrival] = dict()
-            cur_best[b][arrival] =  (last_depar,cur_best[a][e][1] + 1)
-            #pre[b][arrival].add((a,e,edge_taken1))
-            pre[b][arrival][(a,e)] = edge_taken
-
-
-    def relax_paper(self, a, b, t1, t2, pre, cur_best, events):
-        #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
-        arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
-        # print(a,b,t1,t2)
-        # print("cur_besta",cur_best[a])
-        # print("cur_bestb",cur_best[b])
-        # print("prea",pre[a])
-        # print("preb",pre[b])
-        for i in range(len(arrivals)):
-            e = arrivals[i]
-            #print("arrivals",arrivals)
-            last_depar = cur_best[a][e][0]
-            first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
-            #print("edge",first_arrival,second_arrival,edge_taken1,edge_taken2)
-            # if t2 >= e: # the new metawalk is ok
-            #     if t2 == e : #3 cases possible on intervals positions
-            #         if cur_best[a][e][0] > t2:
-            #             last_depar = t2
-            #         else:
-            #             last_depar = cur_best[a][e][0]
-            #         edge_taken = (t2,t2)
-            #         first_arrival = e
-            #     if t1 == e and t2 != e : #3 cases possible on intervals positions
-            #         first_arrival = e
-            #         second_arrival = t2
-            #         last_depar = cur_best[a][e][0]
-            #         edge_taken = (t1,t2)
-
-            #         #first_arrival = e
-            #     elif t1 > e:
-            #         if t1 != t2:
-            #             second_arrival = t2
-            #         edge_taken = (t1,t2)
-            #         first_arrival = t1
-            #         last_depar = cur_best[a][e][0]
-            #         #print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
-            if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
-                self.relax_paths_aux(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre)
-                #c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
-                # if (first_arrival - last_depar) <= 0:
-                #     c = (0.0, cur_best[a][e][1] + 1)
-                # else:
-                #     c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
-                # if first_arrival in cur_best[b]:
-                #     cnew = self.compute_c(last_depar, first_arrival, cur_best[a][e][1] + 1)
-                #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                #     if cnew < cold:
-                #         #pre[b][first_arrival] = set()
-                #         pre[b][first_arrival] = dict()
-                #         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                #         #pointer[(b,first_arrival)] = (b,first_arrival) 
-                #         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
-                #         #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
-                #     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
-                #     #     x = 0
-                #     # else:
-                #     #     x = (first_arrival - cur_best[b][first_arrival][0])
-                #     # if c == (x , cur_best[b][first_arrival][1]):
-                #     #if c == ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
-                #     if cnew == cold:
-                #         #pre[b][first_arrival].add((a,e,edge_taken))
-                #         if (a,e) not in pre[b][first_arrival]:
-                #             pre[b][first_arrival][(a,e)] = edge_taken1
-                #             bool = True
-                #         else:
-                #             e1,e2 = edge_taken1
-                #             x1,x2 = pre[b][first_arrival][(a,e)]
-                #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                #                 pre[b][first_arrival][(a,e)] = edge_taken1
-                #                 bool = True
-
-                # else:
-
-                #     #pre[b][first_arrival] = set()
-                #     pre[b][first_arrival] = dict()
-                #     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                #     #pre[b][first_arrival].add((a,e,edge_taken1))
-                #     pre[b][first_arrival][(a,e)] = edge_taken1
-                #     #pointer[(b,first_arrival)] = (b,first_arrival) 
-                #     bool = True
-
-
-                if second_arrival != -1:
-                    self.relax_paths_aux(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre)
-                    # if second_arrival in cur_best[b]:
-                    #     c2new = self.compute_c(last_depar, second_arrival, cur_best[a][e][1] + 1)
-                    #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                    #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-                    #     # if (second_arrival - last_depar) <= 0:
-                    #     #     c2 = (0.0,cur_best[a][e][1] + 1)
-                    #     # else:
-                    #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
-
-                    #     if c2new < c2old:
-                    #         pre[b][second_arrival] = dict()
-                    #         cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
-                    #         #pointer[(b,second_arrival)] = (b,second_arrival) 
-                    #         #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
-                    #         c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
-                    #     # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
-                    #     #     x = 0
-                    #     # else:
-                    #     #     x = (second_arrival - cur_best[b][second_arrival][0])
-                    #     # if c2 == (x , cur_best[b][second_arrival][1]):
-                    #     if c2new == c2old:
-                    #         #pre[b][second_arrival].add((a,e,edge_taken))
-                    #         if (a,e) not in pre[b][second_arrival]:
-                    #             if bool:
-                    #                 pre[b][second_arrival][(b,e)] = edge_taken2
-                    #             else:
-                    #                 pre[b][second_arrival][(a,e)] = edge_taken2
-                    #         else:
-                    #             e1,e2 = edge_taken2
-                    #             x1,x2 = pre[b][second_arrival][(a,e)]
-                    #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                    #                 if bool:
-                    #                     pre[b][second_arrival][(b,e)] = edge_taken2
-                    #                 else:
-                    #                     pre[b][second_arrival][(a,e)] = edge_taken2
-                    # else:
-                    #     pre[b][second_arrival] = dict()
-                    #     cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
-                    #     #pointer[(b,second_arrival)] = (b,second_arrival) 
-                    #     if bool:
-                    #         pre[b][second_arrival][(b,e)] = edge_taken2
-                    #     else:
-                    #         pre[b][second_arrival][(a,e)] = edge_taken2
-        return
-        # def add_curbest_initialise_pre(self, b, t, cur_best, pre):
-    #     if t not in cur_best[b]:
-    #         cur_best[b][t] = (t,1)
-    #     else:
-    #         if (0.0,1) < (t - cur_best[b][t][0],cur_best[b][t][1]):
-    #             cur_best[b][t] = (t,1)
-    #             pre[b][t] = dict()
-    #     return
-
-
-    # def add_from_origin(self, a, b, t1, t2, pre, cur_best):
-    #     self.add_curbest_initialise_pre(b, t1, cur_best, pre)
-    #     self.add_curbest_initialise_pre(b, t2, cur_best, pre)
-    #     if t1 not in pre[b]:
-    #         pre[b][t1] = {(a,0.0):(t1,t1)}
-    #     else:
-    #         #no need for else case, since this can only be included
-    #         if (a,0.0) not in pre[b][t1]:
-    #             pre[b][t1][(a,0.0)] = (t1,t1)
-    #     if t2 not in pre[b]:
-    #         pre[b][t2] = {(a,0.0):(t1,t2)}
-    #     else:
-    #         if (a,0.0) in pre[b][t2]:
-    #             e1,e2 = pre[b][t2][(a,0.0)]
-    #             if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
-    #                 pre[b][t2][(a,0.0)] = (t1,t2)
-    #                 #pre[b][t2] = {(b,0.0):(t1,t2)}
-
-    def count_walks_paper(self,x, events, events_rev):
-        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
-        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
-        for e in cur_best[x]:
-            cur_best[x][e] = (e,0)
-            pre[x][e]={(0,0):(-1,-1)}
-        #the 2 loops inside the first are to iterate over each temporal link 
-        for k in self.nodes:
-            for i in range(0,len(self.links)):
-                a,b = self.links[i]
-                for j in range(0,len(self.link_presence[i]),2):
-                    t1,t2 = self.link_presence[i][j:j+2]
-                    self.relax_paper(a,b,t1,t2,pre,cur_best, events)
-                    self.relax_resting_paths(b,t1,t2,pre,cur_best, events, events_rev)
-                    self.relax_paper(b,a,t1,t2,pre,cur_best, events)
-                    self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
-                        #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
-
-        return (pre, cur_best)
-
-
-    def relax_resting_aux_dij(self, b, t, arrival, cur_best, pre, Q, Q_nod):
-        #if arrival in P[b]:
-        #    return
-        cnew = self.compute_c(cur_best[b][t][0], arrival, cur_best[b][t][1])
-        cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-        if cnew < cold:
-            #pre[b][arrival] = set()
-            pre[b][arrival] = dict()
-            cur_best[b][arrival] = (cur_best[b][t][0],cur_best[b][t][1])
-            if (b,arrival) in Q_nod:
-                Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
-            else:
-                Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
-
-    def relax_resting_paths_dij(self, b, t, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod):
-        for i in [events_rev[t1],events_rev[t2]]:
-            if events[i] >= t:
-                self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod)
-
-        return
-
-    def relax_resting_paths_dij2(self, b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod):
-        self.relax_resting_aux_dij(b, t, tp, cur_best, pre, Q, Q_nod)
-
-        return
-
-    def relax_paths_aux_dij(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
-        print("a",a,"e",e,"b",b,"arrival",arrival)
-        #if arrival in P[b]:
-        #    return
-        cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
-        cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-        print("cnew",cnew,"cold",cold)
-        #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
-        if cnew < cold:
-            #pre[b][arrival] = set()
-            pre[b][arrival] = dict()
-            cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
-            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-            #print("Q_nod[b,arrival]",Q_nod[b,arrival])
-            if (b,arrival) in Q_nod:
-                Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
-            else:
-                Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
-            #if last_depar not in distance[b]:
-            #    distance[b][last_depar] = dict()
-            #distance[b][last_depar][cnew[1]] = arrival
-
-            #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
-        if cnew == cold:
-            #pre[b][arrival].add((a,e,edge_taken))
-            if (a,e) not in pre[b][arrival]:
-                pre[b][arrival][(a,e)] = edge_taken
-            else:
-                e1,e2 = edge_taken
-                x1,x2 = pre[b][arrival][(a,e)]
-                if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
-                    pre[b][arrival][(a,e)] = edge_taken
-
-    def relax_paths_aux_dij2(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
-        print("a",a,"e",e,"b",b,"arrival",arrival)
-        #if arrival in P[b]:
-        #    return
-        cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
-        cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-        print("cnew",cnew,"cold",cold)
-        #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
-        if cnew < cold:
-            #pre[b][arrival] = set()
-            pre[b][arrival] = dict()
-            cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
-            cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
-            #print("Q_nod[b,arrival]",Q_nod[b,arrival])
-            if (b,arrival) in Q_nod:
-                Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
-            else:
-                Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
-            #if last_depar not in distance[b]:
-            #    distance[b][last_depar] = dict()
-            #distance[b][last_depar][cnew[1]] = arrival
-
-            #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
-        if cnew == cold:
-            #pre[b][arrival].add((a,e,edge_taken))
-            #if (a,e) not in pre[b][arrival]:
-            pre[b][arrival][(a,e)] = edge_taken
-
-    def relax_paper_dij(self, a, b, t, t1, t2, pre, cur_best, events, Q, Q_nod):
-        #arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
-        arrivals = []
-        if pre[a][t] != {}:
-            arrivals = [t ]
-        for i in range(len(arrivals)):
-            e = arrivals[i]
-            #print("arrivals",arrivals)
-            last_depar = cur_best[a][e][0]
-            first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
-            if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
-                self.relax_paths_aux_dij(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre, Q, Q_nod)
-
-                if second_arrival != -1:
-                    self.relax_paths_aux_dij(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre, Q, Q_nod)
-        return
-
-    def relax_paper_dij2(self, a, b, t, tp, pre, cur_best, events, Q, Q_nod, edge):
-        if pre[a][t] == {}:
-            return
-        #print("arrivals",arrivals)
-        last_depar = cur_best[a][t][0]
-        self.relax_paths_aux_dij2(a, b, last_depar, tp, t, edge, cur_best, pre, Q, Q_nod)
-        return
-
-
-    def neighbors(self):
-        res =[[] for i in range(len(self.nodes))]
-        for e in self.links:
-            x,y = e
-            res[x].append(y)
-            res[y].append(x)
-        return res
-
-    def neighbors_direct(self):
-        res ={ i:dict() for i in self.nodes}
-        res_inv = { i:dict() for i in self.nodes}
-        for i in range(len(self.links)):
-            x,y = self.links[i]
-            if y not in res[x]:
-                res[x][y] = []
-            if x not in res_inv[y]:
-                res_inv[y][x] = []
-            #print(self.link_presence[i])
-            for j in range(0,len(self.link_presence[i]),2):
-                t1,t2 = self.link_presence[i][j:j+2]
-                if t1 != t2:
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[x][y].append([t1, (t1,t1)])
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res_inv[y][x].append([t1, (t1,t1)])
-                    res[x][y].append([t2, (t1,t2)])
-                    res_inv[y][x].append([t2, (t1,t2)])
-                else:
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[x][y].append([t1, (t1,t1)])
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res_inv[y][x].append([t1, (t1,t1)])
-
-        return res,res_inv
-
-    def neighbors2(self):
-        res ={ i:dict() for i in self.nodes}
-        for i in range(len(self.links)):
-            x,y = self.links[i]
-            if y not in res[x]:
-                res[x][y] = []
-            if x not in res[y]:
-                res[y][x] = []
-            #print(self.link_presence[i])
-            for j in range(0,len(self.link_presence[i]),2):
-                t1,t2 = self.link_presence[i][j:j+2]
-                if t1 != t2:
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[x][y].append([t1, (t1,t1)])
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[y][x].append([t1, (t1,t1)])
-                    res[x][y].append([t2, (t1,t2)])
-                    res[y][x].append([t2, (t1,t2)])
-                else:
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[x][y].append([t1, (t1,t1)])
-                    if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
-                        res[y][x].append([t1, (t1,t1)])
-
-        return res
-
-    def link_index(self):
-        d = dict()
-        for i in range(0, len(self.links)):
-            d[self.links[i]] = i
-        return d
-
-    def dijkstra_temporal(self, s, events, events_rev, neighbors, d):
-        Q = fib.FibonacciHeap()
-        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
-        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
-        nod = dict()
-        P = dict()
-        distance = dict()
-        for v in self.nodes:
-            P[v] = set()
-            distance[v] = dict()
-        # for v in self.nodes:
-        #     cur_best[v] = dict()
-        #     pre[v] = dict()
-        #     for t in events:
-        #         cur_best[v][t] = (-numpy.Infinity,numpy.Infinity)
-        #         pre[v][t] = {}
-        #         if v == s:
-        #             cur_best[v][t] = (t,0)
-        #             pre[v][t]={(0,0):(-1,-1)}
-        #         nod[v,t] = Q.insert( ((t - cur_best[v][t][0],cur_best[v][t][1]),(v,t) ) )
-        for e in neighbors[s]:
-            (xx,yy) = (s,e)
-            if (s,e) not in d:
-                (xx,yy) = (e,s)
-            for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
-            #for j in range(0,2,2):
-                if self.link_presence[d[(xx,yy)]][j] != self.link_presence[d[(xx,yy)]][j+1]:
-                    l = self.link_presence[d[(xx,yy)]][j:j+2]
-                else:
-                    l = self.link_presence[d[(xx,yy)]][j:j+1]
-                for t in l:
-                    cur_best[s][t] = (t,0)
-                    pre[s][t] = {(0,0):(-1,-1)}
-                    if (s,t) not in nod:
-                        nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
-                        distance[s][t] = dict()
-                        distance[s][t][numpy.Infinity] = t
-        print(Q.total_nodes)
-        while Q.total_nodes != 0:
-            #mm = Q.find_min()
-            #print("total_nodes",Q.total_nodes,"mm",mm.key)
-            #q = Q.extract_min()
-            #(x,y) = q.key
-            print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
-            (x,y) = Q.extract_min().data
-            del nod[y]
-            for jjj in self.nodes:
-                print("pre", jjj,pre[jjj])
-                print("cur", jjj,cur_best[jjj])
-                #print("dernier", jjj,dernier_arrive[jjj])
-            print(Q.total_nodes, "extracted", y,x)
-
-            (a,t) = y
-            P[a].add(t)
-            (tp,dis) = x
-            for b in neighbors[a]:
-                (xx,yy) = (a,b)
-                if (a,b) not in d:
-                    (xx,yy) = (b,a)
-
-                for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
-                #for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
-                    t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
-                    #t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
-                    #we can check for times if we'd like
-                    if not (t > t2):
-                        print("salut",(a,t),(b,t1,t2))
-                        self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod)
-                        #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
-                        print(cur_best)
-                        self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod)
-                        print("resting", cur_best)
-                        #self.relax_paper(b,a,t1,t2,pre,cur_best, events)
-                        #self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
-
-        return (pre, cur_best)
-
-    def dijkstra_temporal2(self, s, events, events_rev, neighbors, d):
-        Q = fib.FibonacciHeap()
-        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
-        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
-        nod = dict()
-        P = dict()
-        for v in self.nodes:
-            P[v] = set()
-        for e in neighbors[s].keys():
-            (xx,yy) = (s,e)
-            if (s,e) not in d:
-                (xx,yy) = (e,s)
-            for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
-            #for j in range(0,2,2):
-                if self.link_presence[d[(xx,yy)]][j] != self.link_presence[d[(xx,yy)]][j+1]:
-                    l = self.link_presence[d[(xx,yy)]][j:j+2]
-                else:
-                    l = self.link_presence[d[(xx,yy)]][j:j+1]
-                for t in l:
-                    cur_best[s][t] = (t,0)
-                    pre[s][t] = {(0,0):(-1,-1)}
-                    if (s,t) not in nod:
-                        nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
-        print(Q.total_nodes)
-        while Q.total_nodes != 0:
-            print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
-            (x,y) = Q.extract_min().data
-            del nod[y]
-            for jjj in self.nodes:
-                print("pre", jjj,pre[jjj])
-                print("cur", jjj,cur_best[jjj])
-                #print("dernier", jjj,dernier_arrive[jjj])
-            print(Q.total_nodes, "extracted", y,x)
-            (a,t) = y
-            P[a].add(t)
-            (tpp,dis) = x
-            for b in neighbors[a].keys():
-                for (tp,edge) in neighbors[a][b]:
-                    if tp >= t:
-                        print("tp",tp)
-                        print("salut2",(a,t),(b,tp))
-                        self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
-                        print(cur_best)
-                        self.relax_paper_dij2(a,b,t,tp,pre,cur_best, events, Q, nod, edge)
-                        print("relax paths", cur_best)
-        return (pre, cur_best)
-
-    def until(self, events, events_rev):
-        unt = dict()
-        for v in self.nodes:
-            unt[v] = dict()
-            for i in range(0,len(self.node_presence[v]),2):
-                j = events_rev[self.node_presence[v][i]]
-                while j<len(events) and  events[j] <= self.node_presence[v][i+1]:
-                    unt[v][events[j]] = self.node_presence[v][i+1]
-                    j += 1
-        return unt
-
-
-
-
-    def dijkstra_temporal2_direc(self, s, events, events_rev, neighbors, d, neighbors_inv, unt):
-        Q = fib.FibonacciHeap()
-        cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
-        pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
-        nod = dict()
-        P = dict()
-        for v in self.nodes:
-            P[v] = set()
-        for e in neighbors[s].keys():
-            for j in range(0,len(self.link_presence[d[(s,e)]]),2):
-            #for j in range(0,2,2):
-                if self.link_presence[d[(s,e)]][j] != self.link_presence[d[(s,e)]][j+1]:
-                    l = self.link_presence[d[(s,e)]][j:j+2]
-                else:
-                    l = self.link_presence[d[(s,e)]][j:j+1]
-                for t in l:
-                    cur_best[s][t] = (t,0)
-                    pre[s][t] = {(0,0):(-1,-1)}
-                    if (s,t) not in nod:
-                        nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
-        print(Q.total_nodes)
-        while Q.total_nodes != 0:
-            print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
-            (x,y) = Q.extract_min().data
-            del nod[y]
-            for jjj in self.nodes:
-                print("pre", jjj,pre[jjj])
-                print("cur", jjj,cur_best[jjj])
-                #print("dernier", jjj,dernier_arrive[jjj])
-            print(Q.total_nodes, "extracted", y,x)
-            (a,t) = y
-            P[a].add(t)
-            #(tpp,dis) = x
-            for b in neighbors_inv[a].keys():
-                for (tp,edge) in neighbors_inv[a][b]:
-                    if tp >= t and unt[a][t] >= tp:
-                        print("tp_inv",tp)
-                        print("salut2_inv",(a,t),(b,tp))
-                        self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
-                        print("inv",cur_best)
-
-            for b in neighbors[a].keys():
-                for (tp,edge) in neighbors[a][b]:
-                    if tp >= t and unt[a][t] >= tp:
-                        print("tp",tp)
-                        print("salut2",(a,t),(b,tp))
-                        self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
-                        print(cur_best)
-                        self.relax_paper_dij2(a,b,t,tp,pre,cur_best, events, Q, nod, edge)
-                        print("relax paths", cur_best)
-        return (pre, cur_best)
-
-
-    def latencies(self,cur_best):
-        latencies = [dict() for i in range(len(self.nodes))]
-        last_depr = [dict() for i in range(len(self.nodes))]
-        for k in self.nodes:
-            for key in cur_best[k]:
-                if cur_best[k][key][0] != -numpy.Infinity:
-                    latencies[k][key] = cur_best[k][key]
-                    if (cur_best[k][key][0] not in last_depr[k]):
-                        last_depr[k][cur_best[k][key][0]] = key
-                    else:
-                        #we already have one element for the departure
-                        if last_depr[k][cur_best[k][key][0]] > key:
-                            del latencies[k][last_depr[k][cur_best[k][key][0]]]
-                            last_depr[k][cur_best[k][key][0]] = key
-                        else:
-                            del latencies[k][key]
-
-        return latencies
-
-    def predecessor_graph(self,pre, node):
-        G = nx.DiGraph()
-        for k in self.nodes:
-            if k != node:
-                for key in pre[k].keys():
-                    for v2 in pre[k][key].keys():
-                        if v2[0] != node:
-                            G.add_edge(v2,(k,key),interval=pre[k][key][v2])
-                        else:
-                            G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
-        return G
-
-
-
-    def metapaths_from_predecessor(self,G):
-        l = []
-        paths = nx.all_simple_paths(G,(0,0.0))
-        for path in map(nx.utils.pairwise, paths):
-            for i in range(0,len(path)):
-                if i == 0:
-                    m = mw.Metawalk([],[])
-                    m.add_link(e[0][0],e[1][0],G[e[0]][e[1]]['interval'])
-            l.append(m)
-        return l
-
-    def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual, chevau, instantenous):
-        instantenous2 = instantenous
-        res = actual_poly[:]
-        last_x, last_y = last_inter
-        if depth == 1:
-            if last_x != last_y:
-                res[1] = numpy.around((last_y - last_x), decimals=5)
-                # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
-                pow_actual = 1
-                chevau = 1
-            else:
-                instantenous = False
-                res[0] = 1
-        else:
-            if instantenous:
-                blastx, blasty = before_last_inter
-                if last_x == blastx and last_y == blasty:
-                    pow_actual += 1
-                    chevau += 1
-                    #chevau ou pow_actual ne devrait rien changer ici
-                    res[chevau] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=5)
-                else:
-                    instantenous = False
-                    if last_x != last_y:
-                        res[1] = numpy.around((last_y - last_x), decimals=5)
-                        pow_actual = 1
-                        chevau = 1
-                        b = False
-                    else:
-                        pow_actual = 0
-                        chevau = 0
-                        res[0] = 1
-            else:
-                if last_x == last_y:
-                    chevau = 0
-                    if b == True:
-                        res[0] = 1
-                else:
-                    pow_actual += 1
-                    blastx, blasty = before_last_inter
-                    b = False
-                    if last_x == blastx and last_y == blasty:
-                        chevau += 1
-                        res[pow_actual] = res[pow_actual - 1] *numpy.around((last_y - last_x)/(chevau), decimals=5)
-                        #+ res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=5)
-                        res[pow_actual - 1] = 0
-                    else:
-                        chevau = 1
-                        res[pow_actual] = res[pow_actual - 1] * numpy.around((last_y - last_x)/(chevau), decimals=5)
-                        res[pow_actual - 1] = 0
-        #add to sigma
-        print("node", node)
-        print("last",last_inter,"before_last",before_last_inter,"b",b,"instantenous",instantenous2)
-        print("poly ",node,nppol.Polynomial(res))
-
-
-        if node not in sigma:
-            if instantenous == False:
-                sigma[node] = (nppol.Polynomial(res),False,-1)
-            else:
-                sigma[node] = (nppol.Polynomial([1]),True,depth-1)
-        else:
-            (su, boolo, d) = sigma[node]
-            sigma[node] = (su + nppol.Polynomial(res), boolo, d)
-
-
-        # if res[0] == 1:
-        #     res[0] = 0
-
-        if instantenous:
-            for e in G[node]:
-                if G[node][e]['interval'][0] < last_inter[0]:
-                    debut = G[node][e]['interval'][1]
-                else:
-                    debut = G[node][e]['interval'][0]
-                link_mod = (debut, G[node][e]['interval'][1])
-                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, actual_poly, b, pow_actual, chevau, instantenous2)
-        else:
-            for e in G[node]:
-                if G[node][e]['interval'][0] < last_inter[0]:
-                    debut = G[node][e]['interval'][1]
-                else:
-                    debut = G[node][e]['interval'][0]
-                link_mod = (debut, G[node][e]['interval'][1])
-                self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1,  res, b, pow_actual, chevau,  False)
-
-
-    def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
-        print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
-        # nodes are the same as before we add paths
-        (su, boolo, d) = sigma[e]
-        if pred_node[0] == e[0] and pred_depar == actual_depar:
-
-            if e not in sigma_r:
-                sigma_r[e] = (pred_node, su + sigma_r[pred_node][1], boolo, d)
-            else:
-                if pred_node > sigma_r[e][0]:
-                    sigma_r[e] = (pred_node, su + sigma_r[pred_node][1], boolo, d)
-        else:
-            if e not in sigma_r:
-                #no resting path here
-                sigma_r[e] = ((-1,-1),su,boolo,d)
-
-
-
-        visit = list(G[e])
-        visit.sort()
-        print("succ")
-        dic_nodes = dict()
-        for (x,y) in visit:
-            if x in dic_nodes:
-                dic_nodes[x].append(y)
-            else:
-                dic_nodes[x] = [y]
-        for u in dic_nodes.keys():
-            #normally it should be sorted
-            for ii in range( 0, len(dic_nodes[u])):
-                if ii == 0:
-                    pred_node = (-1,-1)
-                    pred_depar = -1
-                else:
-                    pred_node = (u,dic_nodes[u][ii-1])
-                    pred_depar = actual_depar
-                poly = [0 for jj in range(len(self.nodes))]
-                self.trav_resting(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
-        # for ii in visit:
-        #     print("next ",ii)
-        # for i in range(0,len(visit)):
-        #     if i == 0:
-        #         pred = (-1,-1)
-        #         pred_depar = -1
-        #     else:
-        #         pred = visit[i-1]
-        #         pred_depar = pred[1]
-        #     poly = [0 for i in range(len(self.nodes))]
-        return
-
-
-    def trav_bet_vol(self, x, G, e, vol_bet, pre):
-        print("***** start *****", e)
-        vv,tt = e
-        if (vv in vol_bet) and (tt in vol_bet[vv]):
-            return
-        if vv not in vol_bet:
-            vol_bet[vv] = dict()
-        vol_bet[vv][tt] = dict()
-        print("noder",e, "vv,tt", (vv,tt))
-        visit = list(G[e])
-        print("visit",visit)
-
-        visit.sort()
-        dic_nodes = dict()
-        for (x,y) in visit:
-            if x in dic_nodes:
-                dic_nodes[x].append(y)
-            else:
-                dic_nodes[x] = [y]
-        print("dic_nodes",dic_nodes)
-        for u in dic_nodes.keys():
-            l_ord = list(dic_nodes[u])
-            l_ord.sort()
-            #normally it should be sorted
-            for ii in range( 0, len(l_ord)):
-                print("u",u,"dic_nodes[u][ii]", dic_nodes[u][ii], "ii", ii, "l_ord[ii]",l_ord[ii], "l_ord[ii-1]",l_ord[ii-1])
-                if ii == 0:
-                    print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
-                    pred_node = (-1,-1)
-                    vol_bet[vv][tt] = dict()
-                    if vv != x:
-                        t1, t2 = pre[u][l_ord[ii]][vv,tt]
-                    else:
-                        t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
-                    if t1 == t2:
-                        vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([1])
-                    else:
-                        vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([0,t2-t1])
-                else:
-                    #pred_node = (u,dic_nodes[u][ii-1])
-                    print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
-                    if vv != x:
-                        t1, t2 = pre[u][l_ord[ii]][vv,tt]
-                    else:
-                        t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
-                    if t1 == t2:
-                        vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]]
-                    else:
-                        print("vol_bet[vv][tt]",vol_bet[vv][tt],"l_ord[ii]", l_ord[ii], "l_ord[ii-1]", l_ord[ii-1], "vv", vv, "tt", tt)
-                        vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]] + nppol.Polynomial([0,t2-t1])
-                self.trav_bet_vol(x, G, (u,dic_nodes[u][ii]), vol_bet, pre)
-                print("vol_bet[vv][tt]",vol_bet[vv][tt], "vv", vv, "tt", tt)
-                print("vol_bet", vol_bet)
-        print("**** end ****", "e", e)
-
-
-    def trav_instant_graphs(self, G, e, GG, visited):
-        if e in visited:
-            return
-        print("***** start *****", e)
-        visit = list(G[e])
-        print("visit",visit)
-        visited.add(e)
-        for (w,t_p) in visit:
-            inter_act = G[e][w,t_p]['interval']
-            t1,t2 = inter_act
-            if t1 != t2 and t2 == e[1]:
-                if inter_act not in GG:
-                    GG[inter_act] = nx.DiGraph()
-                GG[inter_act].add_edge(e,(w,t_p),weight=1)
-            self.trav_instant_graphs(G,(w,t_p), GG, visited)
-
-    def descendants_at_distance(self, G, source, distance):
-        current_distance = 0
-        current_layer = {(source,0)}
-        visited = {(source,0)}
-
-        # this is basically BFS, except that the current layer only stores the nodes at
-        # current_distance from source at each iteration
-        while current_distance < distance:
-            next_layer = set()
-            for node,dis in current_layer:
-                for child in G[node]:
-                    if child not in visited:
-                        visited.add((child,dis+G[node][child]["weight"]))
-                        next_layer.add((child,dis+G[node][child]["weight"]))
-            current_layer = next_layer
-            current_distance += 1
-
-        return current_layer
-
-    def transitive_closure_dag(self, G, topo_order=None):
-        """variant from networkx"""
-        if topo_order is None:
-            topo_order = list(nx.topological_sort(G))
-
-        TC = G.copy()
-
-        # idea: traverse vertices following a reverse topological order, connecting
-        # each vertex to its descendants at distance 2 as we go
-        for v in reversed(topo_order):
-            l = list(self.descendants_at_distance(TC, v, 2)) 
-            for (e,d) in l:
-                TC.add_edge(v,e,weight = d)
-        return TC
-
-    def sinks(self, G):
-        return list((node for node, out_degree in G.out_degree() if out_degree == 0))
-
-    def sources(self, G):
-        return list((node for node, in_degree in G.in_degree() if in_degree == 0))
-
-    def volume_between_direct_arrivals(self, x, G, pre):
-        vol_bet = dict()
-        #visited = [(x,0)]
-        node = (x,0)
-        vol_bet[x] = dict()
-        vol_bet[x][0] = dict()
-        for e in G[node]:
-            self.trav_bet_vol(x, G, e, vol_bet, pre)
-        return vol_bet
-
-    def instant_metaedge_graphs(self, G):
-        GG = dict()
-        #visited = [(x,0)]
-        l = self.sources(G)
-        for node in l:
-            for e in G[node]:
-                self.trav_instant_graphs(G, e, GG, set())
-        return GG
-
-    def volume_metapaths(self, x, G):
-        sigma = dict()
-        #visited = [(x,0)]
-        node = (x,0)
-        for e in G[node]:
-            poly = [0 for i in range(len(self.nodes))]
-            self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
-        return sigma
-
-
-
-    def volume_metapaths_with_restingpaths(self, x, G, sigma):
-        sigma_r = dict()
-        node = (x,0)
-        sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
-        visit = list(G[node])
-        visit.sort()
-        dic_nodes = dict()
-        for (x,y) in visit:
-            if x in dic_nodes:
-                dic_nodes[x].append(y)
-            else:
-                dic_nodes[x] = [y]
-        for u in dic_nodes.keys():
-            #normally it should be sorted
-            for ii in range( 0, len(dic_nodes[u])):
-                if ii == 0:
-                    pred_node = (-1,-1)
-                    actual_depar = dic_nodes[u][ii]
-                    pred_depar = -1
-                else:
-                    pred_node = (u,dic_nodes[u][ii-1])
-                    pred_depar = actual_depar
-                    actual_depar = dic_nodes[u][ii]
-                poly = [0 for jj in range(len(self.nodes))]
-                self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
-        return sigma_r
-
-
-    def volume_metapaths_with_restingpaths(self, x, G, sigma):
-        sigma_r = dict()
-        node = (x,0)
-        sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
-        visit = list(G[node])
-        visit.sort()
-        dic_nodes = dict()
-        for (x,y) in visit:
-            if x in dic_nodes:
-                dic_nodes[x].append(y)
-            else:
-                dic_nodes[x] = [y]
-        for u in dic_nodes.keys():
-            #normally it should be sorted
-            for ii in range( 0, len(dic_nodes[u])):
-                if ii == 0:
-                    pred_node = (-1,-1)
-                    actual_depar = dic_nodes[u][ii]
-                    pred_depar = -1
-                else:
-                    pred_node = (u,dic_nodes[u][ii-1])
-                    pred_depar = actual_depar
-                    actual_depar = dic_nodes[u][ii]
-                poly = [0 for jj in range(len(self.nodes))]
-                self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
-        return sigma_r
-
-
-    # def trav_sigmastv(self, G, e, last_inter, before_last_inter, pred_node, pointer, pred_depar, actual_depar):
-    #     print("noder",e, "predr",pred_node)
-    #     # nodes are the same as before we add paths
-    #     if pred_node[0] == e[0] and pred_depar == actual_depar:
-    #         if e not in sigma_r:
-    #             sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
-    #         else:
-    #             if pred_node > sigma_r[e][0]:
-    #                 sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
-    #     else:
-    #         if e not in sigma_r:
-    #             #no resting path here
-    #             sigma_r[e] = ((-1,-1),sigma[e])
-
-    #     visit = list(G[e])
-    #     visit.sort()
-    #     print("succ")
-    #     for ii in visit:
-    #         print("next ",ii)
-    #     for i in range(0,len(visit)):
-    #         if i == 0:
-    #             pred = (-1,-1)
-    #             pred_depar = -1
-    #         else:
-    #             pred = visit[i-1]
-    #             pred_depar = pred[1]
-    #         poly = [0 for i in range(len(self.nodes))]
-    #         self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, pred_depar, visit[i][1])
-
-    #     return
-
-
-    #     def pointer_sigmastv(self, x, G):
-    #     pointer = dict()
-    #     node = (x,0)
-    #     visit = list(G[node])
-    #     visit.sort()
-    #     for i in range(0,len(visit)):
-    #         if i == 0:
-    #             pred = (-1,-1)
-    #             pred_depar = -1
-    #         else:
-    #             pred = visit[i-1]
-    #             pred_depar = pred[1]
-    #         poly = [0 for i in range(len(self.nodes))]
-    #         self.sigmastv(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, pointer, pred_depar, visit[i][1])
-    #     return pointer
-
-    def zero_array(self, p):
-        for e in p:
-            if e != 0:
-                return False
-        return True
-
-    def return_dict(self, e, d):
-        if e in d:
-            return d[e]
-        return 0
-
-    def pointers(self, sigma_r):
-        pointer = dict()
-        for k in self.nodes:
-            l = list(self.event_times())
-            l.sort()
-            last = (-1,-1)
-            for i in l:
-                if (k,i) in sigma_r:
-                    pointer[(k,i)] = (k,i)
-                    last = (k,i)
-                else:
-                    pointer[(k,i)] = last
-        return pointer
-
-    def pointers3(self, cur_best):
-        pointer = dict()
-        for k in self.nodes:
-            l = list(self.event_times())
-            l.sort(reverse = True)
-            after = (-1,-1)
-            for i in l:
-                if (k,i) in pointer:
-                    pointer[(k,i)] = (k,i)
-                    after = (k,i)
-                else:
-                    if after != (-1,-1):
-                        if cur_best[k][after[0]] == cur_best[k][i]:
-                            pointer[(k,i)] = last
-                        else:
-                            pointer[(k,i)] = (-1,-1)
-                    else:
-                        pointer[(k,i)] = after
-        return pointer
-
-    def pointers2(self, contri):
-        pointer2 = dict()
-        for k in self.nodes:
-            l = list(self.event_times())
-            l.sort()
-            last = (-1,-1)
-            for i in l:
-                if i in contri[k]:
-                    pointer2[(k,i)] = (k,i)
-                    last = (k,i)
-                else:
-                    pointer2[(k,i)] = last
-        return pointer2
-
-    def latencies_rev(self, lat, events):
-        res = [dict() for k in self.nodes]
-        for k in self.nodes:
-            for j in lat[k].keys():
-                res[k][lat[k][j][0]] = j
-            res[k][events[0]] = events[0]
-        return res
-
-
-
-
-    def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, deltasvvt, lat_rev):
-        if (v,t) in deltasvvt:
-            return deltasvvt[(v,t)]
-        print("call svvt, ","s",s,"v",v,"t",t)
-        if s == v:
-            return 0
-        #voir papier matthieu clemence pour l'algo
-
-        if t not in lat[v]:
-            return 0
-        prev = []
-        next = []
-
-
-        if t in prev_next[v]:
-            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
-        t_contri = pointer2[(v,t)][1]
-        #if t not in contri[v]:
-        #    t_contri = pointer[(v,t)][1]
-
-        t_sigma = pointer[(v,t)][1]
-        #if (v,t) not in sigma_r:
-        #    t_sigma = pointer[(v,t)][1]
-        print("t_contri",v,t_contri)
-        print("t_sigma",v,t_sigma)
-        if t_contri == -1:
-            return 0
-        prev = [contri[v][t_contri][0]] + prev
-        prev.sort(reverse = True)
-        if t in prev_next[v]:
-            next = [e for e in prev_next[v][t] if e > t]
-        next = next + [contri[v][t_contri][1]]
-        #prev.sort()
-        print("prev", prev)
-        print("next", next)
-
-        left = 0
-        right = 0
-
-        contrib = 0
-        s_prime = lat[v][t_contri][0]
-        vol_tv = sigma_r[(v,t_sigma)][1]
-        print("vol_tv",vol_tv, vol_tv.coef)
-        if self.zero_array(vol_tv.coef):
-            return 0
-        for s_left in prev:
-            # if (v,s_left) in sigma_r:
-            #     left += sigma_r[pointer[(v,s_left)]][1]
-            # else:
-            #     left = 0
-
-            a_prime = t
-            right = 0
-            for a_right in next:
-                # if (v,a_right) in sigma_r:
-                #     right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-
-
-                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
-                tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
-                print("enum poly", tmp)
-                enum_degree = self.actual_degree(tmp)
-                print("actual enum", enum_degree)
-                if enum_degree == -1:
-                    enum = tuple([0])
-                else:
-                    enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
-
-
-
-                print("left", left, "vol_tv", vol_tv, "right", right)
-                tmp = left + vol_tv + right
-                print("denum poly", tmp)
-                denum_degree = self.actual_degree(tmp)
-                print("actual denum", denum_degree)
-                denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
-
-                print("enum", enum, "denum", denum)
-
-                res = nppol.polydiv(enum,denum)
-
-                contrib += nppol.Polynomial(res[0])
-                print("contrib",contrib)
-                if (v,a_right) in sigma_r:
-                    right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-                a_prime = a_right
-            if (v,lat_rev[v][s_left]) in sigma_r:
-                left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
-            # else:
-            #     left = 0
-            s_prime = s_left
-        print("end svvt", contrib)
-        deltasvvt[(v,t)] = contrib
-        return contrib
-
-
-    # def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev):
-    #     if node == v:
-    #         return 0
-
-    #     print("****** new_call, vt ********",(v,t))
-    #     s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {}, lat_rev)
-    #     t_sigma = pointer[(v,t)][1]
-    #     visit = list(G[(v,t_sigma)])
-    #     for i in range(0,len(visit)):
-    #         if visit[i][1] >= t:
-    #             print("succ", visit[i])
-    #             #svt = sigma_r[pointer[v,t]][1]
-    #             svt = sigma_r[pointer[v,t]][1]
-    #             swtp = sigma_r[pointer[visit[i]]][1]
-
-    #             print("svt", svt)
-    #             tmp = svt
-    #             svt_degree = self.actual_degree(tmp)
-    #             print("actual svt", svt_degree)
-    #             svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-    #             if svt_high == ():
-    #                     svt_hight = (0)
-
-    #             print("svt_hight",svt_high)
-    #             print("swtp", swtp)
-    #             tmp = swtp
-    #             swtp_degree = self.actual_degree(tmp)
-    #             print("actual swtp", swtp_degree)
-    #             swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-    #             print("swtp_high", swtp_high)
-    #             if swtp_degree != -1:
-    #                 res = nppol.polydiv(svt_high,swtp_high)
-    #             else:
-    #                 res = [0]
-    #             print("division poly", res[0])
-    #             s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
-    #     print("****** end_call, vt ********",(v,t), s)
-    #     return s
-
-    def polymul(self, v, w):
-        if self.actual_degree(w) == -1 or self.actual_degree(v) == -1:
-            return (0,0)
-        else:
-            degv = self.actual_degree(v)
-            degw = self.actual_degree(w)
-            vl = list(v.coef)
-            wl = list(w.coef)
-            if degv == 0 and vl[degv] == 0:
-                return (0,0)
-            if degw == 0 and wl[degw] == 0:
-                return (0,0)
-            return (vl[degv]*wl[degw], degv + degw)
-
-
-    def polydiv(self, v, w):
-        if self.actual_degree(w) == -1:
-            return (0,0)
-        else:
-            degv = self.actual_degree(v)
-            degw = self.actual_degree(w)
-            vl = list(v.coef)
-            wl = list(w.coef)
-            if degv == -1:
-                return (0,0)
-            return (vl[degv]/wl[degw], degv - degw)
-
-    def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
-        if (v,t) in deltasvvt:
-            return deltasvvt[(v,t)]
-        print("///////// call svvt, ","s",s,"v",v,"t",t)
-        if s == v:
-            return nppol.Polynomial([0])
-        #voir papier matthieu clemence pour l'algo
-
-        if t not in lat[v]:
-            return nppol.Polynomial([0])
-        prev = []
-        next = []
-
-
-        if t in prev_next[v]:
-            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
-        #if t not in contri[v]:
-        #    t = pointer[(v,t)][1]
-
-        t_sigma = pointer[(v,t)][1]
-        #if (v,t) not in sigma_r:
-        #    t_sigma = pointer[(v,t)][1]
-        print("t_contri",v,t)
-        print("t_sigma",v,t_sigma)
-
-
-        prev = [contri[v][t][0]] + prev
-        prev.sort(reverse = True)
-        if t in prev_next[v]:
-            next = [e for e in prev_next[v][t] if e > t]
-        next = next + [contri[v][t][1]]
-        #prev.sort()
-        print("prev", prev)
-        print("next", next)
-
-        left = 0
-        right = 0
-
-        contrib = 0
-        s_prime = lat[v][t][0]
-        vol_tv = sigma_r[(v,t_sigma)][1]
-        print("vol_tv",vol_tv, vol_tv.coef)
-        if self.zero_array(vol_tv.coef):
-            return nppol.Polynomial([0])
-        for s_left in prev:
-            # if pointer[(v,s_left)] in sigma_r:
-            #     left += sigma_r[pointer[(v,s_left)]][1]
-            # else:
-            #     left = 0
-
-            a_prime = t
-            right = 0
-            for a_right in next:
-                # if pointer[(v,a_right)] in sigma_r:
-                #     right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-
-                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
-                tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
-                print("enum poly", tmp)
-                enum_degree = self.actual_degree(tmp)
-                print("actual enum", enum_degree)
-                enum = tmp
-                # if enum_degree == -1:
-                #     enum = tuple([0])
-                # else:
-                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
-
-
-
-                print("left", left, "vol_tv", vol_tv, "right", right)
-                tmp = left + vol_tv + right
-                print("denum poly", tmp)
-                denum_degree = self.actual_degree(tmp)
-                print("actual denum", denum_degree)
-                denum = tmp
-                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
-
-                print("enum", enum, "denum", denum)
-                print("enum-denum degree",enum_degree, denum_degree)
-
-                res = self.polydiv(enum,denum)
-                if res[1] < 0:
-                    ress = [0]
-                else:
-                    ress =[0 for i in range(res[1]+1)]
-                    ress[res[1]] = res[0]
-                contrib += nppol.Polynomial(ress)
-                print("contrib",contrib)
-                if pointer[(v,a_right)] in sigma_r:
-                    right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-                a_prime = a_right
-            if pointer[(v,lat_rev[v][s_left])] in sigma_r:
-                left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
-            # else:
-            #     left = 0
-            s_prime = s_left
-        print("end svvt", contrib)
-        deltasvvt[(v,t)] = contrib
-        return contrib
-
-    def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre, t1, t2, chev):
-        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "t1", t1, "t2", t2, "chev", chev)
-        if v == x :
-            return nppol.Polynomial([1])
-        # pv,pt = pointer[(v,t)]
-        # #st1t2 = bet_vol[pv][pt][(w,t_p)]
-        # (t1,t2) = pre[w][t_p][pv,pt]
-        # (t1p,t2p) = pre[w][t_p][pv,pt]
-        if t1 < t:
-            (t1,t2) = (t2,t2)
-        st1t2 = nppol.Polynomial([1])
-        if t2 > t1:
-            rr = [0 for ii in range(chev+1)]
-            rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
-            st1t2 = nppol.Polynomial(rr)
-        print("st1t2",st1t2)
-        # if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
-        #     return nppol.Polynomial([0])
-
-        # #partie chevauchement
-        # print("chevauchement")
-        # for vvv in chevauchement:
-        #     for ttt in chevauchement[vvv]:
-        #         print(vvv,ttt,chevauchement[vvv][ttt])
-        # if (w in chevauchement) and (t_p in chevauchement[w]):
-        #     coef_chevau = chevauchement[w][t_p]
-        #     if t1 == t2:
-        #         coef_chevau = nppol.Polynomial([1])
-        #     else:
-        #         deg = self.actual_degree(coef_chevau)
-        #         coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
-        # else:
-        #     if t1 == t2:
-        #         coef_chevau = nppol.Polynomial([1])
-        #     else:
-        #         coef_chevau = nppol.Polynomial([0,t2-t1])
-        # degg = self.actual_degree(coef_chevau)
-        # if degg > 1:
-        #     coeff = tuple(coef_chevau.coef)
-        #     max_coeff = coeff[degg]
-        #     coef_chevau = nppol.Polynomial([0,max_coeff])
-        #     coef_chevau += st1t2
-        # print("coef_chevau", coef_chevau, "st1t2", st1t2)
-        svt = sigma_r[pointer[(v,t)]][1]
-        swtp = sigma_r[pointer[(w,t_p)]][1]
-
-        print("svt", svt)
-        tmp = self.polymul(svt, st1t2)
-        #tmp = tmp[0]
-        print("svt*st1t2", tmp)
-        svt_high = [0 for jj in range(tmp[1]+1)]
-        svt_high[tmp[1]] = tmp[0]
-        svt_high = nppol.Polynomial(svt_high)
-        svt_degree = self.actual_degree(svt_high)
-        print("actual svt*st1t2", svt_degree)
+#     ###################################
+#     #            MetaWalks            #
+#     ###################################
+
+#     def metapaths(self,x):
+#         """the function returns all metapaths in a link stream
+#         and is based on bellman-ford algorithm
+
+#         :param x: x the node from which we want the metawalks
+#         :return: a list of the metapaths in the link stream 
+#         """
+#         res = [set() for i in range(len(self.nodes))]
+
+#         #the 2 loops inside the first are to iterate over each temporal link 
+#         for k in self.nodes:
+#             for i in range(0,len(self.links)):
+#                 a,b = self.links[i]
+#                 for j in range(0,len(self.link_presence[i]),2):
+#                     t1,t2 = self.link_presence[i][j:j+2]
+#                     #print("lien actuel",a,b,t1,t2)
+#                     if a == x:
+#                         res[b].add(mw.Metawalk([(t1,t2)],[a,b]))
+#                     else:
+#                         if len(res[a]) != 0:
+#                             for e in res[a]:
+#                                 start,end = e.time_intervals[-1]
+#                                 #print("comp", t1,t2,start,end,e)
+#                                 # check if the path can be extended
+#                                 if start <= t1:
+#                                     #we should clone the metawalk and add something to it
+#                                     m = e.clone()
+#                                     m.time_intervals.append((t1,t2))
+#                                     m.nodes.append(b)
+#                                     res[b].add(m)
+#         return res
+
+#     def actual_degree(self,p):
+#         x = p.degree()
+#         for i in range(0,x+1):
+#             if p.coef[x-i] != 0:
+#                 return x-i
+#         # polynomial is null
+#         return -1
+
+
+#     def betweenness_temporal_node(self,t,v):
+#         """il faut arranger plein de trucs, genre couper les chemins dès le début mais bon """
+#         self.add_point(t)
+#         new = self.fragmented_stream_graph()
+#         all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+#         fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+#         for i in range(0,len(new.nodes)):
+#             l = new.fastest_paths_from_vertex(new.nodes[i])
+#             #a changer et couper les chemins en amont
+#             for el in l:
+#                 for e in el.values():
+#                     for ee in e:
+#                         ee = ee.fastest_meta_walk()
+#                         all_fastest[i][ee.last_node()].add(ee)
+#                         if ee.passes_through(t,v):
+#                             fastest_passing_through[i][ee.last_node()].add(ee)
+#         return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
+
+#     def get_volume_betweenness(self,all_fast,passing):
+#         return [   [   (self.volume_metapaths(list(passing[i][j])),self.volume_metapaths(list(all_fast[i][j])))  for j in range(0,len(self.nodes))]  for i in range(0,len(self.nodes))]
+
+
+#     def matthieu_clem_betweenness(self,all_fast,passing):
+#         #not including contribution..
+#         print("all_fastest",all_fast)
+#         print("passing_thruough",passing)
+#         res = self.get_volume_betweenness(all_fast,passing)
+#         print("res",res)
+#         return sum(sum( self.value_betweenness_at(res,i,j)  for j in range(0,len(res[i])) )   for i in range(0,len(res)))
+
+#     def betweenneess_interval(self,interval_size):
+#         m = max(self.times)
+#         for i in range(1,m//interval_size):
+#             self.add_point(i*(m//interval_size))
+#         new = self.fragmented_stream_graph()
+#         all_fastest = [ [ set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+#         fastest_passing_through = [ [set() for j in range(len(new.nodes))] for i in range(len(new.nodes))]
+#         for i in range(0,len(new.nodes)):
+#             l = new.fastest_paths_from_vertex(new.nodes[i])
+#             #a changer et couper les chemins en amont
+#             for el in l:
+#                 for e in el.values():
+#                     for ee in e:
+#                         ee = ee.fastest_meta_walk()
+#                         all_fastest[i][ee.last_node()].add(ee)
+#                         if ee.passes_through(t,v):
+#                             fastest_passing_through[i][ee.last_node()].add(ee)
+#         return self.matthieu_clem_betweenness(all_fastest,fastest_passing_through)
+
+
+
+#     def value_betweenness_at(self,res,i,j):
+#         x,y = res[i][j]
+#         p = self.actual_degree(x)
+#         q = self.actual_degree(y)
+#         if p == -1:
+#             return 0
+#         if p == q:
+#             return x.coef[p]/y.coef[q]
+#         else:
+#             return 0
+
+
+
+#     def volume_metapaths(self,l):
+#         if l == []:
+#             return nppol.Polynomial([0])
+#         return sum(e.volume() for e in l)
+
+#     def portion_sorted_list(self,l,a,b):
+#         b1 = False
+#         b2 = True
+#         #we should not have any element
+#         if a == b:
+#             return (0,0)
+#         t1 = 0
+#         t2 = len(l)
+#         for i in range(0,len(l)):
+#             if (l[i] > a) and (not b1):
+#                 t1 = i
+#                 b1 = True
+#             if (l[i] >= b) and b2:
+#                 t2 = i 
+#                 b2 = False
+#         return (t1,t2)
+
+#     def __deepcopy__(self):
+#         """
+#         make a deepcopy of a stream graph
+#         """
+#         id = self.id
+#         times = copy.deepcopy(self.times)
+#         nodes = copy.deepcopy(self.nodes)
+#         #node_to_label = dict()
+#         # for e in self.node_to_label.keys():
+#         #     node_to_label[e] = self.node_to_label[e]
+#         node_to_label = self.node_to_label.copy()
+#         #print(type(self.node_to_id))
+#         if self.node_to_id != None:
+#             node_to_id = self.node_to_id.copy()
+#         else:
+#             node_to_id = None
+#         nodes_presence = copy.deepcopy(self.node_presence)
+#         links = copy.deepcopy(self.links)
+#         link_presence = copy.deepcopy(self.link_presence)
+#         weights = copy.deepcopy(self.weights)
+#         trips = copy.deepcopy(self.trips)
+#         points = self.points[:]
+#         return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips,points,self.alpha,self.omega)
+
+#     def duplicate_elem_in_list(self, l):
+#         res = l + l
+#         res.sort()
+#         return res
+
+#     def fragmented_stream_graph(self):
+#         """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream"""
+#         s = self.__deepcopy__()
+#         l = list(self.event_times())
+#         l.sort()
+#         for i in range(0,len(self.links)):
+#             a,b = self.links[i]
+#             decalage = 0
+#             for j in range(0,len(self.link_presence[i]),2):
+#                 t1,t2 = self.link_presence[i][j:j+2]
+#                 #print("t1,t2",a,b,(t1,t2))
+#                 por_1, por_2 = self.portion_sorted_list(l,t1,t2)
+#                 portion = l[por_1:por_2]
+#                 #print("portion",por_1,por_2,l[por_1:por_2])
+#                 dup = self.duplicate_elem_in_list(portion)
+#                 dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
+#                 s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
+#                 decalage += len(dup)
+
+#         return s
+
+#     def add_point(self,t):
+#         """
+#         Add a point to a StreamGraph
+#         :param t: the time to be added in the event times
+#         """
+#         if t not in self.points:
+#             self.points.append(t)
+
+#     def create_dictionary_all_metapaths(self, mp):
+#         res = [dict() for j in range(len(self.nodes))] 
+#         for i in range(0,len(mp)):
+#             for m in mp[i]:
+#                 s,e = (m.last_departure(),m.first_arrival())
+#                 if (s,e) not in res[i]:
+#                     res[i][(s,e)] = set()
+#                     res[i][(s,e)].add(m)
+#                 else:
+#                     res[i][(s,e)].add(m)
+
+#         return res
+
+#     def update_metapaths(self, final_paths,  b, t1, t2, m):
+#         #normally there should be no keys (i.e intervals) in the paths included in others
+#         intervals = [e for e in list(final_paths[b].keys()) ]
+# #        print("update_metapaths",b,t1,t2)
+#         boo = True
+#         if intervals == []:
+#             final_paths[b][(t1,t2)] = set()
+#             final_paths[b][(t1,t2)].add(m)
+#         else:
+
+#             if t2 <= t1:
+#                 # example (3,1) for t1 t2, in this case t1,t2 is a metaedge and nothing happens in the fls in this time, only in boundaries things can happen. if it is an instantenous metapaths it would be included in this one, else it is not an instantenous metapaths and if it starts during t1,t2 it has to be omitted.
+#                 for e in intervals:
+#                     a,c = e
+#                     if a >= t2 and a <= t1 and a <= c: #remove instantenous paths included in this one and non instantenous ones.
+#  #                       print("******** deleting *******",e)
+#                         del final_paths[b][e]
+#                     elif c >= t2 and c <= t1 and a <= c:
+#                         #on peut en avoir plusieur, ne pas sortir ici
+#                         del final_paths[b][e]
+#                 if (t1,t2) in final_paths[b]:
+#                     l = list(final_paths[b][(t1,t2)])
+#                     if len(m.time_intervals) < len(l[0].time_intervals):
+#                         final_paths[b][e] = set()
+#                         final_paths[b][e].add(m)
+#                     elif len(m.time_intervals) == len(l[0].time_intervals):
+#                         final_paths[b][(t1,t2)].add(m)
+#                     return
+
+#             else: #non instantenous metawalk
+#                 for e in intervals:
+#                     a,c = e
+#                     if (a >= t1 and c < t2) or (a > t1 and c <= t2):
+#                         boo = False
+#                         return boo
+#                     if (t1 >= a and t2 < c) or (t1 > a and t2 <= c):
+#                         #on peut en avoir plusieur, ne pas sortir ici
+#                         del final_paths[b][e]
+#                     if (t1 == a and t2 == c):
+#                         l = list(final_paths[b][e])
+#                         if len(m.time_intervals) < len(l[0].time_intervals):
+#                             final_paths[b][e] = set()
+#                             final_paths[b][e].add(m)
+#                         elif len(m.time_intervals) == len(l[0].time_intervals):
+#                             final_paths[b][e].add(m)
+#                         return
+#             final_paths[b][(t1,t2)] = set()
+#             final_paths[b][(t1,t2)].add(m)
+
+
+#     def is_latency(self, res,  b, t1, t2):
+#         # the pair is instantenous
+#         if t2 <= t1:
+#             return True
+#         #check for inclusion
+#         existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
+#         return existing_keys == []
+
+#     def filter_fastest_metapaths_slow(self, m):
+#         res = self.create_dictionary_all_metapaths(m)
+#         res2 = self.create_dictionary_all_metapaths(m)
+#         for b in range(0,len(self.nodes)):
+#             for (t1,t2) in res[b]:
+#                 if t1 < t2:
+#                     if not self.is_latency(res,b,t1,t2):
+#                        # print(b,t1,t2)
+#                     # there exists a faster path
+#                         if (t1,t2) in res2[b]:
+#                             del res2[b][(t1,t2)]
+#         return res2
+
+#     def filter_metapaths(self,x,b,t1,t2,res):
+#         #print("filter",x,b,t1,t2)
+#         # for el in res:
+#         #     for e in el.items():
+#         #         for ee in e:
+#         #             print(ee)
+#         # print("fin dict")
+
+#         # i think we can do better, by filtering on the fly not after
+#         # check if latency
+
+#             existing_keys = [e for e in list(res[b].keys()) if (((e[0] > t1) and (e[1] <= t2)) or ((e[0] >= t1) and (e[1] < t2))) and (not (e[0] == t1 and e[1] == t2)) ]
+
+
+#             if existing_keys != [] and t1 < t2:
+#                 #not latency
+#                 del res[b][(t1,t2)]
+#             else:
+#                 #it is a latency and we need to delete other pairs
+#                 existing_keys = [e for e in list(res[b].keys()) if ((e[0] == t1) and (e[1] > t2)) or ((e[0] <  t1) and (e[1] == t2)) and (e[0] != e[1]) ]
+#                # print("existing",existing_keys)
+#                 for e in existing_keys:
+#                     # its a latency and we remove slowlier paths
+#                     del res[b][e]
+# #        return res
+
+
+
+#     def check_edge(self,x,a,b,t1,t2,res, res2):
+#         #print("check_edge",a,b,t1,t2)
+#         if a == x:
+#                 #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
+#             if (t2,t1) not in res[b]:
+#                 res[b][(t2,t1)] = set()
+#                 res2[b][(t2,t1)] = set()
+#             res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+#             res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+#         else:
+#             if len(res2[a]) != 0:
+#                 ll = f.reduce(lambda a, b: a+b, list(map(list,list(res2[a].values()))))
+#                 for e in ll:
+#                     start,end = e.time_intervals[-1]
+#                     # check if the path can be extended
+#                     if start <= t1:
+#                         #we should clone the metawalk and add something to it
+#                         m = e.clone()
+#                         m.time_intervals.append((t1,t2))
+#                         m.nodes.append(b)
+#                         last_depar = m.last_departure()
+#                         if (last_depar,t1) not in res[b]:
+#                             res[b][(last_depar,t1)] = set()
+#                             res[b][(last_depar,t1)].add(m)
+#                         else:
+#                             res[b][(last_depar,t1)].add(m)
+
+#                         if (last_depar,t1) not in res2[b]:
+#                             res2[b][(last_depar,t1)] = set()
+#                             res2[b][(last_depar,t1)].add(m)
+#                         else:
+#                             res2[b][(last_depar,t1)].add(m)
+#                         #print("edge",m)
+#                         self.filter_metapaths(x,b,last_depar,t1,res)
+
+#     def sf_paths_check(self,x,a,b,t1,t2,res, res2):
+#         if a == x:
+#                 #we should check there is later departure with same arrival but only one edge used in this case so it seems ok
+#             if (t2,t1) not in res[b]:
+#                 res[b][(t2,t1)] = set()
+#                 res2[b][(t2,t1)] = set()
+#             res[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+#             res2[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+
+#     def adapt_metawalk(self,start,end,t1,t2,e,b):
+#             # check if the path can be extended
+#         if start <= t1 and end <= t2: #the extension can be added with no problems
+#                                 #we should clone the metawalk and add something to it
+#             m = e.clone()
+#             m.time_intervals.append((t1,t2))
+#             m.nodes.append(b)
+#         elif start <= t1:
+#             m = e.clone()
+#             m.time_intervals.append((t1,t2))
+#             m.nodes.append(b)
+#             m.update_following_last(1)
+#         elif end <= t2:
+#             m = e.clone()
+#             m.time_intervals.append((t1,t2))
+#             m.nodes.append(b)
+#             m.update_following_last(0)
+#         else:
+#             m = None
+#         return m
+
+#     def is_shortest_path(self,last_depar,t1,final_paths,m):
+#         if (last_depar,t1) in final_paths[b]:
+#             r = list(final_paths[b])[0]
+#             if len(r.time_intervals) < len(m.time_intervals):
+#                 return False
+#         return True
+
+#     def extend_paths(self,x,a,b,t1,t2,final_paths, tmp_paths):
+#         #print("extend_paths",a,b,t1,t2)
+#         #print("keys")
+#         #for e in final_paths:
+#         #    print(e.keys())
+#         #print("final",final_paths)
+#         if a == x:
+#             if (t2,t1) not in final_paths[b]:
+#                 final_paths[b][(t2,t1)] = set()
+#                 tmp_paths[b][(t2,t1)] = set()
+#             final_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+#             tmp_paths[b][(t2,t1)].add(mw.Metawalk([(t1,t2)],[a,b]))
+#         else:
+#             if len(tmp_paths[a]) != 0:
+#                 ll = f.reduce(lambda a, b: a+b, list(map(list,list(tmp_paths[a].values()))))
+#                 for e in ll:
+#                     start,end = e.time_intervals[-1]
+#                     boo = True
+#                     m = self.adapt_metawalk(start,end,t1,t2,e,b)
+#                     #print("res adapt",e,m)
+#                     if m == None :
+#                         boo = False
+#                     if boo == True:
+#                         last_depar = m.last_departure()
+#                         if ( b in e.nodes):
+#                             return
+#                         #in all cases the path is ok, so it is added to tmp paths
+#                         if (last_depar,t1) not in tmp_paths[b]:
+#                             tmp_paths[b][(last_depar,t1)] = set()
+#                             tmp_paths[b][(last_depar,t1)].add(m)
+#                         else:
+#                             tmp_paths[b][(last_depar,t1)].add(m)
+#                         # t1 is first arrival
+#                         self.update_metapaths(final_paths,  b, last_depar, t1, m)
+
+#     def arrival(self, e, t1, t2):
+#         second_arrival = -1
+#         edge_taken2 = -1
+#         if t2 >= e:
+
+#             if t2 == e:
+#                 edge_taken1 = (t1,t2)
+#                 first_arrival = e
+#             else:
+#                 if t1 != t2:
+#                     second_arrival = t2
+#                 first_arrival = t1
+#                 edge_taken1 = (t1,t1)
+#                 edge_taken2 = (t1,t2)
+#             res = (first_arrival, second_arrival, edge_taken1,edge_taken2)
+#         else:
+#             res = (-1,-1,-1,-1)
+#         return res
+
+#     def compute_c(self, last_depar, arrival, leng):
+#         if arrival - last_depar < 0:
+#             return (0.0,leng)
+#         else:
+#             return (arrival - last_depar,leng)
+
+#     def closest_arrival(self,arrival,arrivals_b):
+#         if len(arrivals_b) == 0:
+#             return -1
+#         elif len(arrivals_b) == 1:
+#             if arrivals_b[0] <= arrival:
+#                 return arrivals_b[0]
+#             else:
+#                 return -1
+#         else:
+#             if arrivals_b[-1] <= arrival:
+#                 return arrivals_b[-1]
+#             for i in range(len(arrivals_b)-1,1,-1):
+#                 if (arrivals_b[i-1] <= arrival) and (arrivals_b[i] >= arrival):
+#                     return arrivals_b[i-1]
+
+#             else:
+#                 return -1
+
+#     def relax_resting_aux(self, b, last_depar, arrival, e, cur_best, pre):
+#         if arrival in cur_best[b]:
+#             cnew = self.compute_c(last_depar, arrival, cur_best[b][e][1])
+#             cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#             #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+#             if cnew < cold:
+#                 #pre[b][arrival] = set()
+#                 pre[b][arrival] = dict()
+#                 cur_best[b][arrival] = (last_depar,cur_best[b][e][1])
+#         else:
+#             #pre[b][arrival] = set()
+#             pre[b][arrival] = dict()
+#             cur_best[b][arrival] =  (last_depar,cur_best[b][e][1])
+#             #pre[b][arrival].add((a,e,edge_taken1))
+#             #pre[b][arrival][(a,e)] = edge_taken
+
+#     def relax_resting_paths(self, b, t1, t2, pre, cur_best, events, events_rev):
+#         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
+#         arrivals_b = [e for e in events if (e in pre[b]) and (pre[b][e] != {}) ]
+#         #arrivals_b.sort()
+#         #l = events
+#         # D = dict()
+#         # for i in range(0,len(events)):
+#         #     D[l[i]] = i
+#         #print("relaxing_paths", b, t1, t2)
+#         #print("resting",arrivals_b)
+#         close_arrival = self.closest_arrival(t2, arrivals_b)
+#         #print("close_arrival",close_arrival, t2)
+#         if close_arrival != -1:
+#             last_depar = cur_best[b][close_arrival][0]
+#             for i in range(events_rev[close_arrival],len(events)):
+#                 self.relax_resting_aux(b, last_depar, events[i], close_arrival, cur_best, pre)
+
+#             #e = pre[b][close_arrival][1]
+#             #aa = pre[b][close_arrival][0]
+#             # if t1 != t2:
+#             #     first_arrival, second_arrival= (t1, t2)
+#             # else:
+#             #     first_arrival, second_arrival= (t1, -1)
+#             #print("relaxing_paths")
+#             #print(aa,b,t1,t2)
+#             #print("cur_bestb",cur_best[b])
+#             #print("preb",pre[b])
+#             #print("arrivals",arrivals_b)
+#             #print("first,second",first_arrival, second_arrival)
+#             #print("close_arrival",close_arrival, "last_depar", last_depar)
+
+#             #if first_arrival in cur_best[b]:
+#             #self.relax_resting_aux(b, last_depar, first_arrival, close_arrival, cur_best, pre)
+#             #     cnew = self.compute_c(last_depar, first_arrival, cur_best[b][close_arrival][1])
+#             #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+#             #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+#             #     if cnew < cold:
+#             #         #pre[b][first_arrival] = set()
+#             #         pre[b][first_arrival] = dict()
+#             #         cur_best[b][first_arrival] = (last_depar,cur_best[b][close_arrival][1])
+#             #         #pointer[(b,first_arrival)] = (b,close_arrival) 
+#             #         #cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+#             #         # print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+#             #     # if cnew == cold:
+#             #     #     if (aa,e) not in pre[b][first_arrival]:
+#             #     #         pre[b][first_arrival][(aa,e)] = pre[b][close_arrival][edge_last]
+#             #     #         bool = True
+#             #     #     else:
+#             #     #         e1,e2 = edge_last
+#             #     #         x1,x2 = pre[b][first_arrival][(aa,e)]
+#             #     #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+#             #     #             pre[b][first_arrival][(aa,e)] = edge_last
+#             #     #             bool = True
+
+#             # else:
+#             #     pre[b][first_arrival] = dict()
+#             #     cur_best[b][first_arrival] =  (last_depar,cur_best[b][close_arrival][1] )
+#             #     #pointer[(b,first_arrival)] = (b,close_arrival) 
+#             #     #pre[b][first_arrival].add((a,e,edge_taken1))
+#             #     # pre[b][first_arrival][(aa,e)] = edge_last
+#             #     # bool = True
+
+
+#             #if second_arrival != -1:
+#             #    self.relax_resting_aux(b, last_depar, second_arrival, close_arrival, cur_best, pre)
+#                 # if second_arrival in cur_best[b]:
+#                 #     c2new = self.compute_c(last_depar, second_arrival, cur_best[b][close_arrival][1])
+#                 #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+#                 #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+#                 #     # if (second_arrival - last_depar) <= 0:
+#                 #     #     c2 = (0.0,cur_best[a][e][1] + 1)
+#                 #     # else:
+#                 #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+
+#                 #     if c2new < c2old:
+#                 #         pre[b][second_arrival] = dict()
+#                 #         cur_best[b][second_arrival] = (last_depar,cur_best[b][close_arrival][1])
+#                 #         #pointer[(b,second_arrival)] = (b,close_arrival) 
+#                 #         # print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+#                 #         #c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+
+#                 #         # if c2new == c2old:
+#                 #         #     if (aa,e) not in pre[b][second_arrival]:
+#                 #         #         if bool:
+#                 #         #             pre[b][second_arrival][(aa,e)] = edge_last
+#                 #         #         else:
+#                 #         #             pre[b][second_arrival][(aa,e)] = edge_last
+#                 #         #     else:
+#                 #         #         e1,e2 = edge_last
+#                 #         #         x1,x2 = pre[b][second_arrival][(aa,e)]
+#                 #         #         if (e1 == x1 and e2 > x2) or (e2 == x2 and x1 < e1):
+#                 #         #             if bool:
+#                 #         #                 pre[b][second_arrival][(aa,e)] = edge_last
+#                 #         #             else:
+#                 #         #                 pre[b][second_arrival][(aa,e)] = edge_last
+#                 # else:
+#                 #     pre[b][second_arrival] = dict()
+#                 #     cur_best[b][second_arrival] =  (last_depar,cur_best[b][close_arrival][1])
+#                 #     #pointer[(b,second_arrival)] = (b,close_arrival) 
+#                 #     # if bool:
+#                 #     #     pre[b][second_arrival][(aa,e)] = edge_last
+#                 #     # else:
+#                 #     #     pre[b][second_arrival][(aa,e)] = edge_last
+#         return
+
+#     def relax_paths_aux(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre):
+#         if arrival in cur_best[b]:
+#             cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
+#             cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#             #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+#             if cnew < cold:
+#                 #pre[b][arrival] = set()
+#                 pre[b][arrival] = dict()
+#                 cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
+#                 cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#             if cnew == cold:
+#                 #pre[b][arrival].add((a,e,edge_taken))
+#                 if (a,e) not in pre[b][arrival]:
+#                     pre[b][arrival][(a,e)] = edge_taken
+#                 else:
+#                     e1,e2 = edge_taken
+#                     x1,x2 = pre[b][arrival][(a,e)]
+#                     if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+#                         pre[b][arrival][(a,e)] = edge_taken
+#         else:
+#             #pre[b][arrival] = set()
+#             pre[b][arrival] = dict()
+#             cur_best[b][arrival] =  (last_depar,cur_best[a][e][1] + 1)
+#             #pre[b][arrival].add((a,e,edge_taken1))
+#             pre[b][arrival][(a,e)] = edge_taken
+
+
+#     def relax_paper(self, a, b, t1, t2, pre, cur_best, events):
+#         #arrivals is a dictionary of integers that represent last_arrival, the value of each element in the dict is a couple (last_departure, length of metawalk)
+#         arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
+#         # print(a,b,t1,t2)
+#         # print("cur_besta",cur_best[a])
+#         # print("cur_bestb",cur_best[b])
+#         # print("prea",pre[a])
+#         # print("preb",pre[b])
+#         for i in range(len(arrivals)):
+#             e = arrivals[i]
+#             #print("arrivals",arrivals)
+#             last_depar = cur_best[a][e][0]
+#             first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
+#             #print("edge",first_arrival,second_arrival,edge_taken1,edge_taken2)
+#             # if t2 >= e: # the new metawalk is ok
+#             #     if t2 == e : #3 cases possible on intervals positions
+#             #         if cur_best[a][e][0] > t2:
+#             #             last_depar = t2
+#             #         else:
+#             #             last_depar = cur_best[a][e][0]
+#             #         edge_taken = (t2,t2)
+#             #         first_arrival = e
+#             #     if t1 == e and t2 != e : #3 cases possible on intervals positions
+#             #         first_arrival = e
+#             #         second_arrival = t2
+#             #         last_depar = cur_best[a][e][0]
+#             #         edge_taken = (t1,t2)
+
+#             #         #first_arrival = e
+#             #     elif t1 > e:
+#             #         if t1 != t2:
+#             #             second_arrival = t2
+#             #         edge_taken = (t1,t2)
+#             #         first_arrival = t1
+#             #         last_depar = cur_best[a][e][0]
+#             #         #print("first_arrival",first_arrival, "c",c,cur_best[b],maxi)
+#             if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
+#                 self.relax_paths_aux(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre)
+#                 #c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
+#                 # if (first_arrival - last_depar) <= 0:
+#                 #     c = (0.0, cur_best[a][e][1] + 1)
+#                 # else:
+#                 #     c = ( (first_arrival - last_depar) , cur_best[a][e][1] + 1)
+#                 # if first_arrival in cur_best[b]:
+#                 #     cnew = self.compute_c(last_depar, first_arrival, cur_best[a][e][1] + 1)
+#                 #     cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+#                 #     #if c < ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+#                 #     if cnew < cold:
+#                 #         #pre[b][first_arrival] = set()
+#                 #         pre[b][first_arrival] = dict()
+#                 #         cur_best[b][first_arrival] = (last_depar,cur_best[a][e][1] + 1)
+#                 #         #pointer[(b,first_arrival)] = (b,first_arrival) 
+#                 #         cold = self.compute_c(cur_best[b][first_arrival][0], first_arrival, cur_best[b][first_arrival][1])
+#                 #         #print("comp", cnew,((first_arrival - cur_best[b][first_arrival][0]) , cur_best[b][first_arrival][1]))
+#                 #     # if (first_arrival - cur_best[b][first_arrival][0]) < 0:
+#                 #     #     x = 0
+#                 #     # else:
+#                 #     #     x = (first_arrival - cur_best[b][first_arrival][0])
+#                 #     # if c == (x , cur_best[b][first_arrival][1]):
+#                 #     #if c == ((first_arrival - cur_best[b][first_arrival][0]), cur_best[b][first_arrival][1]):
+#                 #     if cnew == cold:
+#                 #         #pre[b][first_arrival].add((a,e,edge_taken))
+#                 #         if (a,e) not in pre[b][first_arrival]:
+#                 #             pre[b][first_arrival][(a,e)] = edge_taken1
+#                 #             bool = True
+#                 #         else:
+#                 #             e1,e2 = edge_taken1
+#                 #             x1,x2 = pre[b][first_arrival][(a,e)]
+#                 #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+#                 #                 pre[b][first_arrival][(a,e)] = edge_taken1
+#                 #                 bool = True
+
+#                 # else:
+
+#                 #     #pre[b][first_arrival] = set()
+#                 #     pre[b][first_arrival] = dict()
+#                 #     cur_best[b][first_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+#                 #     #pre[b][first_arrival].add((a,e,edge_taken1))
+#                 #     pre[b][first_arrival][(a,e)] = edge_taken1
+#                 #     #pointer[(b,first_arrival)] = (b,first_arrival) 
+#                 #     bool = True
+
+
+#                 if second_arrival != -1:
+#                     self.relax_paths_aux(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre)
+#                     # if second_arrival in cur_best[b]:
+#                     #     c2new = self.compute_c(last_depar, second_arrival, cur_best[a][e][1] + 1)
+#                     #     c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+#                     #     #c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+#                     #     # if (second_arrival - last_depar) <= 0:
+#                     #     #     c2 = (0.0,cur_best[a][e][1] + 1)
+#                     #     # else:
+#                     #     #     c2 = ( (second_arrival - last_depar) , cur_best[a][e][1] + 1)
+
+#                     #     if c2new < c2old:
+#                     #         pre[b][second_arrival] = dict()
+#                     #         cur_best[b][second_arrival] = (last_depar,cur_best[a][e][1] + 1)
+#                     #         #pointer[(b,second_arrival)] = (b,second_arrival) 
+#                     #         #print("comp", c2new,((second_arrival - cur_best[b][second_arrival][0]) , cur_best[b][second_arrival][1]))
+#                     #         c2old = self.compute_c(cur_best[b][second_arrival][0], second_arrival, cur_best[b][second_arrival][1])
+#                     #     # if (second_arrival - cur_best[b][second_arrival][0]) < 0:
+#                     #     #     x = 0
+#                     #     # else:
+#                     #     #     x = (second_arrival - cur_best[b][second_arrival][0])
+#                     #     # if c2 == (x , cur_best[b][second_arrival][1]):
+#                     #     if c2new == c2old:
+#                     #         #pre[b][second_arrival].add((a,e,edge_taken))
+#                     #         if (a,e) not in pre[b][second_arrival]:
+#                     #             if bool:
+#                     #                 pre[b][second_arrival][(b,e)] = edge_taken2
+#                     #             else:
+#                     #                 pre[b][second_arrival][(a,e)] = edge_taken2
+#                     #         else:
+#                     #             e1,e2 = edge_taken2
+#                     #             x1,x2 = pre[b][second_arrival][(a,e)]
+#                     #             if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+#                     #                 if bool:
+#                     #                     pre[b][second_arrival][(b,e)] = edge_taken2
+#                     #                 else:
+#                     #                     pre[b][second_arrival][(a,e)] = edge_taken2
+#                     # else:
+#                     #     pre[b][second_arrival] = dict()
+#                     #     cur_best[b][second_arrival] =  (last_depar,cur_best[a][e][1] + 1)
+#                     #     #pointer[(b,second_arrival)] = (b,second_arrival) 
+#                     #     if bool:
+#                     #         pre[b][second_arrival][(b,e)] = edge_taken2
+#                     #     else:
+#                     #         pre[b][second_arrival][(a,e)] = edge_taken2
+#         return
+#         # def add_curbest_initialise_pre(self, b, t, cur_best, pre):
+#     #     if t not in cur_best[b]:
+#     #         cur_best[b][t] = (t,1)
+#     #     else:
+#     #         if (0.0,1) < (t - cur_best[b][t][0],cur_best[b][t][1]):
+#     #             cur_best[b][t] = (t,1)
+#     #             pre[b][t] = dict()
+#     #     return
+
+
+#     # def add_from_origin(self, a, b, t1, t2, pre, cur_best):
+#     #     self.add_curbest_initialise_pre(b, t1, cur_best, pre)
+#     #     self.add_curbest_initialise_pre(b, t2, cur_best, pre)
+#     #     if t1 not in pre[b]:
+#     #         pre[b][t1] = {(a,0.0):(t1,t1)}
+#     #     else:
+#     #         #no need for else case, since this can only be included
+#     #         if (a,0.0) not in pre[b][t1]:
+#     #             pre[b][t1][(a,0.0)] = (t1,t1)
+#     #     if t2 not in pre[b]:
+#     #         pre[b][t2] = {(a,0.0):(t1,t2)}
+#     #     else:
+#     #         if (a,0.0) in pre[b][t2]:
+#     #             e1,e2 = pre[b][t2][(a,0.0)]
+#     #             if (t1 == e1 and t2 > e2) or (t1 < e1 and t2 == e2):
+#     #                 pre[b][t2][(a,0.0)] = (t1,t2)
+#     #                 #pre[b][t2] = {(b,0.0):(t1,t2)}
+
+#     def count_walks_paper(self,x, events, events_rev):
+#         cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+#         pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
+#         for e in cur_best[x]:
+#             cur_best[x][e] = (e,0)
+#             pre[x][e]={(0,0):(-1,-1)}
+#         #the 2 loops inside the first are to iterate over each temporal link 
+#         for k in self.nodes:
+#             for i in range(0,len(self.links)):
+#                 a,b = self.links[i]
+#                 for j in range(0,len(self.link_presence[i]),2):
+#                     t1,t2 = self.link_presence[i][j:j+2]
+#                     self.relax_paper(a,b,t1,t2,pre,cur_best, events)
+#                     self.relax_resting_paths(b,t1,t2,pre,cur_best, events, events_rev)
+#                     self.relax_paper(b,a,t1,t2,pre,cur_best, events)
+#                     self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
+#                         #relax_paper(self,x,b,a,t1,t2,pre,cur_best,maxi)
+
+#         return (pre, cur_best)
+
+
+#     def relax_resting_aux_dij(self, b, t, arrival, cur_best, pre, Q, Q_nod):
+#         #if arrival in P[b]:
+#         #    return
+#         cnew = self.compute_c(cur_best[b][t][0], arrival, cur_best[b][t][1])
+#         cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#         if cnew < cold:
+#             #pre[b][arrival] = set()
+#             pre[b][arrival] = dict()
+#             cur_best[b][arrival] = (cur_best[b][t][0],cur_best[b][t][1])
+#             if (b,arrival) in Q_nod:
+#                 Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
+#             else:
+#                 Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
+
+#     def relax_resting_paths_dij(self, b, t, t1, t2, pre, cur_best, events, events_rev, Q, Q_nod):
+#         for i in [events_rev[t1],events_rev[t2]]:
+#             if events[i] >= t:
+#                 self.relax_resting_aux_dij(b, t, events[i], cur_best, pre, Q, Q_nod)
+
+#         return
+
+#     def relax_resting_paths_dij2(self, b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod):
+#         self.relax_resting_aux_dij(b, t, tp, cur_best, pre, Q, Q_nod)
+
+#         return
+
+#     def relax_paths_aux_dij(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
+#         print("a",a,"e",e,"b",b,"arrival",arrival)
+#         #if arrival in P[b]:
+#         #    return
+#         cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
+#         cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#         print("cnew",cnew,"cold",cold)
+#         #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+#         if cnew < cold:
+#             #pre[b][arrival] = set()
+#             pre[b][arrival] = dict()
+#             cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
+#             cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#             #print("Q_nod[b,arrival]",Q_nod[b,arrival])
+#             if (b,arrival) in Q_nod:
+#                 Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
+#             else:
+#                 Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
+#             #if last_depar not in distance[b]:
+#             #    distance[b][last_depar] = dict()
+#             #distance[b][last_depar][cnew[1]] = arrival
+
+#             #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
+#         if cnew == cold:
+#             #pre[b][arrival].add((a,e,edge_taken))
+#             if (a,e) not in pre[b][arrival]:
+#                 pre[b][arrival][(a,e)] = edge_taken
+#             else:
+#                 e1,e2 = edge_taken
+#                 x1,x2 = pre[b][arrival][(a,e)]
+#                 if (e1 == x1 and e2 > x2) or (e2 == x2 and e1 < x1):
+#                     pre[b][arrival][(a,e)] = edge_taken
+
+#     def relax_paths_aux_dij2(self, a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, Q_nod):
+#         print("a",a,"e",e,"b",b,"arrival",arrival)
+#         #if arrival in P[b]:
+#         #    return
+#         cnew = self.compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
+#         cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#         print("cnew",cnew,"cold",cold)
+#         #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
+#         if cnew < cold:
+#             #pre[b][arrival] = set()
+#             pre[b][arrival] = dict()
+#             cur_best[b][arrival] = (last_depar,cur_best[a][e][1] + 1)
+#             cold = self.compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+#             #print("Q_nod[b,arrival]",Q_nod[b,arrival])
+#             if (b,arrival) in Q_nod:
+#                 Q.decrease_key(Q_nod[b,arrival], (cnew,(b,arrival)))
+#             else:
+#                 Q_nod[b,arrival] = Q.insert( (cnew,(b,arrival) ) )
+#             #if last_depar not in distance[b]:
+#             #    distance[b][last_depar] = dict()
+#             #distance[b][last_depar][cnew[1]] = arrival
+
+#             #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
+#         if cnew == cold:
+#             #pre[b][arrival].add((a,e,edge_taken))
+#             #if (a,e) not in pre[b][arrival]:
+#             pre[b][arrival][(a,e)] = edge_taken
+
+#     def relax_paper_dij(self, a, b, t, t1, t2, pre, cur_best, events, Q, Q_nod):
+#         #arrivals = [e for e in events if (e in pre[a]) and (pre[a][e] != {})]
+#         arrivals = []
+#         if pre[a][t] != {}:
+#             arrivals = [t ]
+#         for i in range(len(arrivals)):
+#             e = arrivals[i]
+#             #print("arrivals",arrivals)
+#             last_depar = cur_best[a][e][0]
+#             first_arrival, second_arrival, edge_taken1, edge_taken2 = self.arrival(e, t1, t2)
+#             if (first_arrival, second_arrival, edge_taken1, edge_taken2) != (-1,-1,-1,-1):
+#                 self.relax_paths_aux_dij(a, b, last_depar, first_arrival, e, edge_taken1, cur_best, pre, Q, Q_nod)
+
+#                 if second_arrival != -1:
+#                     self.relax_paths_aux_dij(a, b, last_depar, second_arrival, e, edge_taken2, cur_best, pre, Q, Q_nod)
+#         return
+
+#     def relax_paper_dij2(self, a, b, t, tp, pre, cur_best, events, Q, Q_nod, edge):
+#         if pre[a][t] == {}:
+#             return
+#         #print("arrivals",arrivals)
+#         last_depar = cur_best[a][t][0]
+#         self.relax_paths_aux_dij2(a, b, last_depar, tp, t, edge, cur_best, pre, Q, Q_nod)
+#         return
+
+
+#     def neighbors(self):
+#         res =[[] for i in range(len(self.nodes))]
+#         for e in self.links:
+#             x,y = e
+#             res[x].append(y)
+#             res[y].append(x)
+#         return res
+
+#     def neighbors_direct(self):
+#         res ={ i:dict() for i in self.nodes}
+#         res_inv = { i:dict() for i in self.nodes}
+#         for i in range(len(self.links)):
+#             x,y = self.links[i]
+#             if y not in res[x]:
+#                 res[x][y] = []
+#             if x not in res_inv[y]:
+#                 res_inv[y][x] = []
+#             #print(self.link_presence[i])
+#             for j in range(0,len(self.link_presence[i]),2):
+#                 t1,t2 = self.link_presence[i][j:j+2]
+#                 if t1 != t2:
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[x][y].append([t1, (t1,t1)])
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res_inv[y][x].append([t1, (t1,t1)])
+#                     res[x][y].append([t2, (t1,t2)])
+#                     res_inv[y][x].append([t2, (t1,t2)])
+#                 else:
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[x][y].append([t1, (t1,t1)])
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res_inv[y][x].append([t1, (t1,t1)])
+
+#         return res,res_inv
+
+#     def neighbors2(self):
+#         res ={ i:dict() for i in self.nodes}
+#         for i in range(len(self.links)):
+#             x,y = self.links[i]
+#             if y not in res[x]:
+#                 res[x][y] = []
+#             if x not in res[y]:
+#                 res[y][x] = []
+#             #print(self.link_presence[i])
+#             for j in range(0,len(self.link_presence[i]),2):
+#                 t1,t2 = self.link_presence[i][j:j+2]
+#                 if t1 != t2:
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[x][y].append([t1, (t1,t1)])
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[y][x].append([t1, (t1,t1)])
+#                     res[x][y].append([t2, (t1,t2)])
+#                     res[y][x].append([t2, (t1,t2)])
+#                 else:
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[x][y].append([t1, (t1,t1)])
+#                     if (j > 0 and t1 != self.link_presence[i][j-1]) or (j==0):
+#                         res[y][x].append([t1, (t1,t1)])
+
+#         return res
+
+#     def link_index(self):
+#         d = dict()
+#         for i in range(0, len(self.links)):
+#             d[self.links[i]] = i
+#         return d
+
+#     def dijkstra_temporal(self, s, events, events_rev, neighbors, d):
+#         Q = fib.FibonacciHeap()
+#         cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+#         pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
+#         nod = dict()
+#         P = dict()
+#         distance = dict()
+#         for v in self.nodes:
+#             P[v] = set()
+#             distance[v] = dict()
+#         # for v in self.nodes:
+#         #     cur_best[v] = dict()
+#         #     pre[v] = dict()
+#         #     for t in events:
+#         #         cur_best[v][t] = (-numpy.Infinity,numpy.Infinity)
+#         #         pre[v][t] = {}
+#         #         if v == s:
+#         #             cur_best[v][t] = (t,0)
+#         #             pre[v][t]={(0,0):(-1,-1)}
+#         #         nod[v,t] = Q.insert( ((t - cur_best[v][t][0],cur_best[v][t][1]),(v,t) ) )
+#         for e in neighbors[s]:
+#             (xx,yy) = (s,e)
+#             if (s,e) not in d:
+#                 (xx,yy) = (e,s)
+#             for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+#             #for j in range(0,2,2):
+#                 if self.link_presence[d[(xx,yy)]][j] != self.link_presence[d[(xx,yy)]][j+1]:
+#                     l = self.link_presence[d[(xx,yy)]][j:j+2]
+#                 else:
+#                     l = self.link_presence[d[(xx,yy)]][j:j+1]
+#                 for t in l:
+#                     cur_best[s][t] = (t,0)
+#                     pre[s][t] = {(0,0):(-1,-1)}
+#                     if (s,t) not in nod:
+#                         nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
+#                         distance[s][t] = dict()
+#                         distance[s][t][numpy.Infinity] = t
+#         print(Q.total_nodes)
+#         while Q.total_nodes != 0:
+#             #mm = Q.find_min()
+#             #print("total_nodes",Q.total_nodes,"mm",mm.key)
+#             #q = Q.extract_min()
+#             #(x,y) = q.key
+#             print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+#             (x,y) = Q.extract_min().data
+#             del nod[y]
+#             for jjj in self.nodes:
+#                 print("pre", jjj,pre[jjj])
+#                 print("cur", jjj,cur_best[jjj])
+#                 #print("dernier", jjj,dernier_arrive[jjj])
+#             print(Q.total_nodes, "extracted", y,x)
+
+#             (a,t) = y
+#             P[a].add(t)
+#             (tp,dis) = x
+#             for b in neighbors[a]:
+#                 (xx,yy) = (a,b)
+#                 if (a,b) not in d:
+#                     (xx,yy) = (b,a)
+
+#                 for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+#                 #for j in range(len(self.link_presence[d[(xx,yy)]])-1,-1,-2):
+#                     t1,t2 = self.link_presence[d[(xx,yy)]][j:j+2]
+#                     #t1,t2 = self.link_presence[d[(xx,yy)]][j-1:j+1]
+#                     #we can check for times if we'd like
+#                     if not (t > t2):
+#                         print("salut",(a,t),(b,t1,t2))
+#                         self.relax_resting_paths_dij(a,t,t1,t2,pre,cur_best, events, events_rev, Q, nod)
+#                         #self.relax_resting_paths_dij(b,t,t1,t2,pre,cur_best, events, events_rev, Q, nod, P, distance)
+#                         print(cur_best)
+#                         self.relax_paper_dij(a,b,t,t1,t2,pre,cur_best, events, Q, nod)
+#                         print("resting", cur_best)
+#                         #self.relax_paper(b,a,t1,t2,pre,cur_best, events)
+#                         #self.relax_resting_paths(a,t1,t2,pre,cur_best, events, events_rev)
+
+#         return (pre, cur_best)
+
+#     def dijkstra_temporal2(self, s, events, events_rev, neighbors, d):
+#         Q = fib.FibonacciHeap()
+#         cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+#         pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
+#         nod = dict()
+#         P = dict()
+#         for v in self.nodes:
+#             P[v] = set()
+#         for e in neighbors[s].keys():
+#             (xx,yy) = (s,e)
+#             if (s,e) not in d:
+#                 (xx,yy) = (e,s)
+#             for j in range(0,len(self.link_presence[d[(xx,yy)]]),2):
+#             #for j in range(0,2,2):
+#                 if self.link_presence[d[(xx,yy)]][j] != self.link_presence[d[(xx,yy)]][j+1]:
+#                     l = self.link_presence[d[(xx,yy)]][j:j+2]
+#                 else:
+#                     l = self.link_presence[d[(xx,yy)]][j:j+1]
+#                 for t in l:
+#                     cur_best[s][t] = (t,0)
+#                     pre[s][t] = {(0,0):(-1,-1)}
+#                     if (s,t) not in nod:
+#                         nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
+#         print(Q.total_nodes)
+#         while Q.total_nodes != 0:
+#             print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+#             (x,y) = Q.extract_min().data
+#             del nod[y]
+#             for jjj in self.nodes:
+#                 print("pre", jjj,pre[jjj])
+#                 print("cur", jjj,cur_best[jjj])
+#                 #print("dernier", jjj,dernier_arrive[jjj])
+#             print(Q.total_nodes, "extracted", y,x)
+#             (a,t) = y
+#             P[a].add(t)
+#             (tpp,dis) = x
+#             for b in neighbors[a].keys():
+#                 for (tp,edge) in neighbors[a][b]:
+#                     if tp >= t:
+#                         print("tp",tp)
+#                         print("salut2",(a,t),(b,tp))
+#                         self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
+#                         print(cur_best)
+#                         self.relax_paper_dij2(a,b,t,tp,pre,cur_best, events, Q, nod, edge)
+#                         print("relax paths", cur_best)
+#         return (pre, cur_best)
+
+#     def until(self, events, events_rev):
+#         unt = dict()
+#         for v in self.nodes:
+#             unt[v] = dict()
+#             for i in range(0,len(self.node_presence[v]),2):
+#                 j = events_rev[self.node_presence[v][i]]
+#                 while j<len(events) and  events[j] <= self.node_presence[v][i+1]:
+#                     unt[v][events[j]] = self.node_presence[v][i+1]
+#                     j += 1
+#         return unt
+
+
+
+
+#     def dijkstra_temporal2_direc(self, s, events, events_rev, neighbors, d, neighbors_inv, unt):
+#         Q = fib.FibonacciHeap()
+#         cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(self.nodes)) ]
+#         pre = [{t:{}   for t in events} for i in range(len(self.nodes))]
+#         nod = dict()
+#         P = dict()
+#         for v in self.nodes:
+#             P[v] = set()
+#         for e in neighbors[s].keys():
+#             for j in range(0,len(self.link_presence[d[(s,e)]]),2):
+#             #for j in range(0,2,2):
+#                 if self.link_presence[d[(s,e)]][j] != self.link_presence[d[(s,e)]][j+1]:
+#                     l = self.link_presence[d[(s,e)]][j:j+2]
+#                 else:
+#                     l = self.link_presence[d[(s,e)]][j:j+1]
+#                 for t in l:
+#                     cur_best[s][t] = (t,0)
+#                     pre[s][t] = {(0,0):(-1,-1)}
+#                     if (s,t) not in nod:
+#                         nod[s,t] = Q.insert( ((t - cur_best[s][t][0],cur_best[s][t][1]),(s,t) ) )
+#         print(Q.total_nodes)
+#         while Q.total_nodes != 0:
+#             print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+#             (x,y) = Q.extract_min().data
+#             del nod[y]
+#             for jjj in self.nodes:
+#                 print("pre", jjj,pre[jjj])
+#                 print("cur", jjj,cur_best[jjj])
+#                 #print("dernier", jjj,dernier_arrive[jjj])
+#             print(Q.total_nodes, "extracted", y,x)
+#             (a,t) = y
+#             P[a].add(t)
+#             #(tpp,dis) = x
+#             for b in neighbors_inv[a].keys():
+#                 for (tp,edge) in neighbors_inv[a][b]:
+#                     if tp >= t and unt[a][t] >= tp:
+#                         print("tp_inv",tp)
+#                         print("salut2_inv",(a,t),(b,tp))
+#                         self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
+#                         print("inv",cur_best)
+
+#             for b in neighbors[a].keys():
+#                 for (tp,edge) in neighbors[a][b]:
+#                     if tp >= t and unt[a][t] >= tp:
+#                         print("tp",tp)
+#                         print("salut2",(a,t),(b,tp))
+#                         self.relax_resting_paths_dij2(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
+#                         print(cur_best)
+#                         self.relax_paper_dij2(a,b,t,tp,pre,cur_best, events, Q, nod, edge)
+#                         print("relax paths", cur_best)
+#         return (pre, cur_best)
+
+
+#     def latencies(self,cur_best):
+#         latencies = [dict() for i in range(len(self.nodes))]
+#         last_depr = [dict() for i in range(len(self.nodes))]
+#         for k in self.nodes:
+#             for key in cur_best[k]:
+#                 if cur_best[k][key][0] != -numpy.Infinity:
+#                     latencies[k][key] = cur_best[k][key]
+#                     if (cur_best[k][key][0] not in last_depr[k]):
+#                         last_depr[k][cur_best[k][key][0]] = key
+#                     else:
+#                         #we already have one element for the departure
+#                         if last_depr[k][cur_best[k][key][0]] > key:
+#                             del latencies[k][last_depr[k][cur_best[k][key][0]]]
+#                             last_depr[k][cur_best[k][key][0]] = key
+#                         else:
+#                             del latencies[k][key]
+
+#         return latencies
+
+#     def predecessor_graph(self,pre, node):
+#         G = nx.DiGraph()
+#         for k in self.nodes:
+#             if k != node:
+#                 for key in pre[k].keys():
+#                     for v2 in pre[k][key].keys():
+#                         if v2[0] != node:
+#                             G.add_edge(v2,(k,key),interval=pre[k][key][v2])
+#                         else:
+#                             G.add_edge((node,0),(k,key),interval=pre[k][key][v2])
+#         return G
+
+
+
+#     def metapaths_from_predecessor(self,G):
+#         l = []
+#         paths = nx.all_simple_paths(G,(0,0.0))
+#         for path in map(nx.utils.pairwise, paths):
+#             for i in range(0,len(path)):
+#                 if i == 0:
+#                     m = mw.Metawalk([],[])
+#                     m.add_link(e[0][0],e[1][0],G[e[0]][e[1]]['interval'])
+#             l.append(m)
+#         return l
+
+#     def depth_trav(self, G, node, last_inter, before_last_inter, sigma, depth, actual_poly, b, pow_actual, chevau, instantenous):
+#         instantenous2 = instantenous
+#         res = actual_poly[:]
+#         last_x, last_y = last_inter
+#         if depth == 1:
+#             if last_x != last_y:
+#                 res[1] = numpy.around((last_y - last_x), decimals=5)
+#                 # j'ai cru quil fallait mettre à un mais non je ne pense pas, car pour la suite il faut prendre le dernier temps de depart
+#                 pow_actual = 1
+#                 chevau = 1
+#             else:
+#                 instantenous = False
+#                 res[0] = 1
+#         else:
+#             if instantenous:
+#                 blastx, blasty = before_last_inter
+#                 if last_x == blastx and last_y == blasty:
+#                     pow_actual += 1
+#                     chevau += 1
+#                     #chevau ou pow_actual ne devrait rien changer ici
+#                     res[chevau] = numpy.around((last_y - last_x)/numpy.math.factorial(chevau), decimals=5)
+#                 else:
+#                     instantenous = False
+#                     if last_x != last_y:
+#                         res[1] = numpy.around((last_y - last_x), decimals=5)
+#                         pow_actual = 1
+#                         chevau = 1
+#                         b = False
+#                     else:
+#                         pow_actual = 0
+#                         chevau = 0
+#                         res[0] = 1
+#             else:
+#                 if last_x == last_y:
+#                     chevau = 0
+#                     if b == True:
+#                         res[0] = 1
+#                 else:
+#                     pow_actual += 1
+#                     blastx, blasty = before_last_inter
+#                     b = False
+#                     if last_x == blastx and last_y == blasty:
+#                         chevau += 1
+#                         res[pow_actual] = res[pow_actual - 1] *numpy.around((last_y - last_x)/(chevau), decimals=5)
+#                         #+ res[pow_actual -1] - numpy.around((last_y - last_x)/numpy.math.factorial(chevau - 1), decimals=5)
+#                         res[pow_actual - 1] = 0
+#                     else:
+#                         chevau = 1
+#                         res[pow_actual] = res[pow_actual - 1] * numpy.around((last_y - last_x)/(chevau), decimals=5)
+#                         res[pow_actual - 1] = 0
+#         #add to sigma
+#         print("node", node)
+#         print("last",last_inter,"before_last",before_last_inter,"b",b,"instantenous",instantenous2)
+#         print("poly ",node,nppol.Polynomial(res))
+
+
+#         if node not in sigma:
+#             if instantenous == False:
+#                 sigma[node] = (nppol.Polynomial(res),False,-1)
+#             else:
+#                 sigma[node] = (nppol.Polynomial([1]),True,depth-1)
+#         else:
+#             (su, boolo, d) = sigma[node]
+#             sigma[node] = (su + nppol.Polynomial(res), boolo, d)
+
+
+#         # if res[0] == 1:
+#         #     res[0] = 0
+
+#         if instantenous:
+#             for e in G[node]:
+#                 if G[node][e]['interval'][0] < last_inter[0]:
+#                     debut = G[node][e]['interval'][1]
+#                 else:
+#                     debut = G[node][e]['interval'][0]
+#                 link_mod = (debut, G[node][e]['interval'][1])
+#                 self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1, actual_poly, b, pow_actual, chevau, instantenous2)
+#         else:
+#             for e in G[node]:
+#                 if G[node][e]['interval'][0] < last_inter[0]:
+#                     debut = G[node][e]['interval'][1]
+#                 else:
+#                     debut = G[node][e]['interval'][0]
+#                 link_mod = (debut, G[node][e]['interval'][1])
+#                 self.depth_trav(G, e, link_mod, last_inter, sigma, depth + 1,  res, b, pow_actual, chevau,  False)
+
+
+#     def trav_resting(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
+#         print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
+#         # nodes are the same as before we add paths
+#         (su, boolo, d) = sigma[e]
+#         if pred_node[0] == e[0] and pred_depar == actual_depar:
+
+#             if e not in sigma_r:
+#                 sigma_r[e] = (pred_node, su + sigma_r[pred_node][1], boolo, d)
+#             else:
+#                 if pred_node > sigma_r[e][0]:
+#                     sigma_r[e] = (pred_node, su + sigma_r[pred_node][1], boolo, d)
+#         else:
+#             if e not in sigma_r:
+#                 #no resting path here
+#                 sigma_r[e] = ((-1,-1),su,boolo,d)
+
+
+
+#         visit = list(G[e])
+#         visit.sort()
+#         print("succ")
+#         dic_nodes = dict()
+#         for (x,y) in visit:
+#             if x in dic_nodes:
+#                 dic_nodes[x].append(y)
+#             else:
+#                 dic_nodes[x] = [y]
+#         for u in dic_nodes.keys():
+#             #normally it should be sorted
+#             for ii in range( 0, len(dic_nodes[u])):
+#                 if ii == 0:
+#                     pred_node = (-1,-1)
+#                     pred_depar = -1
+#                 else:
+#                     pred_node = (u,dic_nodes[u][ii-1])
+#                     pred_depar = actual_depar
+#                 poly = [0 for jj in range(len(self.nodes))]
+#                 self.trav_resting(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
+#         # for ii in visit:
+#         #     print("next ",ii)
+#         # for i in range(0,len(visit)):
+#         #     if i == 0:
+#         #         pred = (-1,-1)
+#         #         pred_depar = -1
+#         #     else:
+#         #         pred = visit[i-1]
+#         #         pred_depar = pred[1]
+#         #     poly = [0 for i in range(len(self.nodes))]
+#         return
+
+
+#     def trav_bet_vol(self, x, G, e, vol_bet, pre):
+#         print("***** start *****", e)
+#         vv,tt = e
+#         if (vv in vol_bet) and (tt in vol_bet[vv]):
+#             return
+#         if vv not in vol_bet:
+#             vol_bet[vv] = dict()
+#         vol_bet[vv][tt] = dict()
+#         print("noder",e, "vv,tt", (vv,tt))
+#         visit = list(G[e])
+#         print("visit",visit)
+
+#         visit.sort()
+#         dic_nodes = dict()
+#         for (x,y) in visit:
+#             if x in dic_nodes:
+#                 dic_nodes[x].append(y)
+#             else:
+#                 dic_nodes[x] = [y]
+#         print("dic_nodes",dic_nodes)
+#         for u in dic_nodes.keys():
+#             l_ord = list(dic_nodes[u])
+#             l_ord.sort()
+#             #normally it should be sorted
+#             for ii in range( 0, len(l_ord)):
+#                 print("u",u,"dic_nodes[u][ii]", dic_nodes[u][ii], "ii", ii, "l_ord[ii]",l_ord[ii], "l_ord[ii-1]",l_ord[ii-1])
+#                 if ii == 0:
+#                     print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
+#                     pred_node = (-1,-1)
+#                     vol_bet[vv][tt] = dict()
+#                     if vv != x:
+#                         t1, t2 = pre[u][l_ord[ii]][vv,tt]
+#                     else:
+#                         t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
+#                     if t1 == t2:
+#                         vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([1])
+#                     else:
+#                         vol_bet[vv][tt][u,l_ord[ii]] = nppol.Polynomial([0,t2-t1])
+#                 else:
+#                     #pred_node = (u,dic_nodes[u][ii-1])
+#                     print("pre[u][l_ord[ii]]",pre[u][l_ord[ii]],"l_ord[ii]",l_ord[ii])
+#                     if vv != x:
+#                         t1, t2 = pre[u][l_ord[ii]][vv,tt]
+#                     else:
+#                         t1, t2 = pre[u][l_ord[ii]][vv,ll_ord[ii]]
+#                     if t1 == t2:
+#                         vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]]
+#                     else:
+#                         print("vol_bet[vv][tt]",vol_bet[vv][tt],"l_ord[ii]", l_ord[ii], "l_ord[ii-1]", l_ord[ii-1], "vv", vv, "tt", tt)
+#                         vol_bet[vv][tt][u,l_ord[ii]] = vol_bet[vv][tt][u,l_ord[ii-1]] + nppol.Polynomial([0,t2-t1])
+#                 self.trav_bet_vol(x, G, (u,dic_nodes[u][ii]), vol_bet, pre)
+#                 print("vol_bet[vv][tt]",vol_bet[vv][tt], "vv", vv, "tt", tt)
+#                 print("vol_bet", vol_bet)
+#         print("**** end ****", "e", e)
+
+
+#     def trav_instant_graphs(self, G, e, GG, visited):
+#         if e in visited:
+#             return
+#         print("***** start *****", e)
+#         visit = list(G[e])
+#         print("visit",visit)
+#         visited.add(e)
+#         for (w,t_p) in visit:
+#             inter_act = G[e][w,t_p]['interval']
+#             t1,t2 = inter_act
+#             if t1 != t2 and t2 == e[1]:
+#                 if inter_act not in GG:
+#                     GG[inter_act] = nx.DiGraph()
+#                 GG[inter_act].add_edge(e,(w,t_p),weight=1)
+#             self.trav_instant_graphs(G,(w,t_p), GG, visited)
+
+#     def descendants_at_distance(self, G, source, distance):
+#         current_distance = 0
+#         current_layer = {(source,0)}
+#         visited = {(source,0)}
+
+#         # this is basically BFS, except that the current layer only stores the nodes at
+#         # current_distance from source at each iteration
+#         while current_distance < distance:
+#             next_layer = set()
+#             for node,dis in current_layer:
+#                 for child in G[node]:
+#                     if child not in visited:
+#                         visited.add((child,dis+G[node][child]["weight"]))
+#                         next_layer.add((child,dis+G[node][child]["weight"]))
+#             current_layer = next_layer
+#             current_distance += 1
+
+#         return current_layer
+
+#     def transitive_closure_dag(self, G, topo_order=None):
+#         """variant from networkx"""
+#         if topo_order is None:
+#             topo_order = list(nx.topological_sort(G))
+
+#         TC = G.copy()
+
+#         # idea: traverse vertices following a reverse topological order, connecting
+#         # each vertex to its descendants at distance 2 as we go
+#         for v in reversed(topo_order):
+#             l = list(self.descendants_at_distance(TC, v, 2)) 
+#             for (e,d) in l:
+#                 TC.add_edge(v,e,weight = d)
+#         return TC
+
+#     def sinks(self, G):
+#         return list((node for node, out_degree in G.out_degree() if out_degree == 0))
+
+#     def sources(self, G):
+#         return list((node for node, in_degree in G.in_degree() if in_degree == 0))
+
+#     def volume_between_direct_arrivals(self, x, G, pre):
+#         vol_bet = dict()
+#         #visited = [(x,0)]
+#         node = (x,0)
+#         vol_bet[x] = dict()
+#         vol_bet[x][0] = dict()
+#         for e in G[node]:
+#             self.trav_bet_vol(x, G, e, vol_bet, pre)
+#         return vol_bet
+
+#     def instant_metaedge_graphs(self, G):
+#         GG = dict()
+#         #visited = [(x,0)]
+#         l = self.sources(G)
+#         for node in l:
+#             for e in G[node]:
+#                 self.trav_instant_graphs(G, e, GG, set())
+#         return GG
+
+#     def volume_metapaths(self, x, G):
+#         sigma = dict()
+#         #visited = [(x,0)]
+#         node = (x,0)
+#         for e in G[node]:
+#             poly = [0 for i in range(len(self.nodes))]
+#             self.depth_trav(G, e, G[node][e]['interval'], (-1,-1), sigma, 1, poly, True, 0, 0, True)
+#         return sigma
+
+
+
+#     def volume_metapaths_with_restingpaths(self, x, G, sigma):
+#         sigma_r = dict()
+#         node = (x,0)
+#         sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
+#         visit = list(G[node])
+#         visit.sort()
+#         dic_nodes = dict()
+#         for (x,y) in visit:
+#             if x in dic_nodes:
+#                 dic_nodes[x].append(y)
+#             else:
+#                 dic_nodes[x] = [y]
+#         for u in dic_nodes.keys():
+#             #normally it should be sorted
+#             for ii in range( 0, len(dic_nodes[u])):
+#                 if ii == 0:
+#                     pred_node = (-1,-1)
+#                     actual_depar = dic_nodes[u][ii]
+#                     pred_depar = -1
+#                 else:
+#                     pred_node = (u,dic_nodes[u][ii-1])
+#                     pred_depar = actual_depar
+#                     actual_depar = dic_nodes[u][ii]
+#                 poly = [0 for jj in range(len(self.nodes))]
+#                 self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
+#         return sigma_r
+
+
+#     def volume_metapaths_with_restingpaths(self, x, G, sigma):
+#         sigma_r = dict()
+#         node = (x,0)
+#         sigma_r[(x,0)] = ((-1,-1),nppol.Polynomial([0]))
+#         visit = list(G[node])
+#         visit.sort()
+#         dic_nodes = dict()
+#         for (x,y) in visit:
+#             if x in dic_nodes:
+#                 dic_nodes[x].append(y)
+#             else:
+#                 dic_nodes[x] = [y]
+#         for u in dic_nodes.keys():
+#             #normally it should be sorted
+#             for ii in range( 0, len(dic_nodes[u])):
+#                 if ii == 0:
+#                     pred_node = (-1,-1)
+#                     actual_depar = dic_nodes[u][ii]
+#                     pred_depar = -1
+#                 else:
+#                     pred_node = (u,dic_nodes[u][ii-1])
+#                     pred_depar = actual_depar
+#                     actual_depar = dic_nodes[u][ii]
+#                 poly = [0 for jj in range(len(self.nodes))]
+#                 self.trav_resting(G, (u,dic_nodes[u][ii]), G[node][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
+#         return sigma_r
+
+
+#     # def trav_sigmastv(self, G, e, last_inter, before_last_inter, pred_node, pointer, pred_depar, actual_depar):
+#     #     print("noder",e, "predr",pred_node)
+#     #     # nodes are the same as before we add paths
+#     #     if pred_node[0] == e[0] and pred_depar == actual_depar:
+#     #         if e not in sigma_r:
+#     #             sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+#     #         else:
+#     #             if pred_node > sigma_r[e][0]:
+#     #                 sigma_r[e] = (pred_node, sigma[e] + sigma_r[pred_node][1])
+#     #     else:
+#     #         if e not in sigma_r:
+#     #             #no resting path here
+#     #             sigma_r[e] = ((-1,-1),sigma[e])
+
+#     #     visit = list(G[e])
+#     #     visit.sort()
+#     #     print("succ")
+#     #     for ii in visit:
+#     #         print("next ",ii)
+#     #     for i in range(0,len(visit)):
+#     #         if i == 0:
+#     #             pred = (-1,-1)
+#     #             pred_depar = -1
+#     #         else:
+#     #             pred = visit[i-1]
+#     #             pred_depar = pred[1]
+#     #         poly = [0 for i in range(len(self.nodes))]
+#     #         self.trav_resting(G, visit[i], G[e][visit[i]]['interval'], (-1,-1), pred, sigma, sigma_r, poly, depth + 1, pred_depar, visit[i][1])
+
+#     #     return
+
+
+#     #     def pointer_sigmastv(self, x, G):
+#     #     pointer = dict()
+#     #     node = (x,0)
+#     #     visit = list(G[node])
+#     #     visit.sort()
+#     #     for i in range(0,len(visit)):
+#     #         if i == 0:
+#     #             pred = (-1,-1)
+#     #             pred_depar = -1
+#     #         else:
+#     #             pred = visit[i-1]
+#     #             pred_depar = pred[1]
+#     #         poly = [0 for i in range(len(self.nodes))]
+#     #         self.sigmastv(G, visit[i], G[node][visit[i]]['interval'], (-1,-1), pred, pointer, pred_depar, visit[i][1])
+#     #     return pointer
+
+#     def zero_array(self, p):
+#         for e in p:
+#             if e != 0:
+#                 return False
+#         return True
+
+#     def return_dict(self, e, d):
+#         if e in d:
+#             return d[e]
+#         return 0
+
+#     def pointers(self, sigma_r):
+#         pointer = dict()
+#         for k in self.nodes:
+#             l = list(self.event_times())
+#             l.sort()
+#             last = (-1,-1)
+#             for i in l:
+#                 if (k,i) in sigma_r:
+#                     pointer[(k,i)] = (k,i)
+#                     last = (k,i)
+#                 else:
+#                     pointer[(k,i)] = last
+#         return pointer
+
+#     def pointers3(self, cur_best):
+#         pointer = dict()
+#         for k in self.nodes:
+#             l = list(self.event_times())
+#             l.sort(reverse = True)
+#             after = (-1,-1)
+#             for i in l:
+#                 if (k,i) in pointer:
+#                     pointer[(k,i)] = (k,i)
+#                     after = (k,i)
+#                 else:
+#                     if after != (-1,-1):
+#                         if cur_best[k][after[0]] == cur_best[k][i]:
+#                             pointer[(k,i)] = last
+#                         else:
+#                             pointer[(k,i)] = (-1,-1)
+#                     else:
+#                         pointer[(k,i)] = after
+#         return pointer
+
+#     def pointers2(self, contri):
+#         pointer2 = dict()
+#         for k in self.nodes:
+#             l = list(self.event_times())
+#             l.sort()
+#             last = (-1,-1)
+#             for i in l:
+#                 if i in contri[k]:
+#                     pointer2[(k,i)] = (k,i)
+#                     last = (k,i)
+#                 else:
+#                     pointer2[(k,i)] = last
+#         return pointer2
+
+#     def latencies_rev(self, lat, events):
+#         res = [dict() for k in self.nodes]
+#         for k in self.nodes:
+#             for j in lat[k].keys():
+#                 res[k][lat[k][j][0]] = j
+#             res[k][events[0]] = events[0]
+#         return res
+
+
+
+
+#     def delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, deltasvvt, lat_rev):
+#         if (v,t) in deltasvvt:
+#             return deltasvvt[(v,t)]
+#         print("call svvt, ","s",s,"v",v,"t",t)
+#         if s == v:
+#             return 0
+#         #voir papier matthieu clemence pour l'algo
+
+#         if t not in lat[v]:
+#             return 0
+#         prev = []
+#         next = []
+
+
+#         if t in prev_next[v]:
+#             prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+#         t_contri = pointer2[(v,t)][1]
+#         #if t not in contri[v]:
+#         #    t_contri = pointer[(v,t)][1]
+
+#         t_sigma = pointer[(v,t)][1]
+#         #if (v,t) not in sigma_r:
+#         #    t_sigma = pointer[(v,t)][1]
+#         print("t_contri",v,t_contri)
+#         print("t_sigma",v,t_sigma)
+#         if t_contri == -1:
+#             return 0
+#         prev = [contri[v][t_contri][0]] + prev
+#         prev.sort(reverse = True)
+#         if t in prev_next[v]:
+#             next = [e for e in prev_next[v][t] if e > t]
+#         next = next + [contri[v][t_contri][1]]
+#         #prev.sort()
+#         print("prev", prev)
+#         print("next", next)
+
+#         left = 0
+#         right = 0
+
+#         contrib = 0
+#         s_prime = lat[v][t_contri][0]
+#         vol_tv = sigma_r[(v,t_sigma)][1]
+#         print("vol_tv",vol_tv, vol_tv.coef)
+#         if self.zero_array(vol_tv.coef):
+#             return 0
+#         for s_left in prev:
+#             # if (v,s_left) in sigma_r:
+#             #     left += sigma_r[pointer[(v,s_left)]][1]
+#             # else:
+#             #     left = 0
+
+#             a_prime = t
+#             right = 0
+#             for a_right in next:
+#                 # if (v,a_right) in sigma_r:
+#                 #     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+
+
+#                 print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+#                 tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+#                 print("enum poly", tmp)
+#                 enum_degree = self.actual_degree(tmp)
+#                 print("actual enum", enum_degree)
+#                 if enum_degree == -1:
+#                     enum = tuple([0])
+#                 else:
+#                     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+#                 print("left", left, "vol_tv", vol_tv, "right", right)
+#                 tmp = left + vol_tv + right
+#                 print("denum poly", tmp)
+#                 denum_degree = self.actual_degree(tmp)
+#                 print("actual denum", denum_degree)
+#                 denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+#                 print("enum", enum, "denum", denum)
+
+#                 res = nppol.polydiv(enum,denum)
+
+#                 contrib += nppol.Polynomial(res[0])
+#                 print("contrib",contrib)
+#                 if (v,a_right) in sigma_r:
+#                     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+#                 a_prime = a_right
+#             if (v,lat_rev[v][s_left]) in sigma_r:
+#                 left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
+#             # else:
+#             #     left = 0
+#             s_prime = s_left
+#         print("end svvt", contrib)
+#         deltasvvt[(v,t)] = contrib
+#         return contrib
+
+
+#     # def delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev):
+#     #     if node == v:
+#     #         return 0
+
+#     #     print("****** new_call, vt ********",(v,t))
+#     #     s = self.delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, pointer, pointer2, {}, lat_rev)
+#     #     t_sigma = pointer[(v,t)][1]
+#     #     visit = list(G[(v,t_sigma)])
+#     #     for i in range(0,len(visit)):
+#     #         if visit[i][1] >= t:
+#     #             print("succ", visit[i])
+#     #             #svt = sigma_r[pointer[v,t]][1]
+#     #             svt = sigma_r[pointer[v,t]][1]
+#     #             swtp = sigma_r[pointer[visit[i]]][1]
+
+#     #             print("svt", svt)
+#     #             tmp = svt
+#     #             svt_degree = self.actual_degree(tmp)
+#     #             print("actual svt", svt_degree)
+#     #             svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+#     #             if svt_high == ():
+#     #                     svt_hight = (0)
+
+#     #             print("svt_hight",svt_high)
+#     #             print("swtp", swtp)
+#     #             tmp = swtp
+#     #             swtp_degree = self.actual_degree(tmp)
+#     #             print("actual swtp", swtp_degree)
+#     #             swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+#     #             print("swtp_high", swtp_high)
+#     #             if swtp_degree != -1:
+#     #                 res = nppol.polydiv(svt_high,swtp_high)
+#     #             else:
+#     #                 res = [0]
+#     #             print("division poly", res[0])
+#     #             s += res[0] * self.delta_svt(node, visit[i][0], visit[i][1], G, lat, contri, prev_next, sigma_r, pointer, pointer2, lat_rev)
+#     #     print("****** end_call, vt ********",(v,t), s)
+#     #     return s
+
+#     def polymul(self, v, w):
+#         if self.actual_degree(w) == -1 or self.actual_degree(v) == -1:
+#             return (0,0)
+#         else:
+#             degv = self.actual_degree(v)
+#             degw = self.actual_degree(w)
+#             vl = list(v.coef)
+#             wl = list(w.coef)
+#             if degv == 0 and vl[degv] == 0:
+#                 return (0,0)
+#             if degw == 0 and wl[degw] == 0:
+#                 return (0,0)
+#             return (vl[degv]*wl[degw], degv + degw)
+
+
+#     def polydiv(self, v, w):
+#         if self.actual_degree(w) == -1:
+#             return (0,0)
+#         else:
+#             degv = self.actual_degree(v)
+#             degw = self.actual_degree(w)
+#             vl = list(v.coef)
+#             wl = list(w.coef)
+#             if degv == -1:
+#                 return (0,0)
+#             return (vl[degv]/wl[degw], degv - degw)
+
+#     def contri_delta_svvt(self, s, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev):
+#         if (v,t) in deltasvvt:
+#             return deltasvvt[(v,t)]
+#         print("///////// call svvt, ","s",s,"v",v,"t",t)
+#         if s == v:
+#             return nppol.Polynomial([0])
+#         #voir papier matthieu clemence pour l'algo
+
+#         if t not in lat[v]:
+#             return nppol.Polynomial([0])
+#         prev = []
+#         next = []
+
+
+#         if t in prev_next[v]:
+#             prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+#         #if t not in contri[v]:
+#         #    t = pointer[(v,t)][1]
+
+#         t_sigma = pointer[(v,t)][1]
+#         #if (v,t) not in sigma_r:
+#         #    t_sigma = pointer[(v,t)][1]
+#         print("t_contri",v,t)
+#         print("t_sigma",v,t_sigma)
+
+
+#         prev = [contri[v][t][0]] + prev
+#         prev.sort(reverse = True)
+#         if t in prev_next[v]:
+#             next = [e for e in prev_next[v][t] if e > t]
+#         next = next + [contri[v][t][1]]
+#         #prev.sort()
+#         print("prev", prev)
+#         print("next", next)
+
+#         left = 0
+#         right = 0
+
+#         contrib = 0
+#         s_prime = lat[v][t][0]
+#         vol_tv = sigma_r[(v,t_sigma)][1]
+#         print("vol_tv",vol_tv, vol_tv.coef)
+#         if self.zero_array(vol_tv.coef):
+#             return nppol.Polynomial([0])
+#         for s_left in prev:
+#             # if pointer[(v,s_left)] in sigma_r:
+#             #     left += sigma_r[pointer[(v,s_left)]][1]
+#             # else:
+#             #     left = 0
+
+#             a_prime = t
+#             right = 0
+#             for a_right in next:
+#                 # if pointer[(v,a_right)] in sigma_r:
+#                 #     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+
+#                 print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+#                 tmp = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+#                 print("enum poly", tmp)
+#                 enum_degree = self.actual_degree(tmp)
+#                 print("actual enum", enum_degree)
+#                 enum = tmp
+#                 # if enum_degree == -1:
+#                 #     enum = tuple([0])
+#                 # else:
+#                 #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+#                 print("left", left, "vol_tv", vol_tv, "right", right)
+#                 tmp = left + vol_tv + right
+#                 print("denum poly", tmp)
+#                 denum_degree = self.actual_degree(tmp)
+#                 print("actual denum", denum_degree)
+#                 denum = tmp
+#                 #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+#                 print("enum", enum, "denum", denum)
+#                 print("enum-denum degree",enum_degree, denum_degree)
+
+#                 res = self.polydiv(enum,denum)
+#                 if res[1] < 0:
+#                     ress = [0]
+#                 else:
+#                     ress =[0 for i in range(res[1]+1)]
+#                     ress[res[1]] = res[0]
+#                 contrib += nppol.Polynomial(ress)
+#                 print("contrib",contrib)
+#                 if pointer[(v,a_right)] in sigma_r:
+#                     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+#                 a_prime = a_right
+#             if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+#                 left += sigma_r[pointer[(v,lat_rev[v][s_left])]][1]
+#             # else:
+#             #     left = 0
+#             s_prime = s_left
+#         print("end svvt", contrib)
+#         deltasvvt[(v,t)] = contrib
+#         return contrib
+
+#     def coef_volume(self, x, v, t, w, t_p, sigma_r, pointer, pre, t1, t2, chev):
+#         print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "t1", t1, "t2", t2, "chev", chev)
+#         if v == x :
+#             return nppol.Polynomial([1])
+#         # pv,pt = pointer[(v,t)]
+#         # #st1t2 = bet_vol[pv][pt][(w,t_p)]
+#         # (t1,t2) = pre[w][t_p][pv,pt]
+#         # (t1p,t2p) = pre[w][t_p][pv,pt]
+#         if t1 < t:
+#             (t1,t2) = (t2,t2)
+#         st1t2 = nppol.Polynomial([1])
+#         if t2 > t1:
+#             rr = [0 for ii in range(chev+1)]
+#             rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+#             st1t2 = nppol.Polynomial(rr)
+#         print("st1t2",st1t2)
+#         # if pointer[(v,t)] == (-1,-1) or pointer[(w,t_p)] == (-1,-1):
+#         #     return nppol.Polynomial([0])
+
+#         # #partie chevauchement
+#         # print("chevauchement")
+#         # for vvv in chevauchement:
+#         #     for ttt in chevauchement[vvv]:
+#         #         print(vvv,ttt,chevauchement[vvv][ttt])
+#         # if (w in chevauchement) and (t_p in chevauchement[w]):
+#         #     coef_chevau = chevauchement[w][t_p]
+#         #     if t1 == t2:
+#         #         coef_chevau = nppol.Polynomial([1])
+#         #     else:
+#         #         deg = self.actual_degree(coef_chevau)
+#         #         coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
+#         # else:
+#         #     if t1 == t2:
+#         #         coef_chevau = nppol.Polynomial([1])
+#         #     else:
+#         #         coef_chevau = nppol.Polynomial([0,t2-t1])
+#         # degg = self.actual_degree(coef_chevau)
+#         # if degg > 1:
+#         #     coeff = tuple(coef_chevau.coef)
+#         #     max_coeff = coeff[degg]
+#         #     coef_chevau = nppol.Polynomial([0,max_coeff])
+#         #     coef_chevau += st1t2
+#         # print("coef_chevau", coef_chevau, "st1t2", st1t2)
+#         svt = sigma_r[pointer[(v,t)]][1]
+#         swtp = sigma_r[pointer[(w,t_p)]][1]
+
+#         print("svt", svt)
+#         tmp = self.polymul(svt, st1t2)
+#         #tmp = tmp[0]
+#         print("svt*st1t2", tmp)
+#         svt_high = [0 for jj in range(tmp[1]+1)]
+#         svt_high[tmp[1]] = tmp[0]
+#         svt_high = nppol.Polynomial(svt_high)
+#         svt_degree = self.actual_degree(svt_high)
+#         print("actual svt*st1t2", svt_degree)
         
-        #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-        #if svt_high == ():
-        #    svt_high = (0)
-        print("svt_hight",svt_high)
-        print("swtp", swtp)
-        tmp = swtp
-        swtp_degree = self.actual_degree(tmp)
-        print("actual swtp", swtp_degree)
-        swtp_high = tmp
-        #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-        print("swtp_high", swtp_high)
-        if swtp_degree != -1:
-            cof,puis = self.polydiv(svt_high,swtp_high)
-            if puis < 0:
-                res = [0]
-            else:
-                res = [0 for i in range(puis+1)]
-                res[puis] = cof
-        else:
-            res = [0]
-        print("res_div", res)
-        return nppol.Polynomial(res)
+#         #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+#         #if svt_high == ():
+#         #    svt_high = (0)
+#         print("svt_hight",svt_high)
+#         print("swtp", swtp)
+#         tmp = swtp
+#         swtp_degree = self.actual_degree(tmp)
+#         print("actual swtp", swtp_degree)
+#         swtp_high = tmp
+#         #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+#         print("swtp_high", swtp_high)
+#         if swtp_degree != -1:
+#             cof,puis = self.polydiv(svt_high,swtp_high)
+#             if puis < 0:
+#                 res = [0]
+#             else:
+#                 res = [0 for i in range(puis+1)]
+#                 res[puis] = cof
+#         else:
+#             res = [0]
+#         print("res_div", res)
+#         return nppol.Polynomial(res)
 
 
 
-    def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT):
-        print("******** new call contri_delta_svt","v", v, "t", t)
-        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
-            # normally only called on graph edges
+#     def contri_delta_svt(self, node, v, t, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT):
+#         print("******** new call contri_delta_svt","v", v, "t", t)
+#         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+#             svvt = self.contri_delta_svvt(node, v, t, lat, contri, prev_next, sigma_r, deltasvvt, pointer, lat_rev)
+#             # normally only called on graph edges
 
-            visit = list(G[(v,t)])
-            dic_nodes_rev = dict()
-            dic_nodes = dict()
-            for (x,y) in visit:
-                if y in dic_nodes_rev:
-                    dic_nodes_rev[y].append(x)
-                else:
-                    dic_nodes_rev[y] = [x]
-                if x in dic_nodes:
-                    dic_nodes[x].append(y)
-                else:
-                    dic_nodes[x] = [y]
-            print("dic_nodes", dic_nodes_rev)
-            partial_sum = dict()
-            # for u in dic_nodes:
-            #     dic_nodes[u].sort()
-                # if t not in dic_nodes[u]:
-                #     dic_nodes[u] = [t] + dic_nodes[u]
+#             visit = list(G[(v,t)])
+#             dic_nodes_rev = dict()
+#             dic_nodes = dict()
+#             for (x,y) in visit:
+#                 if y in dic_nodes_rev:
+#                     dic_nodes_rev[y].append(x)
+#                 else:
+#                     dic_nodes_rev[y] = [x]
+#                 if x in dic_nodes:
+#                     dic_nodes[x].append(y)
+#                 else:
+#                     dic_nodes[x] = [y]
+#             print("dic_nodes", dic_nodes_rev)
+#             partial_sum = dict()
+#             # for u in dic_nodes:
+#             #     dic_nodes[u].sort()
+#                 # if t not in dic_nodes[u]:
+#                 #     dic_nodes[u] = [t] + dic_nodes[u]
 
-            s = 0
+#             s = 0
 
-            contrib_local = dict()
-            l_ord = list(dic_nodes_rev.keys())
-            l_ord.sort()
-            for ii in range(len(l_ord)-1,-1,-1):
-                #normally it should be sorted
-                for u in dic_nodes_rev[l_ord[ii]]:
-                    # svt = sigma_r[(v,t)][1]
-                    # swtp = sigma_r[(u,dic_nodes[u][ii])][1]
+#             contrib_local = dict()
+#             l_ord = list(dic_nodes_rev.keys())
+#             l_ord.sort()
+#             for ii in range(len(l_ord)-1,-1,-1):
+#                 #normally it should be sorted
+#                 for u in dic_nodes_rev[l_ord[ii]]:
+#                     # svt = sigma_r[(v,t)][1]
+#                     # swtp = sigma_r[(u,dic_nodes[u][ii])][1]
 
-                    # print("svt", svt)
-                    # tmp = svt
-                    # svt_degree = self.actual_degree(tmp)
-                    # print("actual svt", svt_degree)
-                    # svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-                    # if svt_high == ():
-                    #     svt_high = (0)
-                    # print("svt_hight",svt_high)
-                    # print("swtp", swtp)
-                    # tmp = swtp
-                    # swtp_degree = self.actual_degree(tmp)
-                    # print("actual swtp", swtp_degree)
-                    # swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-                    # print("swtp_high", swtp_high)
-                    # if swtp_degree != -1:
-                    #     res = nppol.polydiv(svt_high,swtp_high)
-                    # else:
-                    #     res = [0]
-                    w,t_p = (u,l_ord[ii])
+#                     # print("svt", svt)
+#                     # tmp = svt
+#                     # svt_degree = self.actual_degree(tmp)
+#                     # print("actual svt", svt_degree)
+#                     # svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+#                     # if svt_high == ():
+#                     #     svt_high = (0)
+#                     # print("svt_hight",svt_high)
+#                     # print("swtp", swtp)
+#                     # tmp = swtp
+#                     # swtp_degree = self.actual_degree(tmp)
+#                     # print("actual swtp", swtp_degree)
+#                     # swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+#                     # print("swtp_high", swtp_high)
+#                     # if swtp_degree != -1:
+#                     #     res = nppol.polydiv(svt_high,swtp_high)
+#                     # else:
+#                     #     res = [0]
+#                     w,t_p = (u,l_ord[ii])
 
-                    print("(w,t')",(w,t_p))
-                    self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
+#                     print("(w,t')",(w,t_p))
+#                     self.contri_delta_svt(node, w, t_p, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
 
-                    (t1,t2) = pre[w][t_p][v,t]
-                    if t1 != t2:
-                        for yp,tpp in GT[t1,t2][w,t_p]:
-                            print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
-                            self.contri_delta_svt(node, yp, tpp, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
-                            res2 = self.coef_volume(node, v, t, yp, tpp, sigma_r, pointer, pre, t1, t2, GT[t1,t2][w,t_p][yp,tpp]["weight"]+1)
-                            s += res2 * contribution[yp][tpp]
-
-
-                    res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre, t1, t2, 1)
-                    #appel recursif
-                    s += res * contribution[w][t_p]
-                    if l_ord[ii] not in partial_sum:
-                        partial_sum[l_ord[ii]] = s
-                    else:
-                        partial_sum[l_ord[ii]] += s
-
-                    print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
-                    if ii != 0:
-                        jj = event_reverse[l_ord[ii-1]]
-                    else:
-                        jj = event_reverse[t]
-                    print("u", u, "dic_nodes[u]", dic_nodes[u])
-                    print("******** half after call contri_delta_svt","v", v, "t", t)
-                    print("dic_nodes[u]",dic_nodes[u],"u",u)
-                    if True:#ii != len(dic_nodes[u])-1:
-                        for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
-                            #if not (j==0 and jjj==jj):
-
-                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
-                            print("comp vol", sigma_r[pointer[v,t]][1], sigma_r[pointer[v,event[jjj]]][1])
-
-                            if v not in contrib_local:
-                                contrib_local[v] = dict()
-                            if not (v in contribution and event[jjj] in contribution[v]):
-                                if sigma_r[pointer[v,t]][1] != sigma_r[pointer[v,event[jjj]]][1]:
-                                    print("ERREUUUUUUUR ",sigma_r[pointer[v,t]][1],sigma_r[pointer[v,event[jjj]]][1])
-                                #if event[jjj] in contrib_local[v]:
-                                print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
-                                    #contrib_local[v][event[jjj]] += contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
-                                if event[jjj] != t_p:
-                                    print("ici")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
-                                else:
-                                    print("la")
-                                    if ii == len(l_ord)-1:
-                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
-                                    else:
-                                        contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
-                                print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
-                                # else:
-                                #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
-                                #     if event[jjj] != t_p:
-                                #         contrib_local[v][event[jjj]] = partial_sum[dic_nodes[u][ii]]
-                                #     else:
-                                    #contrib_local[v][event[jjj]] = contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
-                    # else:
-                    #     for jjj in range(jj+1,len(event_reverse)):
-                    #         if not (j==0 and jjj==jj):
-                    #         contribution[v][event[jjj]] = s*(self.coef_volume(v,event[jjj],w,t_p,sigma_r, pointer))
+#                     (t1,t2) = pre[w][t_p][v,t]
+#                     if t1 != t2:
+#                         for yp,tpp in GT[t1,t2][w,t_p]:
+#                             print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
+#                             self.contri_delta_svt(node, yp, tpp, G, lat, contri, prev_next, sigma_r, partial_sum, contribution, deltasvvt, pointer, lat_rev, event, event_reverse, pre, GT)
+#                             res2 = self.coef_volume(node, v, t, yp, tpp, sigma_r, pointer, pre, t1, t2, GT[t1,t2][w,t_p][yp,tpp]["weight"]+1)
+#                             s += res2 * contribution[yp][tpp]
 
 
-                    # if v not in contribution:
-                    #     contribution[v] = dict()
-                    # contribution[v][dic_nodes[u][ii]] = s
-                    # print("chevauchement_contri")
-                    # for vvv in chevauchement:
-                    #     for ttt in chevauchement[vvv]:
-                    #         print(vvv,ttt,chevauchement[vvv][ttt])
-                    # t1,t2 = pre[u][l_ord[ii]][v,t]
-                    # if len(visit) == 0 or not ((w in chevauchement) and (t_p in chevauchement[w])):
-                    #     if t1 == t2:
-                    #         coef_chevau = nppol.Polynomial([1])
-                    #     else:
-                    #         coef_chevau = nppol.Polynomial([0,t2-t1])
-                    #     if v not in chevauchement:
-                    #         chevauchement[v] = dict()
-                    #     chevauchement[v][t_p] = coef_chevau
+#                     res = self.coef_volume(node, v, t, u, l_ord[ii], sigma_r, pointer, pre, t1, t2, 1)
+#                     #appel recursif
+#                     s += res * contribution[w][t_p]
+#                     if l_ord[ii] not in partial_sum:
+#                         partial_sum[l_ord[ii]] = s
+#                     else:
+#                         partial_sum[l_ord[ii]] += s
 
-                    # else:
-                    #     coef_chevau = chevauchement[w][t_p]
-                    #     if (v not in chevauchement):
-                    #         chevauchement[v] = dict()
-                    #     if t1 == t2 :
-                    #         coef_chevau =  nppol.Polynomial([1])
-                    #     else:
-                    #         deg = self.actual_degree(coef_chevau)
-                    #         coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
-                    #     chevauchement[v][t_p] = coef_chevau
+#                     print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
+#                     if ii != 0:
+#                         jj = event_reverse[l_ord[ii-1]]
+#                     else:
+#                         jj = event_reverse[t]
+#                     print("u", u, "dic_nodes[u]", dic_nodes[u])
+#                     print("******** half after call contri_delta_svt","v", v, "t", t)
+#                     print("dic_nodes[u]",dic_nodes[u],"u",u)
+#                     if True:#ii != len(dic_nodes[u])-1:
+#                         for jjj in range(jj+1,event_reverse[l_ord[ii]]+1):
+#                             #if not (j==0 and jjj==jj):
 
-            if v not in contribution:
-                contribution[v] = dict()
-            for vv in contrib_local:
-                for ss in contrib_local[vv]:
-                    contribution[vv][ss] = contrib_local[vv][ss]
+#                             print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]",l_ord[ii], "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+#                             print("comp vol", sigma_r[pointer[v,t]][1], sigma_r[pointer[v,event[jjj]]][1])
+
+#                             if v not in contrib_local:
+#                                 contrib_local[v] = dict()
+#                             if not (v in contribution and event[jjj] in contribution[v]):
+#                                 if sigma_r[pointer[v,t]][1] != sigma_r[pointer[v,event[jjj]]][1]:
+#                                     print("ERREUUUUUUUR ",sigma_r[pointer[v,t]][1],sigma_r[pointer[v,event[jjj]]][1])
+#                                 #if event[jjj] in contrib_local[v]:
+#                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
+#                                     #contrib_local[v][event[jjj]] += contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+#                                 if event[jjj] != t_p:
+#                                     print("ici")
+#                                     contrib_local[v][event[jjj]] = partial_sum[l_ord[ii]]
+#                                 else:
+#                                     print("la")
+#                                     if ii == len(l_ord)-1:
+#                                         contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
+#                                     else:
+#                                         contrib_local[v][event[jjj]] = partial_sum[l_ord[ii+1]]  + contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre, t2, t1, 1))
+#                                 print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
+#                                 # else:
+#                                 #     print("add_contri_local","v",v,"event[jjj]",event[jjj],"first w,t_p",w,t_p)
+#                                 #     if event[jjj] != t_p:
+#                                 #         contrib_local[v][event[jjj]] = partial_sum[dic_nodes[u][ii]]
+#                                 #     else:
+#                                     #contrib_local[v][event[jjj]] = contribution[w][t_p]*(self.coef_volume(node, v,event[jjj],w,t_p,sigma_r, pointer, pre))
+#                     # else:
+#                     #     for jjj in range(jj+1,len(event_reverse)):
+#                     #         if not (j==0 and jjj==jj):
+#                     #         contribution[v][event[jjj]] = s*(self.coef_volume(v,event[jjj],w,t_p,sigma_r, pointer))
+
+
+#                     # if v not in contribution:
+#                     #     contribution[v] = dict()
+#                     # contribution[v][dic_nodes[u][ii]] = s
+#                     # print("chevauchement_contri")
+#                     # for vvv in chevauchement:
+#                     #     for ttt in chevauchement[vvv]:
+#                     #         print(vvv,ttt,chevauchement[vvv][ttt])
+#                     # t1,t2 = pre[u][l_ord[ii]][v,t]
+#                     # if len(visit) == 0 or not ((w in chevauchement) and (t_p in chevauchement[w])):
+#                     #     if t1 == t2:
+#                     #         coef_chevau = nppol.Polynomial([1])
+#                     #     else:
+#                     #         coef_chevau = nppol.Polynomial([0,t2-t1])
+#                     #     if v not in chevauchement:
+#                     #         chevauchement[v] = dict()
+#                     #     chevauchement[v][t_p] = coef_chevau
+
+#                     # else:
+#                     #     coef_chevau = chevauchement[w][t_p]
+#                     #     if (v not in chevauchement):
+#                     #         chevauchement[v] = dict()
+#                     #     if t1 == t2 :
+#                     #         coef_chevau =  nppol.Polynomial([1])
+#                     #     else:
+#                     #         deg = self.actual_degree(coef_chevau)
+#                     #         coef_chevau *= nppol.Polynomial([0,t2-t1])/(deg + 1)
+#                     #     chevauchement[v][t_p] = coef_chevau
+
+#             if v not in contribution:
+#                 contribution[v] = dict()
+#             for vv in contrib_local:
+#                 for ss in contrib_local[vv]:
+#                     contribution[vv][ss] = contrib_local[vv][ss]
             
-            contribution[v][t] = s + svvt
-        print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
-        return contribution, partial_sum
-
-
-    def closest_arrival_contri(self, cur_best, events):
-        res = [ dict() for k in self.nodes ]
-        for k in self.nodes:
-            last_depar = -1
-            last_arrival = -1
-            for i in events:
-                if cur_best[k][i][0] != - numpy.Infinity:
-                    dep = cur_best[k][i][0]
-                    res[k][i] = last_arrival
-                    if last_depar != dep:
-                        dep = last_depar
-                        last_arrival = i
-                        #last_depar = dep
-        return res
-
-
-
-    def contri_link_stream(self, contribution, partial_sum, event, event_reverse, close_arrival, sigma_r, pointer):
-        contri_finale = [dict() for k in self.nodes]
-        for k in self.nodes:
-            if k in contribution:
-                for i in contribution[k]:
-                    contri_finale[k][i] = contribution[k][i]
-                    times = partial_sum[(k,i)].keys()
-                    times = list(times)
-                    times.reverse()
-                    times = [i] + times
-                    print("nodes",k,"i",i,"partial_times",times)
-                    for j in range(0,len(times) -1):
-                        jj = event_reverse[times[j]]
-                        print("jj",jj,times[j+1],event_reverse[times[j+1]])
-                        for jjj in range(jj+1,event_reverse[times[j+1]]+1):
-                            #if not (j==0 and jjj==jj):
-                            contri_finale[k][event[jjj]] = partial_sum[(k,i)][times[j+1]]*(self.coef_volume(k,event[jjj],k,i,sigma_r, pointer))
-        return contri_finale
-
-
-
-
-               # if (self.actual_degree(sigma_r[(node,latencies[j][0])][1]) > 0) or (self.actual_degree(sigma_r[(node,latencies[i][0])][1]) > 0):
-
-    def cal_lat(self, arr,latencies):
-        #return latency
-        return arr - latencies[arr][0]
-
-    def check_contri(self, j, i,latencies, sigma_r, rev_events, node):
-        lati = (self.cal_lat(i,latencies),latencies[i][1])
-        latj = (self.cal_lat(j,latencies),latencies[j][1])
-        if (lati[0] == 0 and latj[0] == 0) and (lati[1] == latj[1]) and lati[1] != 0:
-            # latencies are instantenous
-            if numpy.abs(rev_events[j] - rev_events[i]) == 1:
-                #latencies are successive
-                print("lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
-
-                if sigma_r[(node,latencies[j][0])][2] == True or sigma_r[(node,latencies[i][0])][2] == True:
-                    print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
-                    return 2
-            else:
-                return 1
-        if latj < lati:
-            return 1
-        elif latj == lati:
-            return 0
-        else:
-            return -1
-
-    def contribution_each_latency(self,latencies, sigma_r, rev_events):
-        maxi = max(self.times)
-        #        contri = [dict() for i in range(len(self.nodes))]
-        contri = [dict() for i in range(len(self.nodes))]
-        prev_next = [dict() for i in range(len(self.nodes))]
-        for k in self.nodes:
-            # l contains first arrival times
-            l = [e for e in latencies[k].keys() ]
-            l.sort()
-            for i in range(0,len(l)):
-                #check left contribution
-                j = i - 1
-                S = -1
-                b = True
-                while(j >= 0 and b):
-                    cond = self.check_contri(l[j], l[i], latencies[k], sigma_r, rev_events, k)
-                    if cond == 2:
-                        S = latencies[k][l[i]][0]
-                        b = False
-                    if  cond == 1:
-                        S = latencies[k][l[j]][0]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j - 1
-                if S == -1:
-                    S = 0
-                #check right contribution
-                j = i + 1
-                A = -1
-                b = True
-                while(j < len(l) and b):
-                    cond = self.check_contri(l[j], l[i], latencies[k], sigma_r, rev_events, k)
-                    if cond == 2:
-                        A = l[i]
-                        b = False
-                    if cond == 1:
-                        A = l[j]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j + 1
-                if A == -1:
-                    A = maxi
-                contri[k][l[i]] = (S,A)
-        return contri,prev_next
-
-    def volume_sz_t_v(self, G, latencies, contri, z, v, t):
-        lat = -1
-        for e in latencies[z].keys():
-            if t >= e and t <= latencies[z][e] :
-                lat = e
-        paths = nx.all_simple_paths(G,(0,0.0),(z,latencies[z][lat]))
-
-
-
-#arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
-    def fastest_paths_from_vertex(self,x,boo):
-                             #b is bool for new and old version 0 for old and 1 for new, to be removed
-        """
-        the function returns all metapaths in a link stream
-        and is based on bellman-ford algorithm
-
-        :param x: x the node from which we want the metawalks
-        :return: a list of the metapaths in the link stream 
-        """
-        pre = dict()
-        cur_best = dict()
-
-        final_paths = [dict() for i in range(len(self.nodes))]
-        tmp_paths = [dict() for i in range(len(self.nodes))]
-
-        #the 2 loops inside the first are to iterate over each temporal link 
-        for k in self.nodes:
-            for i in range(0,len(self.links)):
-                a,b = self.links[i]
-                for j in range(0,len(self.link_presence[i]),2):
-                    t1,t2 = self.link_presence[i][j:j+2]
-                    if boo == 0:
-                        self.check_edge(x,a,b,t1,t2,final_paths,tmp_paths)
-                    else:
-                        #add commented line for both directions of edges
-                        self.extend_paths(x,a,b,t1,t2,final_paths, tmp_paths)
-                        self.extend_paths(x,b,a,t1,t2,final_paths, tmp_paths)
-
-        return final_paths
-
-    #############################################################################
-    #                       discrete                                            #
-    #############################################################################
-
-    def predecessor_graph_dis(self,pre, node):
-        G = nx.DiGraph()
-        for k in self.nodes:
-            if k != node:
-                for key in pre[k].keys():
-                    for v2 in pre[k][key].keys():
-                        v,t = v2
-                        G.add_edge((v,t),(k,key),interval=pre[k][key][v2][0])
-                        #G.add_edge((self.node_to_label[v],t),(self.node_to_label[k],key),interval=pre[k][key][v2][0])
-        return G
-
-    def graph_to_ordered(self, G, ev, ev_rev):
-        return org.OrdGraphDis(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
-
-    def cur_best_to_array(self, cur_best, ev, ev_rev):
-        cur_b_arr = [ [0 for t in ev    ]   for k in self.nodes]
-        for v in self.nodes:
-            for t in cur_best[v]:
-                cur_b_arr[v][ev_rev[t]] = (t,cur_best[v][t][0],cur_best[v][t][1])
-        return cur_b_arr
-
-    def latencies_dis(self,cur_b_arr, ev, ev_rev):
-        latencies = [ [0 for t in ev    ]   for k in self.nodes]
-        last_depr = [ [numpy.Infinity for t in ev    ]   for k in self.nodes]
-        for k in self.nodes:
-            for i in range(0,len(cur_b_arr[k])):
-                if cur_b_arr[k][i][1] != -numpy.Infinity:
-                    if latencies[k][ev_rev[cur_b_arr[k][i][1]]] == 0:
-                        latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
-                    if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] == numpy.Infinity:
-                        last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
-                    else:
-                        #we already have one element for the departure
-                        if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] > cur_b_arr[k][i][0]:
-                            last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
-                            #print("i",i,"cur_b_arr[k][i][0]",cur_b_arr[k][i][0],"ev_rev[cur_b_arr[k][i][1]]",ev_rev[cur_b_arr[k][i][1]])
-                            latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
-
-        return latencies
-
-    def latencies_without_0_and_rev(self, lat, ev):
-        latency = [[] for k in self.nodes]
-        latency_rev = [[] for k in self.nodes]
-        for k in self.nodes:
-            for i in range(0,len(ev)):
-                if lat[k][i] != 0:
-                    latency[k].append([ev[i],lat[k][i][0], lat[k][i][1]])
-                    latency_rev[k].append([ lat[k][i][0],ev[i],lat[k][i][1] ])
-        return latency, latency_rev
-
-
-
-
-
-
-    # def trav_resting_dis(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
-    #     print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
-    #     # nodes are the same as before we add paths
-    #     su = sigma[e]
-    #     if pred_node[0] == e[0] and pred_depar == actual_depar:
-
-    #         if e not in sigma_r:
-    #             sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
-    #         else:
-    #             if pred_node > sigma_r[e][0]:
-    #                 sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
-    #     else:
-    #         if e not in sigma_r:
-    #             #no resting path here
-    #             sigma_r[e] = ((-1,-1),su)
-
-
-
-    #     visit = list(G[e])
-    #     visit.sort()
-    #     print("succ")
-    #     dic_nodes = dict()
-    #     for (x,y) in visit:
-    #         if x in dic_nodes:
-    #             dic_nodes[x].append(y)
-    #         else:
-    #             dic_nodes[x] = [y]
-    #     for u in dic_nodes.keys():
-    #         #normally it should be sorted
-    #         for ii in range( 0, len(dic_nodes[u])):
-    #             if ii == 0:
-    #                 pred_node = (-1,-1)
-    #                 pred_depar = -1
-    #             else:
-    #                 pred_node = (u,dic_nodes[u][ii-1])
-    #                 pred_depar = actual_depar
-    #             poly = [0 for jj in range(len(self.nodes))]
-    #             self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
-    #     return
-
-    def first_edge_rec(self, e, edge, f_edge, G):
-        if e in f_edge:
-            return
-        f_edge[e] = edge
-        l = list(G[e])
-        for ee in l:
-            self.first_edge_rec(ee, edge, f_edge, G)
-
-    def dictionary_first_edge(self, G):
-        f_edge = dict()
-        source = self.sources(G)
-        for sou in source:
-            f_edge[sou] = sou[1]
-            for e in list(G[sou]):
-                self.first_edge_rec(e, sou[1], f_edge, G)
-        return f_edge
-
-    def optimal_with_resting_dis(self, node, f_edge, events, G, sigma):
-        sigma_r = dict()
-        for k in self.nodes:
-            pred = -1
-            for t in events:
-                if k == node:
-                    sigma_r[(k,t)] = 0
-                else:
-                    if pred == -1:
-                        if (k,t) in G:
-                            sigma_r[(k,t)] = sigma[(k,t)]
-                            pred = t
-                            edge = f_edge[(k,t)]
-                        else:
-                            sigma_r[(k,t)] = 0
-                    else:
-                        if (k,t) in G:
-                            edge2 = f_edge[(k,t)]
-                            if edge == edge2:
-                                sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)]
-                                pred = t
-                            else:
-                                sigma_r[(k,t)] = sigma[(k,t)]
-                                pred = t
-                                edge = f_edge[(k,t)]
-                        else:
-                            sigma_r[(k,t)] = sigma_r[(k,pred)]
-        return sigma_r
-
-
-
-    def vol_rec(self, s, e, G_rev, sigma):
-        if e in sigma:
-            return
-        l = list(G_rev[e])
-        print(e,l,sigma)
-        if len(l) == 1:
-            w,tp = l[0]
-            if w == s:
-                sigma[e] = 1
-            else:
-                self.vol_rec(s, (w,tp), G_rev, sigma)
-                sigma[e] = sigma[(w,tp)]
-        else:
-            res = 0
-            for (w,tp) in l:
-                self.vol_rec(s, (w,tp), G_rev, sigma)
-                res += sigma[(w,tp)]
-
-            sigma[e] = res
-
-
-
-    def volume_metapaths_dis(self, G, s):
-        sigma = dict()
-        sink = self.sinks(G)
-        G_rev = G.reverse(copy=True)
-        for e in sink:
-            self.vol_rec(s, e, G_rev, sigma)
-        return sigma
-
-    # def volume_metapaths_with_restingpaths_dis(self, G, sigma):
-    #     sigma_r = dict()
-    #     source = list(self.sources(G))
-    #     for (v,t) in source:
-    #         sigma_r[(v,t)] = ((-1,-1),0)
-    #         visit = list(G[(v,t)])
-    #         visit.sort()
-    #         dic_nodes = dict()
-    #         for (x,y) in visit:
-    #             if x in dic_nodes:
-    #                 dic_nodes[x].append(y)
-    #             else:
-    #                 dic_nodes[x] = [y]
-    #         for u in dic_nodes.keys():
-    #             #normally it should be sorted
-    #             for ii in range( 0, len(dic_nodes[u])):
-    #                 if ii == 0:
-    #                     pred_node = (-1,-1)
-    #                     actual_depar = dic_nodes[u][ii]
-    #                     pred_depar = -1
-    #                 else:
-    #                     pred_node = (u,dic_nodes[u][ii-1])
-    #                     pred_depar = actual_depar
-    #                     actual_depar = dic_nodes[u][ii]
-    #                 poly = [0 for jj in range(len(self.nodes))]
-    #                 self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[(v,t)][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
-    #     return sigma_r
-
-    def cal_lat_dis(self, arr,latencies):
-        #return latency
-        return latencies[arr][0] - latencies[arr][1]
-
-
-    def check_contri_dis(self, j, i,latencies):
-        lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
-        latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
-        if latj < lati:
-            return 1
-        elif latj == lati:
-            return 0
-        else:
-            return -1
-
-    def coef_volume_dis(self, x, v, t, w, t_p, sigma_r):
-        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
-        if v == x :
-            return 1
-        svt = sigma_r[(v,t)]
-        swtp = sigma_r[(w,t_p)]
-        print("svt", svt)
-        print("swtp", swtp)
-        if svt == 0:
-            return 0
-        return (svt/swtp)
-
-    def lat_to_dic(self, lat):
-        latency = [ dict()  for k in self.nodes]
-        latency_rev = [ dict()  for k in self.nodes]
-        for k in self.nodes:
-            for (x,y,z) in lat[k]:
-                latency[k][y] = (x,z)
-                latency_rev[k][x] = y
-        return latency, latency_rev
-
-    def contribution_each_latency_dis(self,latencies, mini, maxi):
-        #        contri = [dict() for i in range(len(self.nodes))]
-        contri = [dict() for i in range(len(self.nodes))]
-        prev_next = [dict() for i in range(len(self.nodes))]
-        for k in self.nodes:
-            # l contains first arrival times
-            #l = [e for e in latencies[k].keys() ]
-            #l.sort()
-            l = [x for (x,y,z) in latencies[k] ]
-            for i in range(0,len(l)):
-                #check left contribution
-                j = i - 1
-                S = -numpy.Infinity
-                b = True
-                while(j >= 0 and b):
-                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_dis(j, i, latencies[k])
-                    if  cond == 1:
-                        #S = latencies[k][l[j]][0]
-                        S = latencies[k][j][1]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j - 1
-                if S == -numpy.Infinity:
-                    S = mini
-                #check right contribution
-                j = i + 1
-                A = -numpy.Infinity
-                b = True
-                while(j < len(l) and b):
-                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_dis(j, i, latencies[k])
-                    if cond == 1:
-                        A = l[j]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j + 1
-                if A == -numpy.Infinity:
-                    A = maxi
-                contri[k][l[i]] = (S,A)
-        return contri,prev_next
-
-    def contri_delta_svvt_dis(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
-        #if (v,t) in deltasvvt:
-            #return deltasvvt[(v,t)]
-        print("///////// call svvt, ","s",s,"v",v,"t",t)
-        if s == v:
-            return 0
-        #voir papier matthieu clemence pour l'algo
-
-        if t not in lat[v]:
-            return 0
-        prev = []
-        next = []
-
-
-        if t in prev_next[v]:
-            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
-            next = [e for e in prev_next[v][t] if e > t]
-        #if t not in contri[v]:
-        #    t = pointer[(v,t)][1]
-
-        #t_sigma = pointer[(v,t)][1]
-        #if (v,t) not in sigma_r:
-        #    t_sigma = pointer[(v,t)][1]
-        #print("t_contri",v,t)
-        #print("t_sigma",v,t_sigma)
-
-
-        #prev.sort(reverse = True)
-        #prev.reverse()
-        prev =  prev + [contri[v][t][0]]
-        next = next + [contri[v][t][1]]
-        #prev.sort()
-        print("prev", prev)
-        print("next", next)
-
-        left = 0
-        right = 0
-
-        contrib = 0
-        s_prime = lat[v][t][0]
-        vol_tv = sigma_r[(v,t)]
-        # print("vol_tv",vol_tv, vol_tv.coef)
-        # if self.zero_array(vol_tv.coef):
-        #     return nppol.Polynomial([0])
-        for s_left in prev:
-            # if pointer[(v,s_left)] in sigma_r:
-            #     left += sigma_r[pointer[(v,s_left)]][1]
-            # else:
-            #     left = 0
-
-            a_prime = t
-            right = 0
-            for a_right in next:
-                # if pointer[(v,a_right)] in sigma_r:
-                #     right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-
-                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
-                enum = (s_prime - s_left) * (a_right - a_prime) * vol_tv
-                # print("enum poly", tmp)
-                # enum_degree = self.actual_degree(tmp)
-                # print("actual enum", enum_degree)
-                # enum = tmp
-                # if enum_degree == -1:
-                #     enum = tuple([0])
-                # else:
-                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
-
-
-
-                print("left", left, "vol_tv", vol_tv, "right", right)
-                denum = left + vol_tv + right
-                # print("denum poly", tmp)
-                # denum_degree = self.actual_degree(tmp)
-                # print("actual denum", denum_degree)
-                # denum = tmp
-                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
-
-                print("enum", enum, "denum", denum)
-                #print("enum-denum degree",enum_degree, denum_degree)
-
-                # res = self.polydiv(enum,denum)
-                # if res[1] < 0:
-                #     ress = [0]
-                # else:
-                #     ress =[0 for i in range(res[1]+1)]
-                #     ress[res[1]] = res[0]
-                contrib += (enum/denum)
-                print("contrib",contrib)
-                #if pointer[(v,a_right)] in sigma_r:
-                if a_right in lat[v]:
-                    right += sigma_r[(v,a_right)]
-                # else:
-                #     right = 0
-                a_prime = a_right
-            #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
-            if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
-            #if lat_rev[v][s_left] in lat[v]:
-                left += sigma_r[(v,lat_rev[v][s_left])]
-            # else:
-            #     left = 0
-            s_prime = s_left
-        print("end svvt", contrib)
-        #deltasvvt[(v,t)] = contrib
-        return contrib
-
-
-    def contri_delta_svt_dis(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse):
-        print("******** new call contri_delta_svt","v", v, "t", t)
-        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            partial_sum = dict()
-            s = 0
-            contrib_local = dict()
-            # l_ord = list(dic_nodes_rev.keys())
-            # l_ord.sort()
-            for ii in range(len(l_nei[(v,t)])-1,-1,-1):
-                #normally it should be sorted
-                for u in l_nei[v,t][ii][1]:
-                    w,t_p = (u,l_nei[v,t][ii][0])
-                    print("(w,t')",(w,t_p))
-                    self.contri_delta_svt_dis(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse)
-                    res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r)
-                    #appel recursif
-                    s += res * contribution[w][t_p]
-                    if l_nei[v,t][ii][0] not in partial_sum:
-                        partial_sum[l_nei[v,t][ii][0]] = s
-                    else:
-                        partial_sum[l_nei[v,t][ii][0]] += s
-
-                    print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
-                    if ii != 0:
-                        jj = event_reverse[l_nei[v,t][ii-1][0]]
-                    else:
-                        jj = event_reverse[t]
-                    print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
-                    print("******** half after call contri_delta_svt","v", v, "t", t)
-                    print("dic_nodes[u]",l_nei[v,t],"u",u)
-                    if True:#ii != len(dic_nodes[u])-1:
-                        for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
-                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
-                            print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
-
-                            if v not in contrib_local:
-                                contrib_local[v] = dict()
-                            if not (v in contribution and event[jjj] in contribution[v]):
-                                if sigma_r[v,t] != sigma_r[v,event[jjj]]:
-                                    print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
-                                print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
-                                if event[jjj] != t_p:
-                                    print("ici")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
-                                else:
-                                    print("la")
-                                    if ii == len(l_nei[v,t])-1:
-                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
-                                    else:
-                                        contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
-                                #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
-
-            if v not in contribution:
-                contribution[v] = dict()
-            for vv in contrib_local:
-                for ss in contrib_local[vv]:
-                    contribution[vv][ss] = contrib_local[vv][ss]
-            contribution[v][t] = s + deltasvvt[(v,t)]
-        print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
-        return contribution
-
-
-    #############################################################################
-    #                       continuous                                          #
-    #############################################################################
-
-    def predecessor_graph_con(self,pre, node):
-        G = nx.DiGraph()
-        for k in self.nodes:
-            if k != node:
-                for key in pre[k].keys():
-                    for v2 in pre[k][key].keys(): 
-                        v,t = v2
-                        G.add_edge((v,t),(k,key),interval=pre[k][key][v2])
-
-        return G
-
-    def graph_to_ordered_con(self, G, ev, ev_rev):
-        return con.OrdGraphCon(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
-
-    def vol_rec_con_inst(self, s, e, G_rev, sigma):
-        l = list(G_rev[e])
-        print(e,l,sigma)
-        w,tp = l[0]
-        sigma[e] = dict()
-        if w == s:
-            t1,t2 = G_rev[e][(w,tp)]['interval']
-            if t1 == t2:
-                sigma[e][0] = nppol.Polynomial([1])
-                sigma[e][-1] = sigma[e][0]
-            else:
-                sigma[e][0] = nppol.Polynomial([1])
-                sigma[e][1] = nppol.Polynomial([0,(t2-t1)])
-                sigma[e][-1] = sigma[e][0] + sigma[e][1]
-        else:
-            res = 0
-            for (w,tp) in l:
-                self.vol_rec_con_inst(s, (w,tp), G_rev, sigma)
-                if self.actual_degree(sigma[(w,tp)][-1]) == 0:
-                    res += sigma[(w,tp)][-1]
-                    if 0 not in sigma[e]:
-                        sigma[e][0] = sigma[(w,tp)][-1]
-                    else:
-                        sigma[e][0] += sigma[(w,tp)][-1]
-
-                else:
-                    t1,t2 = G_rev[e][(w,tp)]['interval']
-                    coef_zero = sigma[(w,tp)][-1].coef[0]
-                    if t1 == t2:
-                        coef_zero = sigma[(w,tp)][-1].coef[0]
-                        if 0 not in sigma[e]:
-                            sigma[e][0] = nppol.Polynomial([sigma[(w,tp)].coef[0]])
-                        else:
-                            sigma[e][0] += nppol.Polynomial([sigma[(w,tp)].coef[0]])
-
-                        res += nppol.Polynomial([coef_zero])
-                    else:
-                        d = self.actual_degree(sigma[(w,tp)][-1])
-                        coef_max = sigma[(w,tp)][-1].coef[d]
-                        coef_res = [0 for j in range(d+2)]
-                        coef_res[d+1] = coef_max*(t2 - t1)/(d+1)
-                        coef_res[0] = sigma[(w,tp)][-1].coef[0]
-                        if 0 not in sigma[e]:
-                            sigma[e][0] = nppol.Polynomial([coef_res[0]])
-                        else:
-                            sigma[e][0] += nppol.Polynomial([coef_res[0]])
-                        cof_fin = coef_res[:]
-                        cof_fin[0] = 0
-                        if d+1 not in sigma[e]:
-                            sigma[e][d+1] = nppol.Polynomial(cof_fin)
-                        else:
-                            sigma[e][d+1] += nppol.Polynomial(cof_fin)
-
-
-                        res += nppol.Polynomial(coef_res)
-            sigma[e][-1] = res
-
-    def vol_rec_con(self, s, e, G_rev, sigma, cur_best, mx):
-        if e in sigma:
-            return
-        if e[0] == s:
-            sigma[e] = dict()
-            sigma[e][-1] = nppol.Polynomial([0])
-            return
-
-        if cur_best[e[0]][e[1]][0] == e[1]:
-            #instantenous metapaths
-            self.vol_rec_con_inst(s, e, G_rev, sigma)
-        else:
-            sigma[e] = dict()
-            for j in range(0,mx+1):
-                if j == 0:
-                    l = list(G_rev[e])
-                    print(e,l,sigma)
-                    res = 0
-                    for (w,tp) in l:
-                        self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
-                        if cur_best[w][tp][0] == tp:
-                            coef_zero = sigma[(w,tp)][-1].coef[0]
-                            res += nppol.Polynomial([coef_zero])
-                        else:
-                            res += sigma[(w,tp)][-1]
-                    sigma[e][0] = res
-                elif j == 1:
-                    l = list(G_rev[e])
-                    print(e,l,sigma)
-                    res = 0
-                    for (w,tp) in l:
-                        t1,t2 = G_rev[e][(w,tp)]['interval']
-                        if t1 != t2 and tp <= t1:
-                            self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
-                            if cur_best[w][tp][0] == tp:
-                                coef_zero = sigma[(w,tp)][-1].coef[0]
-                                res += nppol.Polynomial([0,coef_zero*(t2 - t1)])
-                            else:
-                                res += sigma[(w,tp)][-1] * nppol.Polynomial([0,(t2 - t1)])
-                    sigma[e][1] = res
-                else:
-                    l = list(G_rev[e])
-                    print(e,l,sigma)
-                    res = 0
-                    for (w,tp) in l:
-                        t1,t2 = G_rev[e][(w,tp)]['interval']
-                        if t1 != t2 and tp == t2:
-                            self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
-                            if (j-1) in sigma[(w,tp)]:
-                                res += sigma[(w,tp)][j-1] * nppol.Polynomial([0,(t2 - t1)/j])
-                    sigma[e][j] = res
-            sigma[e][-1] = sum( sigma[e][jj]  for jj in range(0,mx+1))
-
-
-
-
-    def volume_metapaths_con(self, G, s, cur_best, mx):
-        sigma = dict()
-        sink = self.sinks(G)
-        G_rev = G.reverse(copy=True)
-        for e in sink:
-            self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
-        return sigma
-
-    def optimal_with_resting_con(self, node, f_edge, events, G, sigma, cur_best, unt):
-        sigma_r = dict()
-        for k in self.nodes:
-            pred = -1
-            for t in events:
-                if k == node:
-                    sigma_r[(k,t)] = nppol.Polynomial([0])
-                else:
-                    if pred == -1:
-                        if (k,t) in G:
-                            sigma_r[(k,t)] = sigma[(k,t)][-1]
-                            pred = t
-                            edge = f_edge[(k,t)]
-                        else:
-                            sigma_r[(k,t)] = nppol.Polynomial([0])
-                    else:
-                        if (k,t) in G:
-                            edge2 = f_edge[(k,t)]
-                            if edge == edge2 and unt[k][pred] >= t:
-                                sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
-                                pred = t
-                            elif edge == edge2 and not(unt[k][pred] >= t):
-                                sigma_r[(k,t)] = sigma[(k,t)][-1]
-                                pred = t
-                            else:
-                                #instant paths occur only here
-                                if cur_best[k][t][0] == t and self.actual_degree(sigma[(k,t)][-1])>0:
-                                    sigma_r[(k,t)] = nppol.Polynomial([sigma[(k,t)][-1].coef[0]])
-                                else:
-                                    sigma_r[(k,t)] = sigma[(k,t)][-1]
-                                pred = t
-                                edge = f_edge[(k,t)]
-                        else:
-                            sigma_r[(k,t)] = sigma_r[(k,pred)]
-        return sigma_r
-
-    def check_contri_con(self, j, i,latencies, sigma, node, sigma_p):
-        lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
-        latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
-
-        if (lati[0] == 0) and lati[1] != 0 and j < i:
-            # latencies are instantenous
-            print("lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
-            x = -numpy.Infinity
-            if (node,latencies[i][0]) in sigma_p:
-                x = self.actual_degree(sigma_p[(node,latencies[i][0])][-1])
-            if x > 0:
-                print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
-                return 2
-
-        if latj < lati:
-            return 1
-        elif latj == lati:
-            x = -numpy.Infinity
-            if (node,latencies[j][0]) in sigma_p:
-                x = self.actual_degree(sigma_p[(node,latencies[j][0])][-1])
-            if x > 0 and j == i+1:
-                return 2
-            elif x > 0 and not (j == i+1):
-                return 1
-            else:
-                return 0
-        else:
-            return -1
-
-    def contribution_each_latency_con(self,latencies, mini, maxi, sigma, sigma_p):
-        #        contri = [dict() for i in range(len(self.nodes))]
-        contri = [dict() for i in range(len(self.nodes))]
-        prev_next = [dict() for i in range(len(self.nodes))]
-        for k in self.nodes:
-            # l contains first arrival times
-            #l = [e for e in latencies[k].keys() ]
-            #l.sort()
-            l = [x for (x,y,z) in latencies[k] ]
-            for i in range(0,len(l)):
-                #check left contribution
-                j = i - 1
-                S = -numpy.Infinity
-                b = True
-                while(j >= 0 and b):
-                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
-                    if cond == 2:
-                        S = latencies[k][i][1]
-                        b = False
-                    if  cond == 1:
-                        #S = latencies[k][l[j]][0]
-                        S = latencies[k][j][1]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j - 1
-                if S == -numpy.Infinity:
-                    S = mini
-                #check right contribution
-                j = i + 1
-                A = -numpy.Infinity
-                b = True
-                while(j < len(l) and b):
-                    #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
-                    cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
-                    if cond == 2:
-                        A = l[i]
-                        b = False
-                    if cond == 1:
-                        A = l[j]
-                        b = False
-                    else:
-                        if cond == 0:
-                            if l[i] not in prev_next[k]:
-                                prev_next[k][l[i]] = [l[j]]
-                            else:
-                                prev_next[k][l[i]].append(l[j])
-                        j = j + 1
-                if A == -numpy.Infinity:
-                    A = maxi
-                contri[k][l[i]] = (S,A)
-        return contri,prev_next
-
-    def contri_delta_svvt_con(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
-        #if (v,t) in deltasvvt:
-            #return deltasvvt[(v,t)]
-        print("///////// call svvt, ","s",s,"v",v,"t",t)
-        if s == v:
-            return 0
-        #voir papier matthieu clemence pour l'algo
-
-        if t not in lat[v]:
-            return 0
-        prev = []
-        next = []
-
-
-        if t in prev_next[v]:
-            prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
-            next = [e for e in prev_next[v][t] if e > t]
-        #if t not in contri[v]:
-        #    t = pointer[(v,t)][1]
-
-        #t_sigma = pointer[(v,t)][1]
-        #if (v,t) not in sigma_r:
-        #    t_sigma = pointer[(v,t)][1]
-        #print("t_contri",v,t)
-        #print("t_sigma",v,t_sigma)
-
-
-        #prev.sort(reverse = True)
-        #prev.reverse()
-        prev =  prev + [contri[v][t][0]]
-        next = next + [contri[v][t][1]]
-        #prev.sort()
-        print("prev", prev)
-        print("next", next)
-
-        left = 0
-        right = 0
-
-        contrib = 0
-        s_prime = lat[v][t][0]
-        vol_tv = sigma_r[(v,t)]
-        # print("vol_tv",vol_tv, vol_tv.coef)
-        # if self.zero_array(vol_tv.coef):
-        #     return nppol.Polynomial([0])
-        for s_left in prev:
-            # if pointer[(v,s_left)] in sigma_r:
-            #     left += sigma_r[pointer[(v,s_left)]][1]
-            # else:
-            #     left = 0
-
-            a_prime = t
-            right = 0
-            for a_right in next:
-                # if pointer[(v,a_right)] in sigma_r:
-                #     right += sigma_r[pointer[(v,a_right)]][1]
-                # else:
-                #     right = 0
-
-                print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
-                enum = (s_prime - s_left) * (a_right - a_prime) * vol_tv
-                # print("enum poly", tmp)
-                # enum_degree = self.actual_degree(tmp)
-                # print("actual enum", enum_degree)
-                # enum = tmp
-                # if enum_degree == -1:
-                #     enum = tuple([0])
-                # else:
-                #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
-
-
-
-                print("left", left, "vol_tv", vol_tv, "right", right)
-                denum = left + vol_tv + right
-                # print("denum poly", tmp)
-                # denum_degree = self.actual_degree(tmp)
-                # print("actual denum", denum_degree)
-                # denum = tmp
-                #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
-
-                print("enum", enum, "denum", denum)
-                #print("enum-denum degree",enum_degree, denum_degree)
-
-                res = self.polydiv(enum,denum)
-                if res[1] < 0:
-                    ress = [0]
-                else:
-                    ress =[0 for i in range(res[1]+1)]
-                    ress[res[1]] = res[0]
-                #contrib += (enum/denum)
-                contrib += nppol.Polynomial(ress)
-                print("contrib",contrib)
-                #if pointer[(v,a_right)] in sigma_r:
-                if a_right in lat[v]:
-                    right += sigma_r[(v,a_right)]
-                # else:
-                #     right = 0
-                a_prime = a_right
-            #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
-            if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
-            #if lat_rev[v][s_left] in lat[v]:
-                left += sigma_r[(v,lat_rev[v][s_left])]
-            # else:
-            #     left = 0
-            s_prime = s_left
-        print("end svvt", contrib)
-        #deltasvvt[(v,t)] = contrib
-        return contrib
-
-    def coef_volume_con(self, x, v, t, w, t_p, sigma_r, pre, st1t2):
-        print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "st1t2", st1t2)
-        # (t1,t2) = pre[w][t_p][v,t]
-        # if v == x :
-        #     return nppol.Polynomial([1])
-        # if t1 < t:
-        #     (t1,t2) = (t2,t2)
-        # st1t2 = nppol.Polynomial([1])
-        # if t2 > t1:
-        #     rr = [0 for ii in range(chev+1)]
-        #     rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
-        #     st1t2 = nppol.Polynomial(rr)
-        # print("st1t2",st1t2)
-        if x == v:
-            return nppol.Polynomial([1])
-        svt = sigma_r[(v,t)]
-        swtp = sigma_r[(w,t_p)]
-
-        print("svt", svt)
-        tmp = self.polymul(svt, st1t2)
-        #tmp = tmp[0]
-        print("svt*st1t2", tmp)
-        svt_high = [0 for jj in range(tmp[1]+1)]
-        svt_high[tmp[1]] = tmp[0]
-        svt_high = nppol.Polynomial(svt_high)
-        svt_degree = self.actual_degree(svt_high)
-        print("actual svt*st1t2", svt_degree)
+#             contribution[v][t] = s + svvt
+#         print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
+#         return contribution, partial_sum
+
+
+#     def closest_arrival_contri(self, cur_best, events):
+#         res = [ dict() for k in self.nodes ]
+#         for k in self.nodes:
+#             last_depar = -1
+#             last_arrival = -1
+#             for i in events:
+#                 if cur_best[k][i][0] != - numpy.Infinity:
+#                     dep = cur_best[k][i][0]
+#                     res[k][i] = last_arrival
+#                     if last_depar != dep:
+#                         dep = last_depar
+#                         last_arrival = i
+#                         #last_depar = dep
+#         return res
+
+
+
+#     def contri_link_stream(self, contribution, partial_sum, event, event_reverse, close_arrival, sigma_r, pointer):
+#         contri_finale = [dict() for k in self.nodes]
+#         for k in self.nodes:
+#             if k in contribution:
+#                 for i in contribution[k]:
+#                     contri_finale[k][i] = contribution[k][i]
+#                     times = partial_sum[(k,i)].keys()
+#                     times = list(times)
+#                     times.reverse()
+#                     times = [i] + times
+#                     print("nodes",k,"i",i,"partial_times",times)
+#                     for j in range(0,len(times) -1):
+#                         jj = event_reverse[times[j]]
+#                         print("jj",jj,times[j+1],event_reverse[times[j+1]])
+#                         for jjj in range(jj+1,event_reverse[times[j+1]]+1):
+#                             #if not (j==0 and jjj==jj):
+#                             contri_finale[k][event[jjj]] = partial_sum[(k,i)][times[j+1]]*(self.coef_volume(k,event[jjj],k,i,sigma_r, pointer))
+#         return contri_finale
+
+
+
+
+#                # if (self.actual_degree(sigma_r[(node,latencies[j][0])][1]) > 0) or (self.actual_degree(sigma_r[(node,latencies[i][0])][1]) > 0):
+
+#     def cal_lat(self, arr,latencies):
+#         #return latency
+#         return arr - latencies[arr][0]
+
+#     def check_contri(self, j, i,latencies, sigma_r, rev_events, node):
+#         lati = (self.cal_lat(i,latencies),latencies[i][1])
+#         latj = (self.cal_lat(j,latencies),latencies[j][1])
+#         if (lati[0] == 0 and latj[0] == 0) and (lati[1] == latj[1]) and lati[1] != 0:
+#             # latencies are instantenous
+#             if numpy.abs(rev_events[j] - rev_events[i]) == 1:
+#                 #latencies are successive
+#                 print("lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+
+#                 if sigma_r[(node,latencies[j][0])][2] == True or sigma_r[(node,latencies[i][0])][2] == True:
+#                     print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+#                     return 2
+#             else:
+#                 return 1
+#         if latj < lati:
+#             return 1
+#         elif latj == lati:
+#             return 0
+#         else:
+#             return -1
+
+#     def contribution_each_latency(self,latencies, sigma_r, rev_events):
+#         maxi = max(self.times)
+#         #        contri = [dict() for i in range(len(self.nodes))]
+#         contri = [dict() for i in range(len(self.nodes))]
+#         prev_next = [dict() for i in range(len(self.nodes))]
+#         for k in self.nodes:
+#             # l contains first arrival times
+#             l = [e for e in latencies[k].keys() ]
+#             l.sort()
+#             for i in range(0,len(l)):
+#                 #check left contribution
+#                 j = i - 1
+#                 S = -1
+#                 b = True
+#                 while(j >= 0 and b):
+#                     cond = self.check_contri(l[j], l[i], latencies[k], sigma_r, rev_events, k)
+#                     if cond == 2:
+#                         S = latencies[k][l[i]][0]
+#                         b = False
+#                     if  cond == 1:
+#                         S = latencies[k][l[j]][0]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j - 1
+#                 if S == -1:
+#                     S = 0
+#                 #check right contribution
+#                 j = i + 1
+#                 A = -1
+#                 b = True
+#                 while(j < len(l) and b):
+#                     cond = self.check_contri(l[j], l[i], latencies[k], sigma_r, rev_events, k)
+#                     if cond == 2:
+#                         A = l[i]
+#                         b = False
+#                     if cond == 1:
+#                         A = l[j]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j + 1
+#                 if A == -1:
+#                     A = maxi
+#                 contri[k][l[i]] = (S,A)
+#         return contri,prev_next
+
+#     def volume_sz_t_v(self, G, latencies, contri, z, v, t):
+#         lat = -1
+#         for e in latencies[z].keys():
+#             if t >= e and t <= latencies[z][e] :
+#                 lat = e
+#         paths = nx.all_simple_paths(G,(0,0.0),(z,latencies[z][lat]))
+
+
+
+# #arrival times are unique, so we can define cur_best[b][alpha], is it possible to put the metaedge in pre?
+#     def fastest_paths_from_vertex(self,x,boo):
+#                              #b is bool for new and old version 0 for old and 1 for new, to be removed
+#         """
+#         the function returns all metapaths in a link stream
+#         and is based on bellman-ford algorithm
+
+#         :param x: x the node from which we want the metawalks
+#         :return: a list of the metapaths in the link stream 
+#         """
+#         pre = dict()
+#         cur_best = dict()
+
+#         final_paths = [dict() for i in range(len(self.nodes))]
+#         tmp_paths = [dict() for i in range(len(self.nodes))]
+
+#         #the 2 loops inside the first are to iterate over each temporal link 
+#         for k in self.nodes:
+#             for i in range(0,len(self.links)):
+#                 a,b = self.links[i]
+#                 for j in range(0,len(self.link_presence[i]),2):
+#                     t1,t2 = self.link_presence[i][j:j+2]
+#                     if boo == 0:
+#                         self.check_edge(x,a,b,t1,t2,final_paths,tmp_paths)
+#                     else:
+#                         #add commented line for both directions of edges
+#                         self.extend_paths(x,a,b,t1,t2,final_paths, tmp_paths)
+#                         self.extend_paths(x,b,a,t1,t2,final_paths, tmp_paths)
+
+#         return final_paths
+
+#     #############################################################################
+#     #                       discrete                                            #
+#     #############################################################################
+
+#     def predecessor_graph_dis(self,pre, node):
+#         G = nx.DiGraph()
+#         for k in self.nodes:
+#             if k != node:
+#                 for key in pre[k].keys():
+#                     for v2 in pre[k][key].keys():
+#                         v,t = v2
+#                         G.add_edge((v,t),(k,key),interval=pre[k][key][v2][0])
+#                         #G.add_edge((self.node_to_label[v],t),(self.node_to_label[k],key),interval=pre[k][key][v2][0])
+#         return G
+
+#     def graph_to_ordered(self, G, ev, ev_rev):
+#         return org.OrdGraphDis(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
+
+#     def cur_best_to_array(self, cur_best, ev, ev_rev):
+#         cur_b_arr = [ [0 for t in ev    ]   for k in self.nodes]
+#         for v in self.nodes:
+#             for t in cur_best[v]:
+#                 cur_b_arr[v][ev_rev[t]] = (t,cur_best[v][t][0],cur_best[v][t][1])
+#         return cur_b_arr
+
+#     def latencies_dis(self,cur_b_arr, ev, ev_rev):
+#         latencies = [ [0 for t in ev    ]   for k in self.nodes]
+#         last_depr = [ [numpy.Infinity for t in ev    ]   for k in self.nodes]
+#         for k in self.nodes:
+#             for i in range(0,len(cur_b_arr[k])):
+#                 if cur_b_arr[k][i][1] != -numpy.Infinity:
+#                     if latencies[k][ev_rev[cur_b_arr[k][i][1]]] == 0:
+#                         latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
+#                     if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] == numpy.Infinity:
+#                         last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
+#                     else:
+#                         #we already have one element for the departure
+#                         if last_depr[k][ev_rev[cur_b_arr[k][i][1]]] > cur_b_arr[k][i][0]:
+#                             last_depr[k][ev_rev[cur_b_arr[k][i][1]]] = cur_b_arr[k][i][0]
+#                             #print("i",i,"cur_b_arr[k][i][0]",cur_b_arr[k][i][0],"ev_rev[cur_b_arr[k][i][1]]",ev_rev[cur_b_arr[k][i][1]])
+#                             latencies[k][ev_rev[cur_b_arr[k][i][1]]] = (cur_b_arr[k][i][0],cur_b_arr[k][i][2])
+
+#         return latencies
+
+#     def latencies_without_0_and_rev(self, lat, ev):
+#         latency = [[] for k in self.nodes]
+#         latency_rev = [[] for k in self.nodes]
+#         for k in self.nodes:
+#             for i in range(0,len(ev)):
+#                 if lat[k][i] != 0:
+#                     latency[k].append([ev[i],lat[k][i][0], lat[k][i][1]])
+#                     latency_rev[k].append([ lat[k][i][0],ev[i],lat[k][i][1] ])
+#         return latency, latency_rev
+
+
+
+
+
+
+#     # def trav_resting_dis(self, G, e, last_inter, before_last_inter, pred_node, sigma, sigma_r, poly, depth, pred_depar, actual_depar):
+#     #     print("noder",e, "predr",pred_node, "last inter", last_inter, "before last inter", before_last_inter, "pred_depar", pred_depar, "actual_depar", actual_depar, sigma_r)
+#     #     # nodes are the same as before we add paths
+#     #     su = sigma[e]
+#     #     if pred_node[0] == e[0] and pred_depar == actual_depar:
+
+#     #         if e not in sigma_r:
+#     #             sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
+#     #         else:
+#     #             if pred_node > sigma_r[e][0]:
+#     #                 sigma_r[e] = (pred_node, su + sigma_r[pred_node][1])
+#     #     else:
+#     #         if e not in sigma_r:
+#     #             #no resting path here
+#     #             sigma_r[e] = ((-1,-1),su)
+
+
+
+#     #     visit = list(G[e])
+#     #     visit.sort()
+#     #     print("succ")
+#     #     dic_nodes = dict()
+#     #     for (x,y) in visit:
+#     #         if x in dic_nodes:
+#     #             dic_nodes[x].append(y)
+#     #         else:
+#     #             dic_nodes[x] = [y]
+#     #     for u in dic_nodes.keys():
+#     #         #normally it should be sorted
+#     #         for ii in range( 0, len(dic_nodes[u])):
+#     #             if ii == 0:
+#     #                 pred_node = (-1,-1)
+#     #                 pred_depar = -1
+#     #             else:
+#     #                 pred_node = (u,dic_nodes[u][ii-1])
+#     #                 pred_depar = actual_depar
+#     #             poly = [0 for jj in range(len(self.nodes))]
+#     #             self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[e][(u,dic_nodes[u][ii])]['interval'], last_inter, pred_node, sigma, sigma_r, poly, depth + 1, pred_depar, actual_depar)
+#     #     return
+
+#     def first_edge_rec(self, e, edge, f_edge, G):
+#         if e in f_edge:
+#             return
+#         f_edge[e] = edge
+#         l = list(G[e])
+#         for ee in l:
+#             self.first_edge_rec(ee, edge, f_edge, G)
+
+#     def dictionary_first_edge(self, G):
+#         f_edge = dict()
+#         source = self.sources(G)
+#         for sou in source:
+#             f_edge[sou] = sou[1]
+#             for e in list(G[sou]):
+#                 self.first_edge_rec(e, sou[1], f_edge, G)
+#         return f_edge
+
+#     def optimal_with_resting_dis(self, node, f_edge, events, G, sigma):
+#         sigma_r = dict()
+#         for k in self.nodes:
+#             pred = -1
+#             for t in events:
+#                 if k == node:
+#                     sigma_r[(k,t)] = 0
+#                 else:
+#                     if pred == -1:
+#                         if (k,t) in G:
+#                             sigma_r[(k,t)] = sigma[(k,t)]
+#                             pred = t
+#                             edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = 0
+#                     else:
+#                         if (k,t) in G:
+#                             edge2 = f_edge[(k,t)]
+#                             if edge == edge2:
+#                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)]
+#                                 pred = t
+#                             else:
+#                                 sigma_r[(k,t)] = sigma[(k,t)]
+#                                 pred = t
+#                                 edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = sigma_r[(k,pred)]
+#         return sigma_r
+
+
+
+#     def vol_rec(self, s, e, G_rev, sigma):
+#         if e in sigma:
+#             return
+#         l = list(G_rev[e])
+#         print(e,l,sigma)
+#         if len(l) == 1:
+#             w,tp = l[0]
+#             if w == s:
+#                 sigma[e] = 1
+#             else:
+#                 self.vol_rec(s, (w,tp), G_rev, sigma)
+#                 sigma[e] = sigma[(w,tp)]
+#         else:
+#             res = 0
+#             for (w,tp) in l:
+#                 self.vol_rec(s, (w,tp), G_rev, sigma)
+#                 res += sigma[(w,tp)]
+
+#             sigma[e] = res
+
+
+
+#     def volume_metapaths_dis(self, G, s):
+#         sigma = dict()
+#         sink = self.sinks(G)
+#         G_rev = G.reverse(copy=True)
+#         for e in sink:
+#             self.vol_rec(s, e, G_rev, sigma)
+#         return sigma
+
+#     # def volume_metapaths_with_restingpaths_dis(self, G, sigma):
+#     #     sigma_r = dict()
+#     #     source = list(self.sources(G))
+#     #     for (v,t) in source:
+#     #         sigma_r[(v,t)] = ((-1,-1),0)
+#     #         visit = list(G[(v,t)])
+#     #         visit.sort()
+#     #         dic_nodes = dict()
+#     #         for (x,y) in visit:
+#     #             if x in dic_nodes:
+#     #                 dic_nodes[x].append(y)
+#     #             else:
+#     #                 dic_nodes[x] = [y]
+#     #         for u in dic_nodes.keys():
+#     #             #normally it should be sorted
+#     #             for ii in range( 0, len(dic_nodes[u])):
+#     #                 if ii == 0:
+#     #                     pred_node = (-1,-1)
+#     #                     actual_depar = dic_nodes[u][ii]
+#     #                     pred_depar = -1
+#     #                 else:
+#     #                     pred_node = (u,dic_nodes[u][ii-1])
+#     #                     pred_depar = actual_depar
+#     #                     actual_depar = dic_nodes[u][ii]
+#     #                 poly = [0 for jj in range(len(self.nodes))]
+#     #                 self.trav_resting_dis(G, (u,dic_nodes[u][ii]), G[(v,t)][(u,dic_nodes[u][ii])]['interval'], (-1,-1), pred_node, sigma, sigma_r, poly, 0, pred_depar, actual_depar)
+#     #     return sigma_r
+
+#     def cal_lat_dis(self, arr,latencies):
+#         #return latency
+#         return latencies[arr][0] - latencies[arr][1]
+
+
+#     def check_contri_dis(self, j, i,latencies):
+#         lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
+#         latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
+#         if latj < lati:
+#             return 1
+#         elif latj == lati:
+#             return 0
+#         else:
+#             return -1
+
+#     def coef_volume_dis(self, x, v, t, w, t_p, sigma_r):
+#         print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p)
+#         if v == x :
+#             return 1
+#         svt = sigma_r[(v,t)]
+#         swtp = sigma_r[(w,t_p)]
+#         print("svt", svt)
+#         print("swtp", swtp)
+#         if svt == 0:
+#             return 0
+#         return (svt/swtp)
+
+#     def lat_to_dic(self, lat):
+#         latency = [ dict()  for k in self.nodes]
+#         latency_rev = [ dict()  for k in self.nodes]
+#         for k in self.nodes:
+#             for (x,y,z) in lat[k]:
+#                 latency[k][y] = (x,z)
+#                 latency_rev[k][x] = y
+#         return latency, latency_rev
+
+#     def contribution_each_latency_dis(self,latencies, mini, maxi):
+#         #        contri = [dict() for i in range(len(self.nodes))]
+#         contri = [dict() for i in range(len(self.nodes))]
+#         prev_next = [dict() for i in range(len(self.nodes))]
+#         for k in self.nodes:
+#             # l contains first arrival times
+#             #l = [e for e in latencies[k].keys() ]
+#             #l.sort()
+#             l = [x for (x,y,z) in latencies[k] ]
+#             for i in range(0,len(l)):
+#                 #check left contribution
+#                 j = i - 1
+#                 S = -numpy.Infinity
+#                 b = True
+#                 while(j >= 0 and b):
+#                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+#                     cond = self.check_contri_dis(j, i, latencies[k])
+#                     if  cond == 1:
+#                         #S = latencies[k][l[j]][0]
+#                         S = latencies[k][j][1]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j - 1
+#                 if S == -numpy.Infinity:
+#                     S = mini
+#                 #check right contribution
+#                 j = i + 1
+#                 A = -numpy.Infinity
+#                 b = True
+#                 while(j < len(l) and b):
+#                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+#                     cond = self.check_contri_dis(j, i, latencies[k])
+#                     if cond == 1:
+#                         A = l[j]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j + 1
+#                 if A == -numpy.Infinity:
+#                     A = maxi
+#                 contri[k][l[i]] = (S,A)
+#         return contri,prev_next
+
+#     def contri_delta_svvt_dis(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
+#         #if (v,t) in deltasvvt:
+#             #return deltasvvt[(v,t)]
+#         print("///////// call svvt, ","s",s,"v",v,"t",t)
+#         if s == v:
+#             return 0
+#         #voir papier matthieu clemence pour l'algo
+
+#         if t not in lat[v]:
+#             return 0
+#         prev = []
+#         next = []
+
+
+#         if t in prev_next[v]:
+#             prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+#             next = [e for e in prev_next[v][t] if e > t]
+#         #if t not in contri[v]:
+#         #    t = pointer[(v,t)][1]
+
+#         #t_sigma = pointer[(v,t)][1]
+#         #if (v,t) not in sigma_r:
+#         #    t_sigma = pointer[(v,t)][1]
+#         #print("t_contri",v,t)
+#         #print("t_sigma",v,t_sigma)
+
+
+#         #prev.sort(reverse = True)
+#         #prev.reverse()
+#         prev =  prev + [contri[v][t][0]]
+#         next = next + [contri[v][t][1]]
+#         #prev.sort()
+#         print("prev", prev)
+#         print("next", next)
+
+#         left = 0
+#         right = 0
+
+#         contrib = 0
+#         s_prime = lat[v][t][0]
+#         vol_tv = sigma_r[(v,t)]
+#         # print("vol_tv",vol_tv, vol_tv.coef)
+#         # if self.zero_array(vol_tv.coef):
+#         #     return nppol.Polynomial([0])
+#         for s_left in prev:
+#             # if pointer[(v,s_left)] in sigma_r:
+#             #     left += sigma_r[pointer[(v,s_left)]][1]
+#             # else:
+#             #     left = 0
+
+#             a_prime = t
+#             right = 0
+#             for a_right in next:
+#                 # if pointer[(v,a_right)] in sigma_r:
+#                 #     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+
+#                 print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+#                 enum = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+#                 # print("enum poly", tmp)
+#                 # enum_degree = self.actual_degree(tmp)
+#                 # print("actual enum", enum_degree)
+#                 # enum = tmp
+#                 # if enum_degree == -1:
+#                 #     enum = tuple([0])
+#                 # else:
+#                 #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+#                 print("left", left, "vol_tv", vol_tv, "right", right)
+#                 denum = left + vol_tv + right
+#                 # print("denum poly", tmp)
+#                 # denum_degree = self.actual_degree(tmp)
+#                 # print("actual denum", denum_degree)
+#                 # denum = tmp
+#                 #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+#                 print("enum", enum, "denum", denum)
+#                 #print("enum-denum degree",enum_degree, denum_degree)
+
+#                 # res = self.polydiv(enum,denum)
+#                 # if res[1] < 0:
+#                 #     ress = [0]
+#                 # else:
+#                 #     ress =[0 for i in range(res[1]+1)]
+#                 #     ress[res[1]] = res[0]
+#                 contrib += (enum/denum)
+#                 print("contrib",contrib)
+#                 #if pointer[(v,a_right)] in sigma_r:
+#                 if a_right in lat[v]:
+#                     right += sigma_r[(v,a_right)]
+#                 # else:
+#                 #     right = 0
+#                 a_prime = a_right
+#             #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+#             if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
+#             #if lat_rev[v][s_left] in lat[v]:
+#                 left += sigma_r[(v,lat_rev[v][s_left])]
+#             # else:
+#             #     left = 0
+#             s_prime = s_left
+#         print("end svvt", contrib)
+#         #deltasvvt[(v,t)] = contrib
+#         return contrib
+
+
+#     def contri_delta_svt_dis(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse):
+#         print("******** new call contri_delta_svt","v", v, "t", t)
+#         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+#             partial_sum = dict()
+#             s = 0
+#             contrib_local = dict()
+#             # l_ord = list(dic_nodes_rev.keys())
+#             # l_ord.sort()
+#             for ii in range(len(l_nei[(v,t)])-1,-1,-1):
+#                 #normally it should be sorted
+#                 for u in l_nei[v,t][ii][1]:
+#                     w,t_p = (u,l_nei[v,t][ii][0])
+#                     print("(w,t')",(w,t_p))
+#                     self.contri_delta_svt_dis(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse)
+#                     res = self.coef_volume_dis(node, v, t, w, t_p, sigma_r)
+#                     #appel recursif
+#                     s += res * contribution[w][t_p]
+#                     if l_nei[v,t][ii][0] not in partial_sum:
+#                         partial_sum[l_nei[v,t][ii][0]] = s
+#                     else:
+#                         partial_sum[l_nei[v,t][ii][0]] += s
+
+#                     print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
+#                     if ii != 0:
+#                         jj = event_reverse[l_nei[v,t][ii-1][0]]
+#                     else:
+#                         jj = event_reverse[t]
+#                     print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
+#                     print("******** half after call contri_delta_svt","v", v, "t", t)
+#                     print("dic_nodes[u]",l_nei[v,t],"u",u)
+#                     if True:#ii != len(dic_nodes[u])-1:
+#                         for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+#                             print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+#                             print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
+
+#                             if v not in contrib_local:
+#                                 contrib_local[v] = dict()
+#                             if not (v in contribution and event[jjj] in contribution[v]):
+#                                 if sigma_r[v,t] != sigma_r[v,event[jjj]]:
+#                                     print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
+#                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
+#                                 if event[jjj] != t_p:
+#                                     print("ici")
+#                                     contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
+#                                 else:
+#                                     print("la")
+#                                     if ii == len(l_nei[v,t])-1:
+#                                         contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
+#                                     else:
+#                                         contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_dis(node, v,event[jjj],w,t_p,sigma_r))
+#                                 #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
+
+#             if v not in contribution:
+#                 contribution[v] = dict()
+#             for vv in contrib_local:
+#                 for ss in contrib_local[vv]:
+#                     contribution[vv][ss] = contrib_local[vv][ss]
+#             contribution[v][t] = s + deltasvvt[(v,t)]
+#         print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
+#         return contribution
+
+
+#     #############################################################################
+#     #                       continuous                                          #
+#     #############################################################################
+
+#     def predecessor_graph_con(self,pre, node):
+#         G = nx.DiGraph()
+#         for k in self.nodes:
+#             if k != node:
+#                 for key in pre[k].keys():
+#                     for v2 in pre[k][key].keys(): 
+#                         v,t = v2
+#                         G.add_edge((v,t),(k,key),interval=pre[k][key][v2])
+
+#         return G
+
+#     def graph_to_ordered_con(self, G, ev, ev_rev):
+#         return con.OrdGraphCon(G.nodes, G.edges, ev, ev_rev, self.sinks(G))
+
+#     def vol_rec_con_inst(self, s, e, G_rev, sigma):
+#         l = list(G_rev[e])
+#         print(e,l,sigma)
+#         w,tp = l[0]
+#         sigma[e] = dict()
+#         if w == s:
+#             t1,t2 = G_rev[e][(w,tp)]['interval']
+#             if t1 == t2:
+#                 sigma[e][0] = nppol.Polynomial([1])
+#                 sigma[e][-1] = sigma[e][0]
+#             else:
+#                 sigma[e][0] = nppol.Polynomial([1])
+#                 sigma[e][1] = nppol.Polynomial([0,(t2-t1)])
+#                 sigma[e][-1] = sigma[e][0] + sigma[e][1]
+#         else:
+#             res = 0
+#             for (w,tp) in l:
+#                 self.vol_rec_con_inst(s, (w,tp), G_rev, sigma)
+#                 if self.actual_degree(sigma[(w,tp)][-1]) == 0:
+#                     res += sigma[(w,tp)][-1]
+#                     if 0 not in sigma[e]:
+#                         sigma[e][0] = sigma[(w,tp)][-1]
+#                     else:
+#                         sigma[e][0] += sigma[(w,tp)][-1]
+
+#                 else:
+#                     t1,t2 = G_rev[e][(w,tp)]['interval']
+#                     coef_zero = sigma[(w,tp)][-1].coef[0]
+#                     if t1 == t2:
+#                         coef_zero = sigma[(w,tp)][-1].coef[0]
+#                         if 0 not in sigma[e]:
+#                             sigma[e][0] = nppol.Polynomial([sigma[(w,tp)].coef[0]])
+#                         else:
+#                             sigma[e][0] += nppol.Polynomial([sigma[(w,tp)].coef[0]])
+
+#                         res += nppol.Polynomial([coef_zero])
+#                     else:
+#                         d = self.actual_degree(sigma[(w,tp)][-1])
+#                         coef_max = sigma[(w,tp)][-1].coef[d]
+#                         coef_res = [0 for j in range(d+2)]
+#                         coef_res[d+1] = coef_max*(t2 - t1)/(d+1)
+#                         coef_res[0] = sigma[(w,tp)][-1].coef[0]
+#                         if 0 not in sigma[e]:
+#                             sigma[e][0] = nppol.Polynomial([coef_res[0]])
+#                         else:
+#                             sigma[e][0] += nppol.Polynomial([coef_res[0]])
+#                         cof_fin = coef_res[:]
+#                         cof_fin[0] = 0
+#                         if d+1 not in sigma[e]:
+#                             sigma[e][d+1] = nppol.Polynomial(cof_fin)
+#                         else:
+#                             sigma[e][d+1] += nppol.Polynomial(cof_fin)
+
+
+#                         res += nppol.Polynomial(coef_res)
+#             sigma[e][-1] = res
+
+#     def vol_rec_con(self, s, e, G_rev, sigma, cur_best, mx):
+#         if e in sigma:
+#             return
+#         if e[0] == s:
+#             sigma[e] = dict()
+#             sigma[e][-1] = nppol.Polynomial([0])
+#             return
+
+#         if cur_best[e[0]][e[1]][0] == e[1]:
+#             #instantenous metapaths
+#             self.vol_rec_con_inst(s, e, G_rev, sigma)
+#         else:
+#             sigma[e] = dict()
+#             for j in range(0,mx+1):
+#                 if j == 0:
+#                     l = list(G_rev[e])
+#                     print(e,l,sigma)
+#                     res = 0
+#                     for (w,tp) in l:
+#                         self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+#                         if cur_best[w][tp][0] == tp:
+#                             coef_zero = sigma[(w,tp)][-1].coef[0]
+#                             res += nppol.Polynomial([coef_zero])
+#                         else:
+#                             res += sigma[(w,tp)][-1]
+#                     sigma[e][0] = res
+#                 elif j == 1:
+#                     l = list(G_rev[e])
+#                     print(e,l,sigma)
+#                     res = 0
+#                     for (w,tp) in l:
+#                         t1,t2 = G_rev[e][(w,tp)]['interval']
+#                         if t1 != t2 and tp <= t1:
+#                             self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+#                             if cur_best[w][tp][0] == tp:
+#                                 coef_zero = sigma[(w,tp)][-1].coef[0]
+#                                 res += nppol.Polynomial([0,coef_zero*(t2 - t1)])
+#                             else:
+#                                 res += sigma[(w,tp)][-1] * nppol.Polynomial([0,(t2 - t1)])
+#                     sigma[e][1] = res
+#                 else:
+#                     l = list(G_rev[e])
+#                     print(e,l,sigma)
+#                     res = 0
+#                     for (w,tp) in l:
+#                         t1,t2 = G_rev[e][(w,tp)]['interval']
+#                         if t1 != t2 and tp == t2:
+#                             self.vol_rec_con(s, (w,tp), G_rev, sigma, cur_best, mx)
+#                             if (j-1) in sigma[(w,tp)]:
+#                                 res += sigma[(w,tp)][j-1] * nppol.Polynomial([0,(t2 - t1)/j])
+#                     sigma[e][j] = res
+#             sigma[e][-1] = sum( sigma[e][jj]  for jj in range(0,mx+1))
+
+
+
+
+#     def volume_metapaths_con(self, G, s, cur_best, mx):
+#         sigma = dict()
+#         sink = self.sinks(G)
+#         G_rev = G.reverse(copy=True)
+#         for e in sink:
+#             self.vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
+#         return sigma
+
+#     def optimal_with_resting_con(self, node, f_edge, events, G, sigma, cur_best, unt):
+#         sigma_r = dict()
+#         for k in self.nodes:
+#             pred = -1
+#             for t in events:
+#                 if k == node:
+#                     sigma_r[(k,t)] = nppol.Polynomial([0])
+#                 else:
+#                     if pred == -1:
+#                         if (k,t) in G:
+#                             sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                             pred = t
+#                             edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = nppol.Polynomial([0])
+#                     else:
+#                         if (k,t) in G:
+#                             edge2 = f_edge[(k,t)]
+#                             if edge == edge2 and unt[k][pred] >= t:
+#                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
+#                                 pred = t
+#                             elif edge == edge2 and not(unt[k][pred] >= t):
+#                                 sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                                 pred = t
+#                             else:
+#                                 #instant paths occur only here
+#                                 if cur_best[k][t][0] == t and self.actual_degree(sigma[(k,t)][-1])>0:
+#                                     sigma_r[(k,t)] = nppol.Polynomial([sigma[(k,t)][-1].coef[0]])
+#                                 else:
+#                                     sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                                 pred = t
+#                                 edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = sigma_r[(k,pred)]
+#         return sigma_r
+
+#     def check_contri_con(self, j, i,latencies, sigma, node, sigma_p):
+#         lati = (self.cal_lat_dis(i,latencies),latencies[i][2])
+#         latj = (self.cal_lat_dis(j,latencies),latencies[j][2])
+
+#         if (lati[0] == 0) and lati[1] != 0 and j < i:
+#             # latencies are instantenous
+#             print("lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+#             x = -numpy.Infinity
+#             if (node,latencies[i][0]) in sigma_p:
+#                 x = self.actual_degree(sigma_p[(node,latencies[i][0])][-1])
+#             if x > 0:
+#                 print("ok = > lat[i]",latencies[i],"latj[j]",latencies[j],"node",node)
+#                 return 2
+
+#         if latj < lati:
+#             return 1
+#         elif latj == lati:
+#             x = -numpy.Infinity
+#             if (node,latencies[j][0]) in sigma_p:
+#                 x = self.actual_degree(sigma_p[(node,latencies[j][0])][-1])
+#             if x > 0 and j == i+1:
+#                 return 2
+#             elif x > 0 and not (j == i+1):
+#                 return 1
+#             else:
+#                 return 0
+#         else:
+#             return -1
+
+#     def contribution_each_latency_con(self,latencies, mini, maxi, sigma, sigma_p):
+#         #        contri = [dict() for i in range(len(self.nodes))]
+#         contri = [dict() for i in range(len(self.nodes))]
+#         prev_next = [dict() for i in range(len(self.nodes))]
+#         for k in self.nodes:
+#             # l contains first arrival times
+#             #l = [e for e in latencies[k].keys() ]
+#             #l.sort()
+#             l = [x for (x,y,z) in latencies[k] ]
+#             for i in range(0,len(l)):
+#                 #check left contribution
+#                 j = i - 1
+#                 S = -numpy.Infinity
+#                 b = True
+#                 while(j >= 0 and b):
+#                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+#                     cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
+#                     if cond == 2:
+#                         S = latencies[k][i][1]
+#                         b = False
+#                     if  cond == 1:
+#                         #S = latencies[k][l[j]][0]
+#                         S = latencies[k][j][1]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j - 1
+#                 if S == -numpy.Infinity:
+#                     S = mini
+#                 #check right contribution
+#                 j = i + 1
+#                 A = -numpy.Infinity
+#                 b = True
+#                 while(j < len(l) and b):
+#                     #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
+#                     cond = self.check_contri_con(j, i, latencies[k], sigma, k, sigma_p)
+#                     if cond == 2:
+#                         A = l[i]
+#                         b = False
+#                     if cond == 1:
+#                         A = l[j]
+#                         b = False
+#                     else:
+#                         if cond == 0:
+#                             if l[i] not in prev_next[k]:
+#                                 prev_next[k][l[i]] = [l[j]]
+#                             else:
+#                                 prev_next[k][l[i]].append(l[j])
+#                         j = j + 1
+#                 if A == -numpy.Infinity:
+#                     A = maxi
+#                 contri[k][l[i]] = (S,A)
+#         return contri,prev_next
+
+#     def contri_delta_svvt_con(self, s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
+#         #if (v,t) in deltasvvt:
+#             #return deltasvvt[(v,t)]
+#         print("///////// call svvt, ","s",s,"v",v,"t",t)
+#         if s == v:
+#             return 0
+#         #voir papier matthieu clemence pour l'algo
+
+#         if t not in lat[v]:
+#             return 0
+#         prev = []
+#         next = []
+
+
+#         if t in prev_next[v]:
+#             prev = [lat[v][e][0] for e in prev_next[v][t] if e < t]
+#             next = [e for e in prev_next[v][t] if e > t]
+#         #if t not in contri[v]:
+#         #    t = pointer[(v,t)][1]
+
+#         #t_sigma = pointer[(v,t)][1]
+#         #if (v,t) not in sigma_r:
+#         #    t_sigma = pointer[(v,t)][1]
+#         #print("t_contri",v,t)
+#         #print("t_sigma",v,t_sigma)
+
+
+#         #prev.sort(reverse = True)
+#         #prev.reverse()
+#         prev =  prev + [contri[v][t][0]]
+#         next = next + [contri[v][t][1]]
+#         #prev.sort()
+#         print("prev", prev)
+#         print("next", next)
+
+#         left = 0
+#         right = 0
+
+#         contrib = 0
+#         s_prime = lat[v][t][0]
+#         vol_tv = sigma_r[(v,t)]
+#         # print("vol_tv",vol_tv, vol_tv.coef)
+#         # if self.zero_array(vol_tv.coef):
+#         #     return nppol.Polynomial([0])
+#         for s_left in prev:
+#             # if pointer[(v,s_left)] in sigma_r:
+#             #     left += sigma_r[pointer[(v,s_left)]][1]
+#             # else:
+#             #     left = 0
+
+#             a_prime = t
+#             right = 0
+#             for a_right in next:
+#                 # if pointer[(v,a_right)] in sigma_r:
+#                 #     right += sigma_r[pointer[(v,a_right)]][1]
+#                 # else:
+#                 #     right = 0
+
+#                 print("s_prime", s_prime, "s_left", s_left, "a_right", a_right, "a_prime", a_prime)
+#                 enum = (s_prime - s_left) * (a_right - a_prime) * vol_tv
+#                 # print("enum poly", tmp)
+#                 # enum_degree = self.actual_degree(tmp)
+#                 # print("actual enum", enum_degree)
+#                 # enum = tmp
+#                 # if enum_degree == -1:
+#                 #     enum = tuple([0])
+#                 # else:
+#                 #     enum = tuple([tmp.coef[enum_degree] if i == enum_degree else 0 for i in range(enum_degree+1)])
+
+
+
+#                 print("left", left, "vol_tv", vol_tv, "right", right)
+#                 denum = left + vol_tv + right
+#                 # print("denum poly", tmp)
+#                 # denum_degree = self.actual_degree(tmp)
+#                 # print("actual denum", denum_degree)
+#                 # denum = tmp
+#                 #denum = tuple([tmp.coef[denum_degree] if i == denum_degree else 0 for i in range(denum_degree+1)])
+
+#                 print("enum", enum, "denum", denum)
+#                 #print("enum-denum degree",enum_degree, denum_degree)
+
+#                 res = self.polydiv(enum,denum)
+#                 if res[1] < 0:
+#                     ress = [0]
+#                 else:
+#                     ress =[0 for i in range(res[1]+1)]
+#                     ress[res[1]] = res[0]
+#                 #contrib += (enum/denum)
+#                 contrib += nppol.Polynomial(ress)
+#                 print("contrib",contrib)
+#                 #if pointer[(v,a_right)] in sigma_r:
+#                 if a_right in lat[v]:
+#                     right += sigma_r[(v,a_right)]
+#                 # else:
+#                 #     right = 0
+#                 a_prime = a_right
+#             #if pointer[(v,lat_rev[v][s_left])] in sigma_r:
+#             if (s_left in lat_rev[v]) and (lat_rev[v][s_left] in lat[v]):
+#             #if lat_rev[v][s_left] in lat[v]:
+#                 left += sigma_r[(v,lat_rev[v][s_left])]
+#             # else:
+#             #     left = 0
+#             s_prime = s_left
+#         print("end svvt", contrib)
+#         #deltasvvt[(v,t)] = contrib
+#         return contrib
+
+#     def coef_volume_con(self, x, v, t, w, t_p, sigma_r, pre, st1t2):
+#         print("divison_volume","v",v,"t",t,"w",w,"t_p",t_p, "st1t2", st1t2)
+#         # (t1,t2) = pre[w][t_p][v,t]
+#         # if v == x :
+#         #     return nppol.Polynomial([1])
+#         # if t1 < t:
+#         #     (t1,t2) = (t2,t2)
+#         # st1t2 = nppol.Polynomial([1])
+#         # if t2 > t1:
+#         #     rr = [0 for ii in range(chev+1)]
+#         #     rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+#         #     st1t2 = nppol.Polynomial(rr)
+#         # print("st1t2",st1t2)
+#         if x == v:
+#             return nppol.Polynomial([1])
+#         svt = sigma_r[(v,t)]
+#         swtp = sigma_r[(w,t_p)]
+
+#         print("svt", svt)
+#         tmp = self.polymul(svt, st1t2)
+#         #tmp = tmp[0]
+#         print("svt*st1t2", tmp)
+#         svt_high = [0 for jj in range(tmp[1]+1)]
+#         svt_high[tmp[1]] = tmp[0]
+#         svt_high = nppol.Polynomial(svt_high)
+#         svt_degree = self.actual_degree(svt_high)
+#         print("actual svt*st1t2", svt_degree)
         
-        #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
-        #if svt_high == ():
-        #    svt_high = (0)
-        print("svt_hight",svt_high)
-        print("swtp", swtp)
-        tmp = swtp
-        swtp_degree = self.actual_degree(tmp)
-        print("actual swtp", swtp_degree)
-        swtp_high = tmp
-        #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
-        print("swtp_high", swtp_high)
-        if swtp_degree != -1:
-            cof,puis = self.polydiv(svt_high,swtp_high)
-            if puis < 0:
-                res = [0]
-            else:
-                res = [0 for i in range(puis+1)]
-                res[puis] = cof
-        else:
-            res = [0]
-        print("res_div", res)
-        return nppol.Polynomial(res)
+#         #svt_high = tuple([tmp.coef[svt_degree] if i == svt_degree else 0 for i in range(svt_degree+1)])
+#         #if svt_high == ():
+#         #    svt_high = (0)
+#         print("svt_hight",svt_high)
+#         print("swtp", swtp)
+#         tmp = swtp
+#         swtp_degree = self.actual_degree(tmp)
+#         print("actual swtp", swtp_degree)
+#         swtp_high = tmp
+#         #swtp_high = tuple([tmp.coef[swtp_degree] if i == swtp_degree else 0 for i in range(swtp_degree+1)])
+#         print("swtp_high", swtp_high)
+#         if swtp_degree != -1:
+#             cof,puis = self.polydiv(svt_high,swtp_high)
+#             if puis < 0:
+#                 res = [0]
+#             else:
+#                 res = [0 for i in range(puis+1)]
+#                 res[puis] = cof
+#         else:
+#             res = [0]
+#         print("res_div", res)
+#         return nppol.Polynomial(res)
 
 
-    def contri_delta_svt_con(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt):
-        print("******** new call contri_delta_svt","v", v, "t", t)
-        if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
-            partial_sum = dict()
-            s = 0
-            contrib_local = dict()
-            # l_ord = list(dic_nodes_rev.keys())
-            # l_ord.sort()
-            for ii in range(len(l_nei[(v,t)])-1,-1,-1):
-                #normally it should be sorted
-                for u in l_nei[v,t][ii][1]:
-                    w,t_p = (u,l_nei[v,t][ii][0])
-                    print("(w,t')",(w,t_p))
-                    self.contri_delta_svt_con(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
-                    (t1,t2) = pre[w][t_p][v,t]
-                    if t1 != t2 and t_p > t and unt(t) >=tp:
-                        for yp,tpp in GT[t1,t2][w,t_p]:
-                            print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
-                            self.contri_delta_svt_con(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
-                            chev = GT[t1,t2][w,t_p][yp,tpp]["weight"]+1
-                            rr = [0 for ii in range(chev+1)]
-                            rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
-                            res2 = self.coef_volume_con(node, v, t, yp, tpp, sigma_r, pre, nppol.Polynomial(rr))
+#     def contri_delta_svt_con(self, node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt):
+#         print("******** new call contri_delta_svt","v", v, "t", t)
+#         if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+#             partial_sum = dict()
+#             s = 0
+#             contrib_local = dict()
+#             # l_ord = list(dic_nodes_rev.keys())
+#             # l_ord.sort()
+#             for ii in range(len(l_nei[(v,t)])-1,-1,-1):
+#                 #normally it should be sorted
+#                 for u in l_nei[v,t][ii][1]:
+#                     w,t_p = (u,l_nei[v,t][ii][0])
+#                     print("(w,t')",(w,t_p))
+#                     self.contri_delta_svt_con(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
+#                     (t1,t2) = pre[w][t_p][v,t]
+#                     if t1 != t2 and t_p > t and unt(t) >=tp:
+#                         for yp,tpp in GT[t1,t2][w,t_p]:
+#                             print("*!*!*!*!*!*!  instant graph","v",v,"t",t,"t1",t1,"t2",t2, "w",w,"t_p",t_p, "yp", yp, "tpp", tpp)
+#                             self.contri_delta_svt_con(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT)
+#                             chev = GT[t1,t2][w,t_p][yp,tpp]["weight"]+1
+#                             rr = [0 for ii in range(chev+1)]
+#                             rr[chev] = math.pow((t2-t1),chev)/math.factorial(chev)
+#                             res2 = self.coef_volume_con(node, v, t, yp, tpp, sigma_r, pre, nppol.Polynomial(rr))
 
-                            #res2 *= nppol.Polynomial(rr)
-                            s += res2 * contribution[yp][tpp]
-                    if t_p > t and t2 > t1:
-                        res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([0,(t2-t1)]))
-                    else:
-                        res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([1]))
+#                             #res2 *= nppol.Polynomial(rr)
+#                             s += res2 * contribution[yp][tpp]
+#                     if t_p > t and t2 > t1:
+#                         res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([0,(t2-t1)]))
+#                     else:
+#                         res = self.coef_volume_con(node, v, t, w, t_p, sigma_r, pre, nppol.Polynomial([1]))
 
                     
-                    #appel recursif
-                    s += res * contribution[w][t_p]
-                    if l_nei[v,t][ii][0] not in partial_sum:
-                        partial_sum[l_nei[v,t][ii][0]] = s
-                    else:
-                        partial_sum[l_nei[v,t][ii][0]] += s
+#                     #appel recursif
+#                     s += res * contribution[w][t_p]
+#                     if l_nei[v,t][ii][0] not in partial_sum:
+#                         partial_sum[l_nei[v,t][ii][0]] = s
+#                     else:
+#                         partial_sum[l_nei[v,t][ii][0]] += s
 
-                    print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
-                    if ii != 0:
-                        jj = event_reverse[l_nei[v,t][ii-1][0]]
-                    else:
-                        jj = event_reverse[t]
-                    print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
-                    print("******** half after call contri_delta_svt","v", v, "t", t)
-                    print("dic_nodes[u]",l_nei[v,t],"u",u)
-                    if True:#ii != len(dic_nodes[u])-1:
-                        for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
-                            print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
-                            print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
+#                     print("******** half call contri_delta_svt","v", v, "t", t, "sum", s)
+#                     if ii != 0:
+#                         jj = event_reverse[l_nei[v,t][ii-1][0]]
+#                     else:
+#                         jj = event_reverse[t]
+#                     print("u", u, "dic_nodes[u]", l_nei[v,t][ii])
+#                     print("******** half after call contri_delta_svt","v", v, "t", t)
+#                     print("dic_nodes[u]",l_nei[v,t],"u",u)
+#                     if True:#ii != len(dic_nodes[u])-1:
+#                         for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+#                             print("v", v, "t",t,"event[jj]", event[jj], "dic_nodes[u][ii]", "index actual event",jj,"index succ events", jjj, "contri event time" ,event[jjj])
+#                             print("comp vol", sigma_r[v,t], sigma_r[v,event[jjj]])
 
-                            if v not in contrib_local:
-                                contrib_local[v] = dict()
-                            if not (v in contribution and event[jjj] in contribution[v]):
-                                if sigma_r[v,t] != sigma_r[v,event[jjj]]:
-                                    print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
-                                print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
-                                if event[jjj] != t_p:
-                                    print("ici")
-                                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
-                                else:
-                                    print("la")
-                                    if ii == len(l_nei[v,t])-1:
-                                        contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1]) ))
-                                    else:
-                                        contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1])))
-                                #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
+#                             if v not in contrib_local:
+#                                 contrib_local[v] = dict()
+#                             if not (v in contribution and event[jjj] in contribution[v]):
+#                                 if sigma_r[v,t] != sigma_r[v,event[jjj]]:
+#                                     print("ERREUUUUUUUR ",sigma_r[v,t],sigma_r[v,event[jjj]])
+#                                 print("add_contri_local","v",v,"event[jjj]",event[jjj],"w,t_p",w,t_p)
+#                                 if event[jjj] != t_p:
+#                                     print("ici")
+#                                     contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
+#                                 else:
+#                                     print("la")
+#                                     if ii == len(l_nei[v,t])-1:
+#                                         contrib_local[v][event[jjj]] =  contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1]) ))
+#                                     else:
+#                                         contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + contribution[w][t_p]*(self.coef_volume_con(node, v,event[jjj],w,t_p,sigma_r, pre, nppol.Polynomial([1])))
+#                                 #print("contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]],"partial_sum[l_ord[ii]]",partial_sum[l_ord[ii]],"contribution[w][t_p]",contribution[w][t_p],"res",res)
 
-            if v not in contribution:
-                contribution[v] = dict()
-            for vv in contrib_local:
-                for ss in contrib_local[vv]:
-                    contribution[vv][ss] = contrib_local[vv][ss]
-            contribution[v][t] = s + deltasvvt[(v,t)]
-        print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
-        return contribution
+#             if v not in contribution:
+#                 contribution[v] = dict()
+#             for vv in contrib_local:
+#                 for ss in contrib_local[vv]:
+#                     contribution[vv][ss] = contrib_local[vv][ss]
+#             contribution[v][t] = s + deltasvvt[(v,t)]
+#         print("******** end call contri_delta_svt","v", v, "t", t,"contribution[v][t]",contribution[v][t])
+#         return contribution
 
 
 

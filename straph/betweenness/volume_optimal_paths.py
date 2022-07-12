@@ -89,7 +89,7 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
         pred = -1
         for t in events:
             if k == node:
-                sigma_r[(k,t)] = vol.Volume(0,0)
+                sigma_r[(k,t)] = vol.Volume(1,0)
             else:
                 if pred == -1:
                     if (k,t) in G.nodes():
@@ -128,7 +128,7 @@ def volume_instantenuous(s, G, GI, events, events_rev):
                 l.append([v,t1,t2])
     for v,t1,t2 in l:
         if (t1,t2) in GI and (v,t2) in GI[(t1,t2)].nodes():
-            print(t1,t2)
+            #print(t1,t2)
             for (w,tp) in GI[(t1,t2)].successors((v,t2)):
                 if tp == t2:
                     before[w][t2] = True

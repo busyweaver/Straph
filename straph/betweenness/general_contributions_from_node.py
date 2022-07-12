@@ -1,6 +1,13 @@
 from straph.betweenness import volumes as vol
 import math
-def contri_delta_svvt_con(s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
+
+def dictionary_svvt(G, node, latence_arrival, contri, prev_next, sigma_r,  latence_depar):
+    deltasvvt = dict()
+    for (x,y) in G.nodes():
+        deltasvvt[(x,y)] = contri_delta_svvt(node, x, y, latence_arrival, contri, prev_next, sigma_r,  latence_depar)
+    return deltasvvt
+
+def contri_delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
     if s == v or t not in lat[v]:
         return vol.Volume(0,0)
     #voir papier matthieu clemence pour l'algo
@@ -44,6 +51,20 @@ def kappa(r,tp,tp_prev):
 def prev_event(tp,event,event_rev):
     i = event_rev[tp]
     return event[i-1]
+
+
+def general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, GT, unt):
+    contribution = dict()
+    l = G.sources()
+    for star_node in l:
+        contribution = contri_delta_svt(node, star_node[0], star_node[1], GG.l_nei, sigma_r, contribution, deltasvvt, events, events_reverse, pre, GT, unt)
+    for v in s.nodes:
+        for t in events:
+            if v not in contribution:
+                contribution[v] = dict()
+            if t not in contribution[v]:
+                contribution[v][t] = vol.Volume(0,0)
+    return contribution
 
 
 def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution):
