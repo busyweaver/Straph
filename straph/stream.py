@@ -4584,6 +4584,81 @@ class StreamGraph:
                         isolated_nodes.append((t0, t1, n))
         return isolated_nodes
 
+    def duplicate_elem_in_list(self, l):
+        res = l + l
+        res.sort()
+        return res
+
+    def fragmented_stream_graph(self):
+        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream"""
+        s = self.__deepcopy__()
+        l = list(self.event_times())
+        l.sort()
+        for i in range(0,len(self.links)):
+            a,b = self.links[i]
+            decalage = 0
+            for j in range(0,len(self.link_presence[i]),2):
+                t1,t2 = self.link_presence[i][j:j+2]
+                #print("t1,t2",a,b,(t1,t2))
+                por_1, por_2 = self.portion_sorted_list(l,t1,t2)
+                portion = l[por_1:por_2]
+                #print("portion",por_1,por_2,l[por_1:por_2])
+                dup = self.duplicate_elem_in_list(portion)
+                dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
+                s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
+                decalage += len(dup)
+        return s
+
+    def add_point(self,t):
+        """
+        Add a point to a StreamGraph
+        :param t: the time to be added in the event times
+        """
+        if t not in self.points:
+            self.points.append(t)
+    def __deepcopy__(self):
+        """
+        make a deepcopy of a stream graph
+        """
+        id = self.id
+        times = copy.deepcopy(self.times)
+        nodes = copy.deepcopy(self.nodes)
+        #node_to_label = dict()
+        # for e in self.node_to_label.keys():
+        #     node_to_label[e] = self.node_to_label[e]
+        node_to_label = self.node_to_label.copy()
+        #print(type(self.node_to_id))
+        if self.node_to_id != None:
+            node_to_id = self.node_to_id.copy()
+        else:
+            node_to_id = None
+        nodes_presence = copy.deepcopy(self.node_presence)
+        links = copy.deepcopy(self.links)
+        link_presence = copy.deepcopy(self.link_presence)
+        weights = copy.deepcopy(self.weights)
+        trips = copy.deepcopy(self.trips)
+        points = self.points[:]
+        return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips,points,self.alpha,self.omega)
+
+    def portion_sorted_list(self,l,a,b):
+        b1 = False
+        b2 = True
+        #we should not have any element
+        if a == b:
+            return (0,0)
+        t1 = 0
+        t2 = len(l)
+        for i in range(0,len(l)):
+            if (l[i] > a) and (not b1):
+                t1 = i
+                b1 = True
+            if (l[i] >= b) and b2:
+                t2 = i 
+                b2 = False
+        return (t1,t2)
+
+
+
 #     ###################################
 #     #            MetaWalks            #
 #     ###################################
@@ -4698,80 +4773,9 @@ class StreamGraph:
 #             return nppol.Polynomial([0])
 #         return sum(e.volume() for e in l)
 
-#     def portion_sorted_list(self,l,a,b):
-#         b1 = False
-#         b2 = True
-#         #we should not have any element
-#         if a == b:
-#             return (0,0)
-#         t1 = 0
-#         t2 = len(l)
-#         for i in range(0,len(l)):
-#             if (l[i] > a) and (not b1):
-#                 t1 = i
-#                 b1 = True
-#             if (l[i] >= b) and b2:
-#                 t2 = i 
-#                 b2 = False
-#         return (t1,t2)
 
-#     def __deepcopy__(self):
-#         """
-#         make a deepcopy of a stream graph
-#         """
-#         id = self.id
-#         times = copy.deepcopy(self.times)
-#         nodes = copy.deepcopy(self.nodes)
-#         #node_to_label = dict()
-#         # for e in self.node_to_label.keys():
-#         #     node_to_label[e] = self.node_to_label[e]
-#         node_to_label = self.node_to_label.copy()
-#         #print(type(self.node_to_id))
-#         if self.node_to_id != None:
-#             node_to_id = self.node_to_id.copy()
-#         else:
-#             node_to_id = None
-#         nodes_presence = copy.deepcopy(self.node_presence)
-#         links = copy.deepcopy(self.links)
-#         link_presence = copy.deepcopy(self.link_presence)
-#         weights = copy.deepcopy(self.weights)
-#         trips = copy.deepcopy(self.trips)
-#         points = self.points[:]
-#         return StreamGraph(id,times,nodes,node_to_label,node_to_id,nodes_presence,links,link_presence,weights,trips,points,self.alpha,self.omega)
 
-#     def duplicate_elem_in_list(self, l):
-#         res = l + l
-#         res.sort()
-#         return res
 
-#     def fragmented_stream_graph(self):
-#         """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream"""
-#         s = self.__deepcopy__()
-#         l = list(self.event_times())
-#         l.sort()
-#         for i in range(0,len(self.links)):
-#             a,b = self.links[i]
-#             decalage = 0
-#             for j in range(0,len(self.link_presence[i]),2):
-#                 t1,t2 = self.link_presence[i][j:j+2]
-#                 #print("t1,t2",a,b,(t1,t2))
-#                 por_1, por_2 = self.portion_sorted_list(l,t1,t2)
-#                 portion = l[por_1:por_2]
-#                 #print("portion",por_1,por_2,l[por_1:por_2])
-#                 dup = self.duplicate_elem_in_list(portion)
-#                 dup_interval = [0 if k%2 == 0 else 1 for k in range(0,len(dup))]
-#                 s.link_presence[i] = s.link_presence[i][0:j+1+decalage] + dup + s.link_presence[i][j+1+decalage:len(s.link_presence[i])]
-#                 decalage += len(dup)
-
-#         return s
-
-#     def add_point(self,t):
-#         """
-#         Add a point to a StreamGraph
-#         :param t: the time to be added in the event times
-#         """
-#         if t not in self.points:
-#             self.points.append(t)
 
 #     def create_dictionary_all_metapaths(self, mp):
 #         res = [dict() for j in range(len(self.nodes))] 

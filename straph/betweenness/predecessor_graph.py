@@ -131,6 +131,9 @@ def max_volume_superposition(GT):
     length = []
     for e in GT:
         length.append(max( GT[e].edge_weight(i,j,"weight") for (i,j) in  GT[e].edges()))
-    return  max(length) +1
+    if length == []:
+        return 0
+    else:
+        return  max(length) +1
 
 
