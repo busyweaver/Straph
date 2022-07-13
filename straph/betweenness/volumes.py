@@ -9,7 +9,10 @@ class Volume:
         sp = y.val
         dp = y.dim
         if self.dim == dp:
-            res = Volume(self.val+sp,self.dim)
+            if self.val + sp == 0:
+                res = Volume(0,0)
+            else:
+                res = Volume(self.val+sp,self.dim)
         elif self.dim > dp:
             res = Volume(self.val,self.dim)
         else:
@@ -33,12 +36,18 @@ class Volume:
     def __mul__(self, y):
         sp = y.val
         dp = y.dim
-        return Volume(self.val*sp,self.dim+dp)
+        if self.val*sp == 0:
+            return Volume(0,0)
+        else:
+            return Volume(self.val*sp,self.dim+dp)
 
     def __truediv__(self ,y):
         sp = y.val
         dp = y.dim
-        return Volume(self.val/sp,self.dim-dp)
+        if self.val/sp == 0:
+            return Volume(0,0)
+        else:
+            return Volume(self.val/sp,self.dim-dp)
 
     def __radd__(self, y):
         return self.__add__(y)

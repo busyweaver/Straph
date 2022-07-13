@@ -96,9 +96,13 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                         contri_delta_svt(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt)
                         ev_prev = prev_event(tpp,event,event_reverse)
                         r = GT[t1,t2].edge_weight((v,t),(yp,tpp),"weight")
+                        if ((kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]).dim > 0:
+                            print("ici",(kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp])
                         s += (kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]
 
-                if (t == t_p) or (t_p > t and t1 == t2 and unt[v][t] >=t_p):
+                if ((t == t_p) or (t_p > t and t1 == t2)) and unt[v][t] >=t_p:
+                    if ((sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]).dim > 0:
+                        print("la",(sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p])
                     s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
 
                 if l_nei[v,t][ii][0] not in partial_sum:
@@ -111,7 +115,7 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                     jj = event_reverse[l_nei[v,t][ii-1][0]]
                 else:
                     jj = event_reverse[t]
-                contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution)
+                #contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution)
 
         if v not in contribution:
             contribution[v] = dict()
