@@ -56,6 +56,8 @@ def relax_resting_paths(b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod):
     cnew = compute_c(cur_best[b][t][0], tp, cur_best[b][t][1])
     cold = compute_c(cur_best[b][tp][0], tp, cur_best[b][tp][1])
     if cnew < cold:
+        # if (b,tp) == (19,44.66573649870663):
+        #     print("resting",  "cnew", cnew, "cold", cold)
         #pre[b][tp] = set()
         pre[b][tp] = dict()
         cur_best[b][tp] = (cur_best[b][t][0],cur_best[b][t][1])
@@ -80,6 +82,8 @@ def relax_paths_aux(a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, 
     #    return
     cnew = compute_c(last_depar, arrival, cur_best[a][e][1] + 1)
     cold = compute_c(cur_best[b][arrival][0], arrival, cur_best[b][arrival][1])
+    #if (a,b) == (15,19):
+            #print("cnew", cnew, "cold", cold, "b", b, "arrival", arrival, "val_cur", last_depar, "length", cur_best[a][e][1] + 1)
     #print("cnew",cnew,"cold",cold)
     #if c < ((arrival - cur_best[b][arrival][0]), cur_best[b][arrival][1]):
     if cnew < cold:
@@ -98,9 +102,13 @@ def relax_paths_aux(a, b, last_depar, arrival, e, edge_taken, cur_best, pre, Q, 
 
         #Q.decrease_key(Q_nod[b,arrival], (cnew, (b,arrival)) )
     if cnew == cold:
+        #if (a,b) == (15,19):
+            #print("added")
         #pre[b][arrival].add((a,e,edge_taken))
         #if (a,e) not in pre[b][arrival]:
         pre[b][arrival][(a,e)] = edge_taken
+        #if (a,b) == (15,19):
+            #print(pre[b][arrival])
 
 def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, unt):
     Q = fib.FibonacciHeap()
@@ -127,7 +135,6 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
         #print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
         (x,y) = Q.extract_min().data
         del nod[y]
-        #print(Q.total_nodes, "extracted", y,x)
         (a,t) = y
         P[a].add(t)
         #(tpp,dis) = x
@@ -135,7 +142,8 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
             for (tp,edge) in neighbors_inv[a][b]:
                 if tp >= t and unt[a][t] >= tp:
                     #print("tp_inv",tp)
-                    #print("salut2_inv",(a,t),(b,tp))
+                    #if (a,t) == (15,42.61256423310296):
+                        #print("salut2_inv",(a,t),(b,tp))
                     relax_resting_paths(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
                     #print("inv",cur_best)
 
@@ -143,7 +151,8 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
             for (tp,edge) in neighbors[a][b]:
                 if tp >= t and unt[a][t] >= tp:
                     #print("tp",tp)
-                    #print("salut2",(a,t),(b,tp))
+                    #if (a,t) == (15,42.61256423310296):
+                        #print("salut2",(a,t),(b,tp))
                     relax_resting_paths(a,t,tp,pre,cur_best, events, events_rev, Q, nod)
                     #print(cur_best)
                     relax_paths(a,b,t,tp,pre,cur_best, events, Q, nod, edge)

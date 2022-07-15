@@ -66,21 +66,21 @@ def volume_metapaths_at_t(G, s, cur_best, mx):
         vol_rec_con(s, e, G_rev, sigma, cur_best, mx)
     return sigma
 
-def first_edge_rec(e, edge, f_edge, G):
+def first_edge_rec(e, edge, f_edge, G, cur_best):
     if e in f_edge:
         return
-    f_edge[e] = edge
+    f_edge[e] = edge, cur_best[e[0]][e[1]][1]
     l = list(G.successors(e))
     for ee in l:
-        first_edge_rec(ee, edge, f_edge, G)
+        first_edge_rec(ee, edge, f_edge, G, cur_best)
 
-def dictionary_first_edge(G):
+def dictionary_first_edge(G, cur_best):
     f_edge = dict()
     source = G.sources()
     for sou in source:
-        f_edge[sou] = sou[1]
+        f_edge[sou] = sou[1],0
         for e in list(G.successors(sou)):
-            first_edge_rec(e, sou[1], f_edge, G)
+            first_edge_rec(e, sou[1], f_edge, G, cur_best)
     return f_edge
 
 def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
@@ -114,6 +114,39 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
                     else:
                         sigma_r[(k,t)] = sigma_r[(k,pred)]
     return sigma_r
+
+# def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
+#     l = G.sources()
+#     for (v,t) in l:
+#         for t in range(len(l_nei[(v,t)])-1,-1,-1):
+#             #normally it should be sorted
+#             for k in l_nei[v,t][ii][1]:
+#                 if k == node:
+#                     sigma_r[(k,t)] = vol.Volume(1,0)
+#                 else:
+#                     if pred == -1:
+#                         if (k,t) in G.nodes():
+#                             sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                             pred = t
+#                             edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = vol.Volume(0,0)
+#                     else:
+#                         if (k,t) in G.nodes():
+#                             edge2 = f_edge[(k,t)]
+#                             if edge == edge2 and unt[k][pred] >= t:
+#                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
+#                                 pred = t
+#                             elif edge == edge2 and not(unt[k][pred] >= t):
+#                                 sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                                 pred = t
+#                             else:
+#                                 sigma_r[(k,t)] = sigma[(k,t)][-1]
+#                                 pred = t
+#                                 edge = f_edge[(k,t)]
+#                         else:
+#                             sigma_r[(k,t)] = sigma_r[(k,pred)]
+
 
 def volume_instantenuous(s, G, GI, events, events_rev):
     before = {v:{t: False for t in events} for v in s.nodes}
