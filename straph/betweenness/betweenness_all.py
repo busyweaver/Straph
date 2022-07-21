@@ -4,6 +4,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pylab as plt
 import pandas as pd
+import time
+import pickle
 
 def events_dic(nouveau):
     events = list(nouveau.event_times())
@@ -30,7 +32,8 @@ def normalize(s, betweenness, events):
 
 
 
-def betweenness_all(s):
+def betweenness_all(s, approx = -1):
+    features = dict()
     general_contri = dict()
     betweenness = dict()
     nouveau = s.fragmented_stream_graph()
@@ -39,8 +42,14 @@ def betweenness_all(s):
     link_ind = bt.link_index(nouveau)
     neighbors, neighbors_inv = bt.neighbors_direct(nouveau)
     unt = bt.until(nouveau, events, events_reverse)
-    for node in nouveau.nodes:
+    if approx == -1:
+        to_visit = nouveau.nodes
+    else:
+        lis = list(nouveau.nodes)
+        to_visit = random.sample(lis, approx)
+    for node in to_visit:
         print(node)
+        start_time = time.time()
         pre, cur_best = bt.dijkstra_directed(nouveau, node, events, events_reverse, neighbors, link_ind, neighbors_inv, unt)
         cur_b_arr = bt. cur_best_to_array(nouveau, cur_best, events, events_reverse)
         lat = bt.latencies(nouveau, cur_b_arr, events, events_reverse)
@@ -61,18 +70,33 @@ def betweenness_all(s):
         contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, GT, unt)
         general_contri[node] = contribution
         update_betweenness(nouveau, contribution, betweenness, events)
+        end_time = time.time()
+        features[node] = [end_time - start_time, len(list(G.nodes())), mx, len(lat_triplet)]
     normalize(nouveau, betweenness, events)
-    return betweenness, general_contri, nouveau, events
+    return betweenness, general_contri, nouveau, events, features
+
+def simulations(s, name):
+    bet, general_contri, nouveau, events, features = betweenness_all(s)
+    #write_betweenness(bet, s, events, name)
+    with open(name+"_betweenness.txt", 'wb') as handle:
+        pickle.dump(bet, handle)
+    with open(name+"_features.txt", 'wb') as handle:
+        pickle.dump(features, handle)
+
+def read_dictionary(name):
+    with open(name, 'rb') as handle:
+        b = pickle.loads(handle.read())
+    return b
 
 
-def write_betweenness(bet, s, events, output_file):
-    with open(output_file + '_betweenness.csv', 'w') as file_output:
-        for v in s.nodes:
-            for t in events:
-                if s.node_to_label != None:
-                    file_output.write(str(s.node_to_label[v]),",",str(t),",",str(bet[v][t]), "\n")
-                else:
-                    file_output.write(str(v),",",str(t),",",str(bet[v][t]), "\n")
+# def write_betweenness(bet, s, events, output_file):
+#     with open(output_file + '_betweenness.csv', 'w') as file_output:
+#         for v in s.nodes:
+#             for t in events:
+#                 if s.node_to_label != None:
+#                     file_output.write(str(s.node_to_label[v]) + "," + str(t) + "," + str(bet[v][t]), "\n")
+#                 else:
+#                     file_output.write(str(v),",",str(t),",",str(bet[v][t]), "\n")
 
 def heatmap_betweenness(s, events, bet, square):
     d = s.degrees()
