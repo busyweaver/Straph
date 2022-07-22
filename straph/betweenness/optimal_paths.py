@@ -19,6 +19,17 @@ def until(s, events, events_rev):
                 j += 1
     return unt
 
+def before(s, events, events_rev):
+    bef = dict()
+    for v in s.nodes:
+        bef[v] = dict()
+        for i in range(len(s.node_presence[v])-1,-1,-2):
+            j = events_rev[s.node_presence[v][i]]
+            while j>-1 and  events[j] >= s.node_presence[v][i-1]:
+                bef[v][events[j]] = s.node_presence[v][i-1]
+                j -= 1
+    return bef
+
 def neighbors_direct(s):
     res ={ i:dict() for i in s.nodes}
     res_inv = { i:dict() for i in s.nodes}
