@@ -4592,24 +4592,24 @@ class StreamGraph:
     def delta_stream_graph(self,delta):
         s = self.__deepcopy__()
         """delta stream graph as defined by Viard thesis chapter 5"""
-        s.alpha = s.alpha + delta/2
-        s.omega = s.omega - delta/2
-        for v in s.nodes:
-            for i in range(0,2):
-                if s.node_presence[v][i] < s.alpha:
-                    s.node_presence[v][i] = s.alpha
-                if s.node_presence[v][-i-1] > s.omega:
-                    s.node_presence[v][-i-1] = s.omega
+        # s.alpha = s.alpha + delta/2
+        # s.omega = s.omega - delta/2
+        # for v in s.nodes:
+        #     for i in range(0,2):
+        #         if s.node_presence[v][i] < s.alpha:
+        #             s.node_presence[v][i] = s.alpha
+        #         if s.node_presence[v][-i-1] > s.omega:
+        #             s.node_presence[v][-i-1] = s.omega
         events, events_rev = bt.events_dic(s)
         before = bt.before(s, events, events_rev)
         after = bt.until(s, events, events_rev)
         for i in range(0,len(s.links)):
             a,b = s.links[i]
-            for jj in range(0,2):
-                if s.link_presence[i][jj] < s.alpha:
-                    s.link_presence[i][jj] = s.alpha
-                if s.link_presence[i][-jj -1] < s.omega:
-                    s.link_presence[i][-jj -1] = s.omega
+            # for jj in range(0,2):
+            #     if s.link_presence[i][jj] < s.alpha:
+            #         s.link_presence[i][jj] = s.alpha
+            #     if s.link_presence[i][-jj -1] < s.omega:
+            #         s.link_presence[i][-jj -1] = s.omega
             for j in range(0,len(s.link_presence[i]),2):
                 if before[a][s.link_presence[i][j]] <= s.link_presence[i][j]- delta/2 and before[b][s.link_presence[i][j]] <= s.link_presence[i][j]- delta/2:
                     s.link_presence[i][j] = s.link_presence[i][j] - delta/2
@@ -4632,15 +4632,18 @@ class StreamGraph:
                     self.link_presence[i][j] = self.link_presence[i][j-1]
                 elif j > 0 and t1 == self.link_presence[i][j-1]:
                     self.link_presence[i][j-1] = self.link_presence[i][j+1]
+                    print("efface",i,j)
                     self.link_presence[i].pop(j)
                     self.link_presence[i].pop(j)
-                    j += 2
+                    leng -= 2
+                    j -= 2
                 j += 2
-
+        print(self.link_presence[0])
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()
         for i in range(0,len(self.links)):
+            print(i)
             a,b = self.links[i]
             decalage = 0
             for j in range(0,len(self.link_presence[i]),2):
