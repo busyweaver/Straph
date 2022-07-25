@@ -4613,37 +4613,47 @@ class StreamGraph:
             for j in range(0,len(s.link_presence[i]),2):
                 if before[a][s.link_presence[i][j]] <= s.link_presence[i][j]- delta/2 and before[b][s.link_presence[i][j]] <= s.link_presence[i][j]- delta/2:
                     s.link_presence[i][j] = s.link_presence[i][j] - delta/2
+                else:
+                    m = max(before[a][s.link_presence[i][j]], before[b][s.link_presence[i][j]])
+                    s.link_presence[i][j] = m
+
                 if after[a][s.link_presence[i][j+1]] >= s.link_presence[i][j+1] + delta/2 and after[b][s.link_presence[i][j+1]] >= s.link_presence[i][j+1] +  delta/2:
                     s.link_presence[i][j+1] = s.link_presence[i][j+1] + delta/2
+                else:
+                    m = min(after[a][s.link_presence[i][j+1]], after[b][s.link_presence[i][j+1]])
+                    s.link_presence[i][j+1] = m
         return s
 
-
-
-    def fragmented_stream_graph(self):
-        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream. If a link is included into another one, it is removed or cut. We suppose that the link stream time presence of the links are oncreasing"""
-
+    def cut_links(self):
         for i in range(0,len(self.links)):
             a,b = self.links[i]
             j = 0
             leng = len(self.link_presence[i])
+            #print(self.link_presence[0])
             while j < leng:
                 t1,t2 = self.link_presence[i][j:j+2]
+                #print(i,j, "t",t1, t2, "self.link_presence[i][j-1]", self.link_presence[i][j-1])
                 if j > 0 and t1 < self.link_presence[i][j-1]:
                     self.link_presence[i][j] = self.link_presence[i][j-1]
-                elif j > 0 and t1 == self.link_presence[i][j-1]:
+                    t1 = self.link_presence[i][j]
+                if j > 0 and t1 == self.link_presence[i][j-1]:
                     self.link_presence[i][j-1] = self.link_presence[i][j+1]
-                    print("efface",i,j)
+                    #print("efface")
                     self.link_presence[i].pop(j)
                     self.link_presence[i].pop(j)
                     leng -= 2
                     j -= 2
                 j += 2
-        print(self.link_presence[0])
+
+
+
+    def fragmented_stream_graph(self):
+        """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream. If a link is included into another one, it is removed or cut. We suppose that the link stream time presence of the links are oncreasing"""
+        self.cut_links()
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()
         for i in range(0,len(self.links)):
-            print(i)
             a,b = self.links[i]
             decalage = 0
             for j in range(0,len(self.link_presence[i]),2):
