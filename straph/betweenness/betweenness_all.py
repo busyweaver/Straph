@@ -78,9 +78,9 @@ def betweenness_all(s, approx = -1):
 def simulations(s, name):
     bet, general_contri, nouveau, events, features = betweenness_all(s)
     #write_betweenness(bet, s, events, name)
-    with open(name+"_betweenness.txt", 'wb') as handle:
+    with open(name+"_betweenness.pic", 'wb') as handle:
         pickle.dump(bet, handle)
-    with open(name+"_features.txt", 'wb') as handle:
+    with open(name+"_features.pic", 'wb') as handle:
         pickle.dump(features, handle)
 
 def read_dictionary(name):
