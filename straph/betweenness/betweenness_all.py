@@ -98,37 +98,37 @@ def read_dictionary(name):
 #                 else:
 #                     file_output.write(str(v),",",str(t),",",str(bet[v][t]), "\n")
 
-def heatmap_betweenness(s, events, bet, square):
-    d = s.degrees()
-    deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
-    deg_increa.sort()
-    deg_increa.reverse()
-    l = [ [ bet[y][t] for t in events ] for x,y in deg_increa  ]
+def heatmap_betweenness(s, events, bet, deg_increa, square):
+    # d = s.degrees()
+    # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
+    # deg_increa.sort()
+    # deg_increa.reverse()
+    l = [ [ bet[y][t] for t in events ] for y in deg_increa  ]
     a = np.matrix(l)
-    df_cm = pd.DataFrame(a, index = [s.node_to_label[v] for _,v in deg_increa], columns = [t for t in events])
+    df_cm = pd.DataFrame(a, index = [s.node_to_label[v] for v in deg_increa], columns = [t for t in events])
     ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square , cbar_kws={"shrink": 0.3})
     return ax
 
-def aggregated_time_betweenness(s, events, bet, square = True):
-    d = s.degrees()
-    deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
-    deg_increa.sort()
-    deg_increa.reverse()
+def aggregated_time_betweenness(s, events, bet, deg_increa, square = True):
+    # d = s.degrees()
+    # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
+    # deg_increa.sort()
+    # deg_increa.reverse()
     l =  [ [ sum(bet[y][t] for y in s.nodes) for t in events]  for j in range(1) ]
     a = np.matrix(l)
     df_cm = pd.DataFrame(a,  index = ["aggregated nodes"], columns = [t for t in events])
     ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.3})
     return ax
 
-def aggregated_node_betweenness(s, events, bet, square = True):
-    d = s.degrees()
-    deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
-    deg_increa.sort()
-    deg_increa.reverse()
-    l = [  [sum( bet[y][t] for t in events) for j in range(1)]   for x,y in deg_increa  ]
+def aggregated_node_betweenness(s, events, bet, deg_increa, square = True,):
+    # d = s.degrees()
+    # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
+    # deg_increa.sort()
+    # deg_increa.reverse()
+    l = [  [sum( bet[y][t] for t in events) for j in range(1)]   for y in deg_increa  ]
 
     a = np.matrix(l)
-    df_cm = pd.DataFrame(a,  index = [s.node_to_label[v] for _,v in deg_increa], columns = ["aggregated times"])
+    df_cm = pd.DataFrame(a,  index = [s.node_to_label[v] for v in deg_increa], columns = ["aggregated times"])
     ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.3})
     return ax
 
