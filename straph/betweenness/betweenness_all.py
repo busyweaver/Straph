@@ -17,18 +17,33 @@ def events_dic(nouveau):
 
 def initialization(s, events, betweenness):
     for v in s.nodes:
-        betweenness[v] = dict()
+        if s.node_to_label:
+            betweenness[s.node_to_label[v]] = dict()
+        else:
+            betweenness[v] = dict()
         for t in events:
-            betweenness[v][t] = vol.Volume(0,0)
+            if s.node_to_label:
+                betweenness[s.node_to_label[v]][t] = vol.Volume(0,0)
+            else:
+                betweenness[v][t] = vol.Volume(0,0)
 def update_betweenness(s, contribution, betweenness, events):
     for v in s.nodes:
-        for t in events:
-            betweenness[v][t] += contribution[v][t]
+        if s.node_to_label:
+            for t in events:
+                betweenness[s.node_to_label[v]][t] += contribution[v][t]
+        else:
+            for t in events:
+                betweenness[v][t] += contribution[v][t]
 
 def normalize(s, betweenness, events):
     for v in s.nodes:
-        for t in events:
-            betweenness[v][t] = betweenness[v][t].norm()
+        if s.node_to_label:
+            for t in events:
+                betweenness[s.node_to_label[v]][t] = betweenness[s.node_to_label[v]][t].norm()
+        else:
+            for t in events:
+                betweenness[v][t] = betweenness[v][t].norm()
+
 
 
 

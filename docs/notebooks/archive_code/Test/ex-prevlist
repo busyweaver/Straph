@@ -1,0 +1,53 @@
+alpha 0
+omega 100
+# we consider u='a' and w='d'
+
+# the focus is on the latency pair containing (t,v): it is (s,a)=(51.,53.), with distance d=3
+50 51 a b
+49 52 b c
+53 55 c d
+
+# before (s,a):
+
+# a latency pair with same latency a-s but larger distance
+40 40 a b
+41 42 b e
+42 43 e c
+40 43 c d
+
+# another one with same latency a-s and distance
+30 31 a e
+32 36 e c
+33 36 c d
+
+# another one with same latency a-s and smaller distance
+20 24 a c
+26 29 c d
+25 29 b e
+25 25 b c
+
+# another one with smaller latency
+12 15 a b
+10 17 b e
+16 19 e d
+
+# after (s,a):
+
+# a latency pair with larger latency
+60 60 a b
+65 66 b d
+
+# another one with smaller latency
+70 71 a b
+69 72 b c
+72 72 c d
+
+# another one with larger latency
+80 83 a c
+82 89 c b
+87 90 b d
+
+# another one with smaller latency
+95 97 a c
+96 96 c d
+

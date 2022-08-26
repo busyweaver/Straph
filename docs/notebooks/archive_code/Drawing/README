@@ -1,0 +1,4 @@
+# example:
+./launch.sh
+./launch.sh ex-intro 100
+gv ex-intro.eps

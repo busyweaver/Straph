@@ -1,0 +1,49 @@
+
+This directory contains a Python 2.7 implementation of algorithms presented in the paper "Computing Betweenness Centrality in Link Stream", Simard, Latapy, Magnien, 2021:
+ https://arxiv.org/abs/2102.06543
+
+The following programs are provided at the root directory:
+. vsp.py computes the volume of shortest paths between two given temporal nodes in a given link stream.
+. latencylist.py computes the latency lists between two given nodes in a given link stream.
+. betweenness.py computes the betweenness of a given temporal node in a given link stream.
+. betweenness_all.py computes the betweenness of all temporal nodes in a given link stream, with a given number of time instants per node.
+
+Each program displays its syntax if called with no parameters.
+
+The root directory also contains several sub-directories:
+. Lib/ contains the implementation of all key functions.
+. Test/ contains examples and unitary tests for these functions.
+. Drawing/ contains tools for drawing a link stream with betweenness information.
+
+The INPUT FORMAT for a link stream L=(T,V,E), with T=[alpha,omega], is a text file with each line of one of the following form:
+. starting with '#' or empty: ignored
+. starting with 'alpha' followed by a number, giving the value of alpha
+. starting with 'omega' followed by a number, giving the value of omega
+. composed of two numbers followed by two identifiers, meaning that there are two nodes with these identifiers and that they are continuously connected from the first number to the second one
+
+Note: this implementation is provided for illustration purpose only; it is far from optimal, in particular regarding the link stream data structure and computation redundancy if the betweenness of several temporal nodes is computed.
+
+EXAMPLE:
+
+The file Test/test3 contains:
+alpha 0
+omega 10
+4 5 a b
+6 8 b c
+which means that the link stream lasts from time 0 to time 10, that it has 3 nodes called 'a', 'b', and 'c', that nodes 'a' and 'b' are linked together from time 4 to 5, and 'b' and 'c' from 6 to 8.
+
+Then, the command line:
+python betweenness.py Test/test3 5 b
+prints "5 b 20", which means that in this link stream the temporal node (5,c) has betweenness 20.
+
+The example link streams presented in Figures 1 and 3 of the above paper are in files Test/ex-intro and Test/ex-prevlist ; see comments in these files.
+
+
+LICENSE: this implementation is under the CC BY 4.0 license: https://creativecommons.org/licenses/by/4.0/
+
+Please cite the publication above if you use it.
+
+The reference URL for these files is: http://latapy.complexnetworks.fr/btw-ls
+
+Contact: latapy@complexnetworks.fr
+

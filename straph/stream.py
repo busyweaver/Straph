@@ -939,6 +939,13 @@ class StreamGraph:
             links = sorted(links, key=lambda x: (x[1], -x[0]))
         return links
 
+    def stream_graph_to_link_stream(self):
+        s = self.__deepcopy__()
+        for v in s.nodes:
+            s.node_presence[v] = [s.alpha,s.omega]
+        return s
+
+
     ####################################################################
     #               WRITERS                                            #
     ####################################################################
@@ -1044,6 +1051,23 @@ class StreamGraph:
                     for t in lp:
                         file_output.write(str(t) + " ")
                     file_output.write("\n")
+
+    def write_to_matthieu_link_stream(self, output_file):
+        if self.node_to_label:
+            with open(output_file + '_mat.ls', 'w') as file_output:
+                file_output.write("alpha "+ str(self.alpha) + "\n")
+                file_output.write("omega "+ str(self.omega) + "\n")
+                for l, lp in zip(self.links, self.link_presence):
+                    for t in range(0,len(lp),2):
+                        file_output.write(str(lp[t])+" "+str(lp[t+1])+" "+str(self.node_to_label[l[0]]) + " " + str(self.node_to_label[l[1]]) + " ")
+
+                        file_output.write("\n")
+        else:
+            with open(output_file + '_mat.ls', 'w') as file_output:
+                for l, lp in zip(self.links, self.link_presence):
+                    for t in range(0,len(lp),2):
+                        file_output.write(str(lp[t])+" "+str(lp[t+1])+" "+str(l[0]) + " " + str(l[1]) + " ")
+                        file_output.write("\n")
 
     def write_to_csv(self, output_name):
         """

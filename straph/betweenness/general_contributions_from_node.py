@@ -115,7 +115,7 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                     jj = event_reverse[l_nei[v,t][ii-1][0]]
                 else:
                     jj = event_reverse[t]
-                #contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution)
+                contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution)
 
         if v not in contribution:
             contribution[v] = dict()
