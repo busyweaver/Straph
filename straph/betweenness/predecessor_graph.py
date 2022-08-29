@@ -40,20 +40,24 @@ class Graph:
         nouv = self.graph.reverse(copy = copy)
         return Graph(nouv)
 
-    def descendants_at_distance(self, source, distance):
+    def descendants_at_distance(self, source, distance, distances):
         current_distance = 0
-        current_layer = {(source,0)}
-        visited = {(source,0)}
+        current_layer = {(source, 0)}
+        visited = {source}
 
         # this is basically BFS, except that the current layer only stores the nodes at
         # current_distance from source at each iteration
         while current_distance < distance:
             next_layer = set()
             for node,dis in current_layer:
+                print(node, distances, visited)
+                # if len(list(self.successors(node))) == 0:
+                #     distances[node] = 0
                 for child in self.successors(node):
                     if child not in visited:
-                        visited.add((child,dis+self.edge_weight(node,child,"weight")))
-                        next_layer.add((child,self.edge_weight(node,child,"weight")))
+                        visited.add(source)
+                        #distances[node] = distances[child] + 1
+                        next_layer.add((child,dis + self.graph[node][child]['weight']))
             current_layer = next_layer
             current_distance += 1
 
@@ -63,15 +67,22 @@ class Graph:
         """variant from networkx"""
         if topo_order is None:
             topo_order = list(nx.topological_sort(self.graph))
+        print(topo_order)
+        print("///////////////////////")
 
         TC = self.copy()
 
         # idea: traverse vertices following a reverse topological order, connecting
         # each vertex to its descendants at distance 2 as we go
+
         for v in reversed(topo_order):
-            l = list(TC.descendants_at_distance(v, 2)) 
-            for (e,d) in l:
+            distances = dict()
+            l = list(TC.descendants_at_distance(v, 2, distances))
+            #p = nx.path_graph(self.graph, source = v)
+            for e,d in l:
                 TC.add_edge(v,e,"weight",d)
+        for e in TC.edges():
+            TC.graph[e[0]][e[1]]["weight"] = TC.graph[e[0]][e[1]]["weight"] -1
         return TC
 
 
@@ -109,7 +120,7 @@ def trav_instant_graphs(G, e, GG, visited):
         if t1 != t2 and not t2 == e[1]:
             if inter_act not in GG:
                 GG[inter_act] = Graph()
-            GG[inter_act].add_edge(e,(w,t_p),"weight",0)
+            GG[inter_act].add_edge(e,(w,t_p),"weight",1)
         trav_instant_graphs(G,(w,t_p), GG, visited)
 
 def instant_graphs(G):
@@ -124,6 +135,7 @@ def instant_graphs(G):
 def interval_graph(Gp):
     GT = dict()
     for e in Gp:
+        print("**********",e,"**************")
         GT[e] = Gp[e].transitive_closure_dag( topo_order=None)
     return GT
 
