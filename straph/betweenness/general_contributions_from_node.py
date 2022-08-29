@@ -46,7 +46,7 @@ def contri_delta_svvt(s, v, t, lat, contri, prev_next, sigma_r, lat_rev):
 
 
 def kappa(r,tp,tp_prev):
-    return vol.Volume((tp-tp_prev)/math.factorial(r+1) , r+1)
+    return vol.Volume(math.pow((tp-tp_prev),(r+1))/math.factorial(r+1) , r+1)
 
 def prev_event(tp,event,event_rev):
     i = event_rev[tp]
@@ -72,13 +72,27 @@ def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local
         if v not in contrib_local:
             contrib_local[v] = dict()
         if not (v in contribution and event[jjj] in contribution[v]):
+            if event[jjj] not in contrib_local[v]:
+                contrib_local[v][event[jjj]] = vol.Volume(0,0)
+            if (v,event[jjj]) == (1, 79.96710253478658):
+                print("w_tp",w,t_p, "ii", ii,"partial_sum",partial_sum)
             if event[jjj] != t_p:
                 contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
+                if (v,event[jjj]) == (1, 79.96710253478658):
+                    print("w_tp",w,t_p,"partial_sum[l_nei[v,t][ii][0]]", partial_sum[l_nei[v,t][ii][0]],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
             else:
                 if ii == len(l_nei[v,t])-1:
-                    contrib_local[v][event[jjj]]= (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+                    contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+                    if (v,event[jjj]) == (1, 79.96710253478658):
+                        print("w_tp",w,t_p,"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
                 else:
-                    contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+                    if l_nei[v,t][ii][1][-1] == w:
+                        contrib_local[v][event[jjj]] += partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+                    else:
+                        contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+                    if (v,event[jjj]) == (1, 79.96710253478658):
+                        print("w_tp",w,t_p,"l_nei[v,t][ii+1][0]",l_nei[v,t][ii+1][0],"partial_sum[l_nei[v,t][ii+1][0]]",partial_sum[l_nei[v,t][ii+1][0]],"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+
 
 def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt):
     if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
@@ -92,23 +106,36 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                 contri_delta_svt(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt)
                 (t1,t2) = pre[w][t_p][v,t]
                 if t1 != t2 and t_p > t and unt[v][t] >=t_p:
-                    for yp,tpp in GT[t1,t2].successors((v,t)):
+                    l = [(w, t_p)] + list(GT[t1,t2].successors((w,t_p)))
+                    for yp,tpp in l:
+                        if (v,t) == (1, 79.96710253478658):
+                            print("cas cont w_tp",w,t_p,"yptpp",yp,tpp)
                         contri_delta_svt(node, yp, tpp, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt)
                         ev_prev = prev_event(tpp,event,event_reverse)
                         r = GT[t1,t2].edge_weight((v,t),(yp,tpp),"weight")
                         if ((kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]).dim > 0:
                             print("ici",kappa(r,tpp,ev_prev),"*",sigma_r[(v,t)],"/",sigma_r[(yp,tpp)],  "*",contribution[yp][tpp])
                         s += (kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]
+                        if (v,t) == (1, 79.96710253478658):
+                            print("s",s,"sigma_r[(v,t)]",sigma_r[(v,t)],"sigma_r[(yp,tpp)]",sigma_r[(yp,tpp)],"contribution[yp][tpp]",contribution[yp][tpp],"kappa(r,tpp,ev_prev)",kappa(r,tpp,ev_prev))
+                        #print("kappa(r,tpp,ev_prev)",kappa(r,tpp,ev_prev),"sigma_r[(v,t)]",sigma_r[(v,t)], "sigma_r[(yp,tpp)]",sigma_r[(yp,tpp)],"contribution[yp][tpp]",contribution[yp][tpp],"s",s)
 
                 if ((t == t_p) or (t_p > t and t1 == t2)) and unt[v][t] >=t_p:
+                    if (v,t) == (1, 79.96710253478658):
+                            print("cas discret w_tp",w,t_p)
                     if ((sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]).dim > 0:
                         print("la",sigma_r[(v,t)],"/",sigma_r[(w,t_p)], "*",contribution[w][t_p], "t", t, "tp", t_p, "v", v, "w", w)
                     s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+                    if (v,t) == (1, 79.96710253478658):
+                            print("s",s)
+                    #print("sigma_r[(v,t)]",sigma_r[(v,t)],"sigma_r[(w,t_p)]",sigma_r[(w,t_p)],"contribution[w][t_p]",contribution[w][t_p],"s",s)
 
                 if l_nei[v,t][ii][0] not in partial_sum:
                     partial_sum[l_nei[v,t][ii][0]] = s.copy()
                 else:
-                    partial_sum[l_nei[v,t][ii][0]] += s.copy()
+                    partial_sum[l_nei[v,t][ii][0]] = s.copy()
+                if (v,t) == (1, 79.96710253478658):
+                    print("partial_sum", partial_sum,"w_tp",w,t_p,)
 
 
                 if ii != 0:
@@ -123,5 +150,6 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
             for ss in contrib_local[vv]:
                 contribution[vv][ss] = contrib_local[vv][ss]
         contribution[v][t] = s + deltasvvt[(v,t)]
+
     return contribution
 

@@ -30,6 +30,16 @@ def before(s, events, events_rev):
                 j -= 1
     return bef
 
+def to_undirected(s):
+    taille = len(s.links)
+    for i in range(0,taille):
+        x,y = s.links[i]
+        s.links.append((y,x))
+        l = s.link_presence[i]
+        lc = l[:]
+        s.link_presence.append(lc)
+
+
 def neighbors_direct(s):
     res ={ i:dict() for i in s.nodes}
     res_inv = { i:dict() for i in s.nodes}

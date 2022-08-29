@@ -5,7 +5,7 @@ path = sys.argv[0]
 s = "".join(path.split("/")[0:-1])
 print(s)
 if s != "":
-    s = "/"+s
+    s = s + "/"
 sys.path.append(os.path.abspath(s+"Lib/"))
 from betweennesslib import Betweenness
 from lslib import read_link_stream

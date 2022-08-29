@@ -148,31 +148,61 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
 #                             sigma_r[(k,t)] = sigma_r[(k,pred)]
 
 
-def volume_instantenuous(s, G, GI, events, events_rev):
+def volume_instantenuous(s, G, events, events_rev, edge):
     before = {v:{t: False for t in events} for v in s.nodes}
     after = {v:{t: False for t in events} for v in s.nodes}
-    l = []
-    for e in G.sources():
-        for (v,t) in G.successors(e):
-            t1,t2 = G.edge_weight(e, (v,t), "interval")
-            if t1 != t2:
-                before[v][t2] = True
-                after[v][t1] = True
-                l.append([v,t1,t2])
-    for v,t1,t2 in l:
-        if (t1,t2) in GI and (v,t2) in GI[(t1,t2)].nodes():
-            #print(t1,t2)
-            for (w,tp) in GI[(t1,t2)].successors((v,t2)):
-                if tp == t2:
-                    before[w][t2] = True
-                    after[w][t1] = True
-
-    # for e in GI:
-    #     source = GI[e].sources()
-    #     #if before[source[0]][source[1]] == True:
-    #     for (v,t) in GI[e].successors(source[0]):
-    #         if source[1] == e[1]:
-    #             print("v",v,"t",t,"e",e,"source",source)
-    #             before[v][e[1]] = True
-    #             after[v][e[0]] = True
+    volume_metapaths_instanteneous(G, events, events_rev, before, after, edge)
     return before, after
+
+def vol_inst(s, e, G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after):
+    l = list(G.successors(e))
+    for (w,tp) in l:
+        print(e[0],w,time, t1,t2, t1_after, t2_after)
+        edge_after1, edge_after2 = -1,-1
+        if events_rev[tp] < len(events)-1 and (events[events_rev[tp] +1]) in edge[e[0]][w]:
+            edge_after1, edge_after2 = edge[e[0]][w][events[events_rev[tp] +1]]
+            if t1_after == -1:
+                t1_after, t2_after = edge_after1, edge_after2 
+            print("edge after",edge_after1, edge_after2)
+        t1p,t2p = G.edge_weight(e, (w,tp), "interval")
+        print("t1p,t2p",t1p,t2p)
+        if t1 == -1:
+            t1 = t1p
+            t2 = t2p
+            if t1_after == -1:
+                t1_after, t1_after = -2,-2
+        if tp == time and t1 == t1p and t2 == t2p and t1 != t2:
+            before[w][tp] = True
+            if events_rev[tp] > 0:
+                after[w][events[events_rev[tp] -1]] = True
+            vol_inst(e, (w,tp), G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after)
+        if tp == time  and  edge_after1 == t1_after and edge_after2 == t2_after and t1_after != t2_after:
+            after[w][tp] = True
+            if events_rev[tp] < len(events):
+                before[w][events[events_rev[tp] +1]] = True
+            vol_inst(e, (w,tp), G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after)
+
+
+def volume_metapaths_instanteneous(G, events, events_rev, before, after, edge):
+    sigma = dict()
+    sou = G.sources()
+    for s in sou:
+        vol_inst(-1, s, G, events, events_rev, before, after, s[1], -1, -1, edge, -1, -1)
+
+def edges(s):
+    res ={ i:dict() for i in s.nodes}
+    for i in range(len(s.links)):
+        x,y = s.links[i]
+        if y not in res[x]:
+            res[x][y] = dict()
+        #print(s.link_presence[i])
+        for j in range(0,len(s.link_presence[i]),2):
+            t1,t2 = s.link_presence[i][j:j+2]
+            if t1 != t2:
+                if (j > 0 and t1 != s.link_presence[i][j-1]) or (j==0):
+                    res[x][y][t1] = (t1,t1)
+                res[x][y][t2] = (t1,t2)
+            else:
+                if (j > 0 and t1 != s.link_presence[i][j-1]) or (j==0):
+                    res[x][y][t1] = (t1,t1)
+    return res
