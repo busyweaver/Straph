@@ -56,6 +56,7 @@ def prev_event(tp,event,event_rev):
 def general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, GT, unt):
     contribution = dict()
     l = G.sources()
+    l.sort(reverse = True)
     for star_node in l:
         contribution = contri_delta_svt(node, star_node[0], star_node[1], GG.l_nei, sigma_r, contribution, deltasvvt, events, events_reverse, pre, GT, unt)
     for v in s.nodes:
@@ -69,32 +70,37 @@ def general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, e
 
 def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution):
     for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+        if (v,event[jjj]) in l_nei:
+            return
         if v not in contrib_local:
             contrib_local[v] = dict()
         if not (v in contribution and event[jjj] in contribution[v]):
             if event[jjj] not in contrib_local[v]:
                 contrib_local[v][event[jjj]] = vol.Volume(0,0)
             if (v,event[jjj]) == (2, 80.41206683462686):
-                print("w_tp",w,t_p, "ii", ii,"partial_sum",partial_sum)
+                print("v,t",v,t, "w_tp",w,t_p, "ii", ii,"partial_sum",partial_sum)
             if event[jjj] != t_p:
                 contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
                 if (v,event[jjj]) == (2, 80.41206683462686):
-                    print("w_tp",w,t_p,"partial_sum[l_nei[v,t][ii][0]]", partial_sum[l_nei[v,t][ii][0]],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+                    print("v,t",v,t, "w_tp",w,t_p,"partial_sum[l_nei[v,t][ii][0]]", partial_sum[l_nei[v,t][ii][0]],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
             else:
                 if ii == len(l_nei[v,t])-1:
                     contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
                     if (v,event[jjj]) == (2, 80.41206683462686):
-                        print("w_tp",w,t_p,"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+                        print("v,t",v,t, "w_tp",w,t_p,"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
                 else:
                     if l_nei[v,t][ii][1][-1] == w:
                         contrib_local[v][event[jjj]] += partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
                     else:
                         contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
                     if (v,event[jjj]) == (2, 80.41206683462686):
-                        print("w_tp",w,t_p,"l_nei[v,t][ii+1][0]",l_nei[v,t][ii+1][0],"partial_sum[l_nei[v,t][ii+1][0]]",partial_sum[l_nei[v,t][ii+1][0]],"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
+                        print("v,t",v,t, "w_tp",w,t_p,"l_nei[v,t][ii+1][0]",l_nei[v,t][ii+1][0],"partial_sum[l_nei[v,t][ii+1][0]]",partial_sum[l_nei[v,t][ii+1][0]],"(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )",(sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ),"contribution[w][t_p]",contribution[w][t_p],"contrib_local[v][event[jjj]]",contrib_local[v][event[jjj]])
 
 
 def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt):
+    print("v,t",v,t,"l_nei[(v,t)]",l_nei[(v,t)])
+    if (v,t) == (2, 80.41206683462686):
+        print("bah si")
     if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
         partial_sum = dict()
         s = vol.Volume(0,0)

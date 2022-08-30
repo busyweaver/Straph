@@ -154,40 +154,48 @@ def volume_instantenuous(s, G, events, events_rev, edge):
     volume_metapaths_instanteneous(G, events, events_rev, before, after, edge)
     return before, after
 
-def vol_inst(s, e, G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after):
+def vol_inst_bef(s, e, G, events, events_rev, before, after, time, t1, t2):
     l = list(G.successors(e))
     for (w,tp) in l:
-        print(e[0],w,time, t1,t2, t1_after, t2_after)
+        print(e[0],w,time, t1,t2)
+        t1p,t2p = G.edge_weight(e, (w,tp), "interval")
+        print("t1p,t2p",t1p,t2p)
+        if t1 == -1:
+            t1 = t1p
+            t2 = t2p
+        if tp == time and t1 == t1p and t2 == t2p and t1 != t2:
+            before[w][tp] = True
+            if events_rev[tp] > 0:
+                after[w][events[events_rev[tp] -1]] = True
+            vol_inst_bef(e, (w,tp), G, events, events_rev, before, after, time, t1, t2)
+
+def vol_inst_after(s, e, G, events, events_rev, before, after, time, edge, t1_after, t2_after):
+    l = list(G.successors(e))
+    for (w,tp) in l:
+        print(e[0],w,time, t1_after, t2_after)
         edge_after1, edge_after2 = -1,-1
         if events_rev[tp] < len(events)-1 and (events[events_rev[tp] +1]) in edge[e[0]][w]:
             edge_after1, edge_after2 = edge[e[0]][w][events[events_rev[tp] +1]]
             if t1_after == -1:
                 t1_after, t2_after = edge_after1, edge_after2 
             print("edge after",edge_after1, edge_after2)
-        t1p,t2p = G.edge_weight(e, (w,tp), "interval")
-        print("t1p,t2p",t1p,t2p)
-        if t1 == -1:
-            t1 = t1p
-            t2 = t2p
-            if t1_after == -1:
-                t1_after, t1_after = -2,-2
-        if tp == time and t1 == t1p and t2 == t2p and t1 != t2:
-            before[w][tp] = True
-            if events_rev[tp] > 0:
-                after[w][events[events_rev[tp] -1]] = True
-            vol_inst(e, (w,tp), G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after)
-        if tp == time  and  edge_after1 == t1_after and edge_after2 == t2_after and t1_after != t2_after:
-            after[w][tp] = True
-            if events_rev[tp] < len(events):
-                before[w][events[events_rev[tp] +1]] = True
-            vol_inst(e, (w,tp), G, events, events_rev, before, after, time, t1, t2, edge, t1_after, t2_after)
+        if t1_after == -1 and edge_after1 != edge_after2:
+            t1_after, t2_after = edge_after1, edge_after2
+        if t1_after == -1:
+            return
+        if tp == time  and  edge_after1 == t1_after and edge_after2 == t2_after:
+                after[w][tp] = True
+                if events_rev[tp] < len(events):
+                    before[w][events[events_rev[tp] +1]] = True
+                vol_inst_after(e, (w,tp), G, events, events_rev, before, after, time, edge, t1_after, t2_after)
 
 
 def volume_metapaths_instanteneous(G, events, events_rev, before, after, edge):
     sigma = dict()
     sou = G.sources()
     for s in sou:
-        vol_inst(-1, s, G, events, events_rev, before, after, s[1], -1, -1, edge, -1, -1)
+        vol_inst_bef(-1, s, G, events, events_rev, before, after, s[1], -1, -1)
+        vol_inst_after(-1, s, G, events, events_rev, before, after, s[1], edge, -1, -1)
 
 def edges(s):
     res ={ i:dict() for i in s.nodes}

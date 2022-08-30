@@ -53,6 +53,12 @@ def betweenness_all(s, approx = -1):
     betweenness = dict()
     sigma_r = dict()
     latency = dict()
+    prev_next = dict()
+    contri = dict()
+    before = dict()
+    after = dict()
+    deltasvvt = dict()
+    no_succ = dict()
     nouveau = s.fragmented_stream_graph()
     events, events_reverse = events_dic(nouveau)
     initialization(nouveau, events, betweenness)
@@ -73,29 +79,30 @@ def betweenness_all(s, approx = -1):
         lat_triplet, lat_rev_triplet = bt.latencies_without_0_and_rev(nouveau, lat, events)
         latency[node] = lat_triplet
         G = bt.predecessor_graph(nouveau, pre,node)
+        no_succ[node] = list(filter(lambda x: len(G.successors(x))==0 ,G.nodes()))
         GG = bt.graph_to_ordered(G, events, events_reverse)
         Gp = bt.instant_graphs(G)
         GT = bt.interval_graph(Gp)
         edge = bt.edges(nouveau)
-        before, after = bt.volume_instantenuous(nouveau, G, events, events_reverse, edge)
+        before[node], after[node] = bt.volume_instantenuous(nouveau, G, events, events_reverse, edge)
         mx = bt.max_volume_superposition(GT)
         sigma = bt.volume_metapaths_at_t(G, node, cur_best, mx)
         f_edge = bt.dictionary_first_edge(G, cur_best)
         sigma_r[node] = bt.optimal_with_resting_con(nouveau, node, f_edge, events, G, sigma, cur_best, unt)
-        contri, prev_next = bt.contribution_each_latency_con(nouveau, lat_rev_triplet,events[0],events[len(events)-1], before, after)
+        contri[node], prev_next[node] = bt.contribution_each_latency_con(nouveau, lat_rev_triplet,events[0],events[len(events)-1], before[node], after[node])
         latence_arrival = {v : { y: [x,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
         latence_depar = {v : { x : [y,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
-        deltasvvt = bt.dictionary_svvt(G, node, latence_arrival, contri, prev_next, sigma_r[node],  latence_depar)
-        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r[node], deltasvvt, events, events_reverse, pre, GT, unt)
+        deltasvvt[node] = bt.dictionary_svvt(G, node, latence_arrival, contri[node], prev_next[node], sigma_r[node],  latence_depar)
+        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r[node], deltasvvt[node], events, events_reverse, pre, GT, unt)
         general_contri[node] = contribution
         update_betweenness(nouveau, contribution, betweenness, events)
         end_time = time.time()
         features[node] = [end_time - start_time, len(list(G.nodes())), mx, len(lat_triplet)]
     normalize(nouveau, betweenness, events)
-    return betweenness, general_contri, nouveau, events, sigma_r,latency, features
+    return betweenness, general_contri, nouveau, events, sigma_r,latency,prev_next, contri, before, after, deltasvvt,no_succ ,features
 
 def simulations(s, name):
-    bet, general_contri, nouveau, events, features = betweenness_all(s)
+    bet, general_contri, nouveau, events, sigma_r, latency, prev_next, contri, before, after, deltasvvt, no_succ, features = betweenness_all(s)
     #write_betweenness(bet, s, events, name)
     with open(name+"_betweenness.pic", 'wb') as handle:
         pickle.dump(bet, handle)

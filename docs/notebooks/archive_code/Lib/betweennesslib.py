@@ -112,11 +112,25 @@ def Betweenness(L,(t,v)):
                 LL = Latency_lists(L,u)
                 for w in L.V:
                 	x = Contribution(L,u,w,(t,v),LL[w])
-                	print("contri",u,w," = ",x)
+                	# print("contri",u,w," = ",x)
                 	contri[u] = contri[u] + x
                 	B += x                	
-        print(contri)
+        # print(contri)
         return B
+
+def Betweenness_contri(L,(t,v)):
+    # print(v,t)
+    assert v in L.V and t >= L.alpha and t <= L.omega
+    contri = {e:0.0 for e in L.V}
+    B = 0.
+    for u in L.V:
+        LL = Latency_lists(L,u)
+        for w in L.V:
+            x = Contribution(L,u,w,(t,v),LL[w])
+            print("contri",u,w," = ",x,"w",w)
+            contri[u] = contri[u] + x
+            B += x                	
+    return B,contri
 
 def contri_point(L,(t,v),a):
 	contri = 0.

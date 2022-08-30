@@ -31,9 +31,7 @@ else:
 res = {e:dict()  for e in L.V }
 
 for e in L.V:
-	print("lol")
 	for t in times:
-		print("wech")
 		res[e][t] = contri_point(L,(t,e),v)
 
 
