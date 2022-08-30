@@ -51,6 +51,8 @@ def betweenness_all(s, approx = -1):
     features = dict()
     general_contri = dict()
     betweenness = dict()
+    sigma_r = dict()
+    latency = dict()
     nouveau = s.fragmented_stream_graph()
     events, events_reverse = events_dic(nouveau)
     initialization(nouveau, events, betweenness)
@@ -69,6 +71,7 @@ def betweenness_all(s, approx = -1):
         cur_b_arr = bt. cur_best_to_array(nouveau, cur_best, events, events_reverse)
         lat = bt.latencies(nouveau, cur_b_arr, events, events_reverse)
         lat_triplet, lat_rev_triplet = bt.latencies_without_0_and_rev(nouveau, lat, events)
+        latency[node] = lat_triplet
         G = bt.predecessor_graph(nouveau, pre,node)
         GG = bt.graph_to_ordered(G, events, events_reverse)
         Gp = bt.instant_graphs(G)
@@ -78,18 +81,18 @@ def betweenness_all(s, approx = -1):
         mx = bt.max_volume_superposition(GT)
         sigma = bt.volume_metapaths_at_t(G, node, cur_best, mx)
         f_edge = bt.dictionary_first_edge(G, cur_best)
-        sigma_r = bt.optimal_with_resting_con(nouveau, node, f_edge, events, G, sigma, cur_best, unt)
+        sigma_r[node] = bt.optimal_with_resting_con(nouveau, node, f_edge, events, G, sigma, cur_best, unt)
         contri, prev_next = bt.contribution_each_latency_con(nouveau, lat_rev_triplet,events[0],events[len(events)-1], before, after)
         latence_arrival = {v : { y: [x,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
         latence_depar = {v : { x : [y,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
-        deltasvvt = bt.dictionary_svvt(G, node, latence_arrival, contri, prev_next, sigma_r,  latence_depar)
-        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, GT, unt)
+        deltasvvt = bt.dictionary_svvt(G, node, latence_arrival, contri, prev_next, sigma_r[node],  latence_depar)
+        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r[node], deltasvvt, events, events_reverse, pre, GT, unt)
         general_contri[node] = contribution
         update_betweenness(nouveau, contribution, betweenness, events)
         end_time = time.time()
         features[node] = [end_time - start_time, len(list(G.nodes())), mx, len(lat_triplet)]
     normalize(nouveau, betweenness, events)
-    return betweenness, general_contri, nouveau, events, features
+    return betweenness, general_contri, nouveau, events, sigma_r,latency, features
 
 def simulations(s, name):
     bet, general_contri, nouveau, events, features = betweenness_all(s)
