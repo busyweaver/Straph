@@ -18,7 +18,7 @@ if len(sys.argv)!=5:
 	sys.stderr.write("Output: the betweenness L.\n")
 	sys.exit()
 name = sys.argv[4]
-print("filename", name)
+# print("filename", name)
 v = sys.argv[3]
 L = read_link_stream(open(s + sys.argv[1]))
 nb_points = float(sys.argv[2])

@@ -81,6 +81,7 @@ def betweenness_all(s, approx = -1):
         G = bt.predecessor_graph(nouveau, pre,node)
         no_succ[node] = list(filter(lambda x: len(G.successors(x))==0 ,G.nodes()))
         GG = bt.graph_to_ordered(G, events, events_reverse)
+        preced = bt.preced_node(nouveau, G,events,events_reverse)
         Gp = bt.instant_graphs(G)
         GT = bt.interval_graph(Gp)
         edge = bt.edges(nouveau)
@@ -93,7 +94,7 @@ def betweenness_all(s, approx = -1):
         latence_arrival = {v : { y: [x,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
         latence_depar = {v : { x : [y,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
         deltasvvt[node] = bt.dictionary_svvt(G, node, latence_arrival, contri[node], prev_next[node], sigma_r[node],  latence_depar)
-        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r[node], deltasvvt[node], events, events_reverse, pre, GT, unt)
+        contribution = bt.general_contribution_from_node(s, G, node, GG, sigma_r[node], deltasvvt[node], events, events_reverse, pre, GT, unt, preced)
         general_contri[node] = contribution
         update_betweenness(nouveau, contribution, betweenness, events)
         end_time = time.time()

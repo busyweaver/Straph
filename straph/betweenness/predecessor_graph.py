@@ -147,5 +147,3 @@ def max_volume_superposition(GT):
         return 0
     else:
         return  max(length) +1
-
-
