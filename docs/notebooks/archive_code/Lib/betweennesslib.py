@@ -63,7 +63,7 @@ def NextList(L,u,w,(s,a),LL):
 
 # computes the contribution of nodes u and w to the betweenness of (t,v) in L
 def Contribution(L,u,w,(t,v),LL):
-	#print L,u,w,(t,v),"latency",LL
+	# print L,u,w,(t,v),"latency",LL
 	assert u in L.V and w in L.V and v in L.V
 	assert t>=L.alpha and t <= L.omega
 	# add t to event times to ensure that ls_dist(L,(s,u),a) will compute a value for (t,v)
@@ -88,18 +88,18 @@ def Contribution(L,u,w,(t,v),LL):
 	middle = VSP(L,(s,u),(a,w))
 	Prev = PrevList(L,u,w,(s,a),LL)
 	Next = NextList(L,u,w,(s,a),LL)
-	#print "prev",Prev
-	#print "next",Next
+	# print "prev",Prev
+	# print "next",Next
 	contrib = 0.
 	s_prime = s
         for (s_left,left) in Prev:
-        	#print("left",left)
+        	# print("left",left)
                 a_prime = a
         	for (a_right,right) in Next:
-        		#print("right",right)
-        		#print("vol_tv", vol_tv, "denum", plusvol(plusvol(left,right),middle) )
+        		# print("right",right)
+        		# print("vol_tv", vol_tv, "denum", plusvol(plusvol(left,right),middle) )
 			contrib += (s_prime-s_left)*(a_right-a_prime)*divvol(vol_tv,plusvol(plusvol(left,right),middle))
-			#print("contrib",contrib)
+			# print("contrib",contrib)
 			a_prime = a_right
                 s_prime = s_left
         return contrib
@@ -127,7 +127,7 @@ def Betweenness_contri(L,(t,v)):
         LL = Latency_lists(L,u)
         for w in L.V:
             x = Contribution(L,u,w,(t,v),LL[w])
-            print("contri",u,w," = ",x,"w",w)
+            # print("contri",u,w," = ",x,"w",w)
             contri[u] = contri[u] + x
             B += x                	
     return B,contri
@@ -137,7 +137,7 @@ def contri_point(L,(t,v),a):
         LL = Latency_lists(L,a)
         for w in L.V:
         	x = Contribution(L,a,w,(t,v),LL[w])
-               	print("contri",a,w," = ",x)
+               	# print("contri",a,w," = ",x)
                 contri = contri + x                	
         return contri
 

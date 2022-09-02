@@ -44,31 +44,39 @@ class Graph:
         current_distance = 0
         current_layer = {(source, 0)}
         visited = {source}
+        nb_paths = dict()
+        dist = dict()
 
         # this is basically BFS, except that the current layer only stores the nodes at
         # current_distance from source at each iteration
         while current_distance < distance:
             next_layer = set()
             for node,dis in current_layer:
-                print(node, distances, visited)
+                # print(node, distances, visited)
                 # if len(list(self.successors(node))) == 0:
                 #     distances[node] = 0
                 for child in self.successors(node):
                     if child not in visited:
-                        visited.add(source)
+                        visited.add(child)
+                        nb_paths[child] = 1
                         #distances[node] = distances[child] + 1
                         next_layer.add((child,dis + self.graph[node][child]['weight']))
+                        dist[child] = dis + self.graph[node][child]['weight']
+                    else:
+                        if dist[child] == dis + self.graph[node][child]['weight']:
+                            nb_paths[child] += 1
+
             current_layer = next_layer
             current_distance += 1
 
-        return current_layer
+        return current_layer, nb_paths
 
     def transitive_closure_dag(self, topo_order=None):
         """variant from networkx"""
         if topo_order is None:
             topo_order = list(nx.topological_sort(self.graph))
-        print(topo_order)
-        print("///////////////////////")
+        # print(topo_order)
+        # print("///////////////////////")
 
         TC = self.copy()
 
@@ -79,10 +87,15 @@ class Graph:
             distances = dict()
             l = list(TC.descendants_at_distance(v, 2, distances))
             #p = nx.path_graph(self.graph, source = v)
-            for e,d in l:
+            for e,d in l[0]:
                 TC.add_edge(v,e,"weight",d)
+                TC.add_edge(v,e,"nb_paths",l[1][e])
         for e in TC.edges():
             TC.graph[e[0]][e[1]]["weight"] = TC.graph[e[0]][e[1]]["weight"] -1
+            if "nb_paths" not in TC.graph[e[0]][e[1]]:
+                TC.graph[e[0]][e[1]]["nb_paths"] = 1
+
+
         return TC
 
 
@@ -135,7 +148,7 @@ def instant_graphs(G):
 def interval_graph(Gp):
     GT = dict()
     for e in Gp:
-        print("**********",e,"**************")
+        # print("**********",e,"**************")
         GT[e] = Gp[e].transitive_closure_dag( topo_order=None)
     return GT
 

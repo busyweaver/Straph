@@ -71,7 +71,7 @@ def betweenness_all(s, approx = -1):
         lis = list(nouveau.nodes)
         to_visit = random.sample(lis, approx)
     for node in to_visit:
-        print(node)
+        # print(node)
         start_time = time.time()
         pre, cur_best = bt.dijkstra_directed(nouveau, node, events, events_reverse, neighbors, link_ind, neighbors_inv, unt)
         cur_b_arr = bt. cur_best_to_array(nouveau, cur_best, events, events_reverse)

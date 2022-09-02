@@ -157,9 +157,9 @@ def volume_instantenuous(s, G, events, events_rev, edge):
 def vol_inst_bef(s, e, G, events, events_rev, before, after, time, t1, t2):
     l = list(G.successors(e))
     for (w,tp) in l:
-        print(e[0],w,time, t1,t2)
+        # print(e[0],w,time, t1,t2)
         t1p,t2p = G.edge_weight(e, (w,tp), "interval")
-        print("t1p,t2p",t1p,t2p)
+        # print("t1p,t2p",t1p,t2p)
         if t1 == -1:
             t1 = t1p
             t2 = t2p
@@ -172,13 +172,13 @@ def vol_inst_bef(s, e, G, events, events_rev, before, after, time, t1, t2):
 def vol_inst_after(s, e, G, events, events_rev, before, after, time, edge, t1_after, t2_after):
     l = list(G.successors(e))
     for (w,tp) in l:
-        print(e[0],w,time, t1_after, t2_after)
+        # print(e[0],w,time, t1_after, t2_after)
         edge_after1, edge_after2 = -1,-1
         if events_rev[tp] < len(events)-1 and (events[events_rev[tp] +1]) in edge[e[0]][w]:
             edge_after1, edge_after2 = edge[e[0]][w][events[events_rev[tp] +1]]
             if t1_after == -1:
                 t1_after, t2_after = edge_after1, edge_after2 
-            print("edge after",edge_after1, edge_after2)
+            # print("edge after",edge_after1, edge_after2)
         if t1_after == -1 and edge_after1 != edge_after2:
             t1_after, t2_after = edge_after1, edge_after2
         if t1_after == -1:

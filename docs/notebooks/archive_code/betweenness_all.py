@@ -5,7 +5,7 @@ import pickle
 
 path = sys.argv[0]
 s = "".join(path.split("/")[0:-1])
-print(s)
+# print(s)
 if s != "":
     s =s + "/"
 sys.path.append(os.path.abspath(s+"Lib/"))
@@ -27,7 +27,7 @@ if nb_points == -1:
 else:
     increment = (L.omega-L.alpha)/nb_points
     times = [L.alpha + i*increment for i in range(nb_points)]
-print(times)
+# print(times)
 b = dict()
 for v in L.V:
     b[v] = dict()
