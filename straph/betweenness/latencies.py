@@ -36,3 +36,9 @@ def latencies_without_0_and_rev(s, lat, ev):
                 latency_rev[k].append([ lat[k][i][0],ev[i],lat[k][i][1] ])
     return latency, latency_rev
 
+def cur_best_to_array_edge(s, cur_best, ev, ev_rev):
+    cur_b_arr = [ [0 for t in ev    ]   for k in s.nodes]
+    for v in s.nodes:
+        for t in cur_best[v]:
+            cur_b_arr[v][ev_rev[t]] = (t,cur_best[v][t][1][0],cur_best[v][t][1][1])
+    return cur_b_arr

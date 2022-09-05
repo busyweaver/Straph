@@ -115,39 +115,6 @@ def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
                         sigma_r[(k,t)] = sigma_r[(k,pred)]
     return sigma_r
 
-# def optimal_with_resting_con(s, node, f_edge, events, G, sigma, cur_best, unt):
-#     l = G.sources()
-#     for (v,t) in l:
-#         for t in range(len(l_nei[(v,t)])-1,-1,-1):
-#             #normally it should be sorted
-#             for k in l_nei[v,t][ii][1]:
-#                 if k == node:
-#                     sigma_r[(k,t)] = vol.Volume(1,0)
-#                 else:
-#                     if pred == -1:
-#                         if (k,t) in G.nodes():
-#                             sigma_r[(k,t)] = sigma[(k,t)][-1]
-#                             pred = t
-#                             edge = f_edge[(k,t)]
-#                         else:
-#                             sigma_r[(k,t)] = vol.Volume(0,0)
-#                     else:
-#                         if (k,t) in G.nodes():
-#                             edge2 = f_edge[(k,t)]
-#                             if edge == edge2 and unt[k][pred] >= t:
-#                                 sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)][-1]
-#                                 pred = t
-#                             elif edge == edge2 and not(unt[k][pred] >= t):
-#                                 sigma_r[(k,t)] = sigma[(k,t)][-1]
-#                                 pred = t
-#                             else:
-#                                 sigma_r[(k,t)] = sigma[(k,t)][-1]
-#                                 pred = t
-#                                 edge = f_edge[(k,t)]
-#                         else:
-#                             sigma_r[(k,t)] = sigma_r[(k,pred)]
-
-
 def volume_instantenuous(s, G, events, events_rev, edge):
     before = {v:{t: False for t in events} for v in s.nodes}
     after = {v:{t: False for t in events} for v in s.nodes}

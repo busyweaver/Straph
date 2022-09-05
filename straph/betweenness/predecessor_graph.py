@@ -58,13 +58,20 @@ class Graph:
                 for child in self.successors(node):
                     if child not in visited:
                         visited.add(child)
-                        nb_paths[child] = 1
+                        if "nb_paths" in self.graph[node][child]:
+                            nb_paths[child] = self.graph[node][child]["nb_paths"]
+                        else:
+                            nb_paths[child] = 1
                         #distances[node] = distances[child] + 1
                         next_layer.add((child,dis + self.graph[node][child]['weight']))
                         dist[child] = dis + self.graph[node][child]['weight']
                     else:
                         if dist[child] == dis + self.graph[node][child]['weight']:
-                            nb_paths[child] += 1
+                            if "nb_paths" in self.graph[node][child]:
+                                x = self.graph[node][child]["nb_paths"]
+                            else:
+                                x = 1
+                            nb_paths[child] += x
 
             current_layer = next_layer
             current_distance += 1
@@ -89,7 +96,7 @@ class Graph:
             #p = nx.path_graph(self.graph, source = v)
             for e,d in l[0]:
                 TC.add_edge(v,e,"weight",d)
-                TC.add_edge(v,e,"nb_paths",l[1][e])
+                TC.add_edge(v,e,"nb_paths",l[1][e] )
         for e in TC.edges():
             TC.graph[e[0]][e[1]]["weight"] = TC.graph[e[0]][e[1]]["weight"] -1
             if "nb_paths" not in TC.graph[e[0]][e[1]]:
@@ -107,6 +114,17 @@ def predecessor_graph(s, pre, node):
                 for v2 in pre[k][key].keys(): 
                     v,t = v2
                     G.add_edge((v,t),(k,key),"interval",pre[k][key][v2])
+    return G
+
+def predecessor_graph_edge(s, pre, node):
+    G = Graph()
+    for k in s.nodes:
+        if k != node:
+            for key in pre[k].keys():
+                for bound in pre[k][key].keys():
+                    for v2 in pre[k][key][bound].keys():
+                        v,t,b = v2
+                        G.add_edge((v,t,b),(k,key,bound),"interval",pre[k][key][bound][v2])
     return G
 
 
