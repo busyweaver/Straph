@@ -1,5 +1,6 @@
 from straph import fibheap as fib
 import numpy
+from straph.paths import meta_walks as mw
 
 def link_index(s):
     d = dict()
@@ -163,6 +164,8 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
     return (pre, cur_best)
 
 
+################################ for edge betwenness ################################
+
 def relax_resting_edge(b, t, bound_t, tp, bound_tp, pre, cur_best, events, events_rev, Q, Q_nod):
     cnew = compute_c(cur_best[b][t][bound_t][0], tp, cur_best[b][t][bound_t][1])
     cold = compute_c(cur_best[b][tp][bound_tp][0], tp, cur_best[b][tp][bound_tp][1])
@@ -272,4 +275,100 @@ def dijkstra_directed_edge(sg, s, events, events_rev, neighbors, d, neighbors_in
                     print("fin boucle 2b", "cur_best",cur_best[b], "pre", pre[b])
     return (pre, cur_best)
 
+################################ for discrete temporal graphs generic ################################
 
+def relax_resting_paths_dis_gen(b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod, cmp, cost, opt_walk, n):
+    #print("opt_walk[b][t]", opt_walk[b][t], "opt_walk[b][tp]", opt_walk[b][tp])
+    #print("opt_walk", opt_walk)
+    cnew = cost(opt_walk[b][t],tp,n)
+    cold = cost(opt_walk[b][tp],tp,n)
+    if cmp(cnew, cold):
+        #print("changement")
+        pre[b][tp] = set()
+        cur_best[b][tp] = cnew
+        opt_walk[b][tp] = opt_walk[b][t]
+        if (b,tp) in Q_nod:
+            Q.decrease_key(Q_nod[b,tp], (cnew,(b,tp)))
+        else:
+            Q_nod[b,tp] = Q.insert( (cnew,(b,tp) ) )
+
+
+
+def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, edge, cmp, cost, opt_walk, n):
+    if pre[a][t] == {}:
+        return
+    m = opt_walk[a][t]
+    mp = m.clone()
+    mp.add_link(a,b,(tp, tp))
+    # print("m",m)
+    # print("mp", mp)
+    cnew = cost(mp,tp,n)
+    cold = cost(opt_walk[b][tp],tp,n)
+    if cmp(cnew, cold):
+        #print("changement")
+        #pre[b][arrival] = set()
+        pre[b][tp] = set()
+        cur_best[b][tp] = cnew
+        opt_walk[b][tp] = mp
+        #print("Q_nod[b,arrival]",Q_nod[b,arrival])
+        if (b,tp) in Q_nod:
+            Q.decrease_key(Q_nod[b,tp], (cnew,(b,tp)))
+        else:
+            Q_nod[b,tp] = Q.insert( (cnew,(b,tp) ) )
+
+        #Q.decrease_key(Q_nod[b,tp], (cnew, (b,tp)) )
+    if cnew == cur_best[b][tp]:
+        pre[b][tp].add((a,t))
+
+
+def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, d, neighbors_inv, unt, cmp, cost):
+    Q = fib.FibonacciHeap()
+    cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
+    pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
+    opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
+    nod = dict()
+    n = len(sg.nodes)
+    for e in neighbors[s].keys():
+        for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
+        #for j in range(0,2,2):
+            if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
+                l = sg.link_presence[d[(s,e)]][j:j+2]
+            else:
+                l = sg.link_presence[d[(s,e)]][j:j+1]
+            for t in l:
+                cur_best[s][t] = cost(opt_walk[s][t], t, n)
+                pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
+                opt_walk[s][t] = mw.Metawalk([],[])
+                if (s,t) not in nod:
+                    nod[s,t] = Q.insert( (0.0,(s,t) ) )
+    #print(Q.total_nodes)
+    while Q.total_nodes != 0:
+        #print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
+        (x,y) = Q.extract_min().data
+        del nod[y]
+        (a,t) = y
+        #(tpp,dis) = x
+        for b in neighbors_inv[a].keys():
+            for (tp,edge) in neighbors_inv[a][b]:
+                if tp >= t and unt[a][t] >= tp:
+                    #print("tp_inv",tp)
+                    #if (a,t) == (15,42.61256423310296):
+                        #print("salut2_inv",(a,t),(b,tp))
+                    relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
+                    # print("inv cur",cur_best)
+                    # print("inv opt",opt_walk)
+                    # print("inv pre",pre)
+
+        for b in neighbors[a].keys():
+            for (tp,edge) in neighbors[a][b]:
+                if tp >= t and unt[a][t] >= tp:
+                    #print("tp",tp)
+                    #if (a,t) == (15,42.61256423310296):
+                        #print("salut2",(a,t),(b,tp))
+                    relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
+                    #print(cur_best)
+                    relax_paths_dis_gen(a,b,t,tp,pre,cur_best, events, Q, nod, edge, cmp, cost, opt_walk, n)
+                    # print("relax paths cur", cur_best)
+                    # print("relax paths opt", opt_walk)
+                    # print("relax paths pre", pre)
+    return (pre, cur_best)

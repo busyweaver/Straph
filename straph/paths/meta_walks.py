@@ -16,6 +16,12 @@ class Metawalk:
         self.time_intervals = time_intervals
         self.nodes = nodes
 
+    def is_empty(self):
+        return self.time_intervals == []
+
+    def is_none(self):
+        return self.time_intervals == None
+
     def add_link(self, a, b, t):
         if self.nodes == []:
             self.nodes = self.nodes + [a,b]
@@ -26,6 +32,8 @@ class Metawalk:
                 self.nodes.append(b)
 
     def length(self):
+        if self.is_none():
+            return -1
         return len(self.time_intervals)
 
     def duration(self):
@@ -40,6 +48,10 @@ class Metawalk:
         return hash((m,n))
     def __str__(self):
         s = ""
+        if self.is_none():
+            return ""
+        if self.is_empty():
+            return "empty"
         for i in range(0,self.length()):
             s += " "
             s += str(self.nodes[i])
@@ -221,6 +233,8 @@ class Metawalk:
     def last_node(self):
         return self.nodes[-1]
 
+    
+
     def plot(self, S, color="#18036f",
              markersize=10, dag=False, fig=None):
         """
@@ -317,3 +331,18 @@ class Metawalk:
                     raise ValueError("Link : " + str(l) + " does not exists at time " + str(t) + " !")
         print("Check Path Coherence ok !")
         return
+
+    def co_sfp(m, t, cons):
+        if m.is_none():
+            return np.Infinity
+        if m.is_empty():
+            return 0.0
+        return cons * (t - m.last_departure()) + m.length()
+
+    def co_first_arrival(m, t, cons):
+        return m.first_arrival()
+
+    def co_short(m, t, cons):
+        if m.is_none():
+            return np.Infinity
+        return m.length()
