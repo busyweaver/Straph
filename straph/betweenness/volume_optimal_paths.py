@@ -181,3 +181,71 @@ def edges(s):
                 if (j > 0 and t1 != s.link_presence[i][j-1]) or (j==0):
                     res[x][y][t1] = (t1,t1)
     return res
+
+####################################  number of paths generic discrete ####################################
+
+def vol_rec_dis_gen(s, e, G_rev, sigma):
+    if e in sigma:
+        return
+    l = list(G_rev.successors(e))
+    res = 0
+    for (w,tp) in l:
+        vol_rec_dis_gen(s, (w,tp), G_rev, sigma)
+        if w == s:
+            res += 1
+        else:
+            res += sigma[(w,tp)]
+    sigma[e] = res
+
+
+
+def volume_metapaths_at_dis_gen(G, s):
+    sigma = dict()
+    sink = G.sinks()
+    G_rev = G.reverse()
+    for e in sink:
+        vol_rec_dis_gen(s, e, G_rev, sigma)
+    return sigma
+
+def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, unt, node_inf, opt_walk, cost, n):
+    sigma_r = dict()
+    #assuming -1 is an unexisting time
+    sigma_r[(node,-1)] = 0.0
+    for k in s.nodes:
+        pred = -1
+        for t in events:
+            if (k,t) in node_inf:
+                continue
+            if k == node:
+                sigma_r[(k,t)] = 0
+            else:
+                if pred == -1:
+                    if (k,t) in G.nodes():
+                        sigma_r[(k,t)] = sigma[(k,t)]
+                        pred = t
+                    else:
+                        sigma_r[(k,t)] = 0
+                else:
+                    if (k,t) in G.nodes():
+                        if cur_best[k][t] == cost(opt_walk[k][pred], t, n) and unt[k][pred] >= t:
+                            sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)]
+                            pred = t
+                        elif cur_best[k][t] == cost(opt_walk[k][pred], t, n) and not(unt[k][pred] >= t):
+                            sigma_r[(k,t)] = sigma[(k,t)]
+                            pred = t
+                        else:
+                            sigma_r[(k,t)] = sigma[(k,t)]
+                            pred = t
+                    else:
+                        sigma_r[(k,t)] = sigma_r[(k,pred)]
+    return sigma_r
+
+def infinite_closure(s, G, events, events_rev, node_inf, opt_walk, cur_best, cost, n):
+    res = set()
+    for (v,t) in node_inf:
+        i = events_rev[t]+1
+        while(i < len(events) and  (v,events[i]) not in G.nodes):
+            if cur_best[v][events[i]] == cost(opt_walk[v][t],events[i],n):
+                res.add((v,events[i]))
+            i += 1
+    return res

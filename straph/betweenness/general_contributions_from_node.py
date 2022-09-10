@@ -242,3 +242,94 @@ def contri_delta_edge(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event
         contribution[v][t] = s + deltasvvt[(v,t)]
 
     return contribution, edge_contribution
+
+####################################  number of paths generic discrete ####################################
+
+def dictionary_svvt_dis_gen(G, node, sigma_r,min_values, cur_best, sigma_tot):
+    deltasvvt = dict()
+    for (x,y) in G.nodes():
+        deltasvvt[(x,y)] = contri_delta_svvt_dis_gen(node, x, y, sigma_r, min_values, cur_best, sigma_tot)
+    return deltasvvt
+
+def contri_delta_svvt_dis_gen(s, v, t, sigma_r, min_values, cur_best, sigma_tot):
+    if s == v:
+        return 0.0
+    if cur_best[v][t] == min_values[v]:
+        return sigma_r[(v,t)]/sigma_tot[v]
+    else:
+        return 0.0
+
+    return contrib
+
+
+def general_contribution_from_node_dis_gen(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, unt, preced):
+    contribution = dict()
+    l = G.sources()
+    l.sort(reverse = True)
+    for star_node in l:
+        contribution = contri_delta_svt_dis_gen(node, star_node[0], star_node[1], GG.l_nei, sigma_r, contribution, deltasvvt, events, events_reverse, pre, unt, preced)
+    for v in s.nodes:
+        for t in events:
+            if v not in contribution:
+                contribution[v] = dict()
+            if t not in contribution[v]:
+                contribution[v][t] = 0.0
+    return contribution
+
+
+def contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced):
+    if v not in contribution:
+        contribution[v] = dict()
+    for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+        if (v,event[jjj]) in l_nei:
+            continue
+        if v not in contrib_local:
+            contrib_local[v] = dict()
+        if not (event[jjj] in contribution[v]) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
+            if event[jjj] not in contrib_local[v]:
+                contrib_local[v][event[jjj]] = 0.0
+            if event[jjj] != t_p:
+                contrib_local[v][event[jjj]] = partial_sum[l_nei[v,t][ii][0]]
+            else:
+                if ii == len(l_nei[v,t])-1:
+                    contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+                else:
+                    if l_nei[v,t][ii][1][-1] == w:
+                        contrib_local[v][event[jjj]] += partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+                    else:
+                        contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+
+def contri_delta_svt_dis_gen(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, unt, preced):
+    if (v,t) == (1, 70.1131204334166):
+        print("v,t",v,t,"l_nei[(v,t)]",l_nei[(v,t)])
+    if (v not in contribution) or ((v in contribution) and (t not in contribution[v])):
+        partial_sum = dict()
+        s = 0.0
+        contrib_local = dict()
+        for ii in range(len(l_nei[(v,t)])-1,-1,-1):
+            #normally it should be sorted
+            for u in l_nei[v,t][ii][1]:
+                w,t_p = (u,l_nei[v,t][ii][0])
+                contri_delta_svt_dis_gen(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, unt, preced)
+                s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+
+                if l_nei[v,t][ii][0] not in partial_sum:
+                    partial_sum[l_nei[v,t][ii][0]] = s
+                else:
+                    partial_sum[l_nei[v,t][ii][0]] = s
+
+                if v != node:
+                    if ii != 0:
+                        jj = event_reverse[l_nei[v,t][ii-1][0]]
+                    else:
+                        jj = event_reverse[t]
+                    contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
+
+        if v not in contribution:
+            contribution[v] = dict()
+        for vv in contrib_local:
+            for ss in contrib_local[vv]:
+                contribution[vv][ss] = contrib_local[vv][ss]
+        contribution[v][t] = s + deltasvvt[(v,t)]
+
+    return contribution
