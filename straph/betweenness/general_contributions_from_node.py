@@ -1,6 +1,6 @@
 from straph.betweenness import volumes as vol
 import math
-
+import numpy
 def dictionary_svvt(G, node, latence_arrival, contri, prev_next, sigma_r,  latence_depar):
     deltasvvt = dict()
     for (x,y) in G.nodes():
@@ -68,10 +68,9 @@ def preced_node(s, G,events,events_rev):
         for i in range(0,len(d[v])-1):
             for j in range(events_rev[d[v][i]]+1,events_rev[d[v][i+1]]):
                 res[v][events[j]] = res[v][d[v][i]]
-            for j in range(events_rev[d[v][-1]]+1, len(events)):
-                res[v][events[j]] = res[v][d[v][-1]]
+        for j in range(events_rev[d[v][-1]]+1, len(events)):
+            res[v][events[j]] = res[v][d[v][-1]]
     return res
-    
 
 
 
@@ -254,6 +253,8 @@ def dictionary_svvt_dis_gen(G, node, sigma_r,min_values, cur_best, sigma_tot):
 def contri_delta_svvt_dis_gen(s, v, t, sigma_r, min_values, cur_best, sigma_tot):
     if s == v:
         return 0.0
+    if min_values[v] == numpy.Infinity:
+        return 0.0
     if cur_best[v][t] == min_values[v]:
         return sigma_r[(v,t)]/sigma_tot[v]
     else:
@@ -278,14 +279,21 @@ def general_contribution_from_node_dis_gen(s, G, node, GG, sigma_r, deltasvvt, e
 
 
 def contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced):
+    if v == 0:
+        print("v, t, w, t_p, l_nei, partial_sum",v, t, w, t_p, l_nei, partial_sum)
     if v not in contribution:
         contribution[v] = dict()
     for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+        if v == 0:
+            print("event[jjj]",event[jjj])
+            print("contribution[v]", contribution[v])
         if (v,event[jjj]) in l_nei:
             continue
         if v not in contrib_local:
             contrib_local[v] = dict()
         if not (event[jjj] in contribution[v]) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
+            if v == 0:
+                print("ici")
             if event[jjj] not in contrib_local[v]:
                 contrib_local[v][event[jjj]] = 0.0
             if event[jjj] != t_p:
@@ -298,6 +306,8 @@ def contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contr
                         contrib_local[v][event[jjj]] += partial_sum[l_nei[v,t][ii+1][0]]  + (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
                     else:
                         contrib_local[v][event[jjj]] += (sigma_r[(v,event[jjj])]/sigma_r[(w,t_p)] )*contribution[w][t_p]
+    if v == 0:
+        print("contrib_local",contrib_local)
 
 def contri_delta_svt_dis_gen(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, unt, preced):
     if (v,t) == (1, 70.1131204334166):
@@ -318,12 +328,11 @@ def contri_delta_svt_dis_gen(node, v, t, l_nei, sigma_r, contribution, deltasvvt
                 else:
                     partial_sum[l_nei[v,t][ii][0]] = s
 
-                if v != node:
-                    if ii != 0:
-                        jj = event_reverse[l_nei[v,t][ii-1][0]]
-                    else:
-                        jj = event_reverse[t]
-                    contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
+                if ii != 0:
+                    jj = event_reverse[l_nei[v,t][ii-1][0]]
+                else:
+                    jj = event_reverse[t]
+                contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
 
         if v not in contribution:
             contribution[v] = dict()

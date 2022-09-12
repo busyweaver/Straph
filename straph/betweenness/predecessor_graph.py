@@ -124,7 +124,7 @@ def predecessor_graph_dis_gen(s, pre, node):
                 for v2 in pre[k][key]:
                     v,t = v2
                     if v == node:
-                        G.add_edge((node,-1),(k,key), "weight", 1)
+                        G.add_edge((node, s.alpha),(k,key), "weight", 1)
                     else:
                         G.add_edge((v,t),(k,key), "weight", 1)
     return G

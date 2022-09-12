@@ -210,21 +210,21 @@ def volume_metapaths_at_dis_gen(G, s):
 def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, unt, node_inf, opt_walk, cost, n):
     sigma_r = dict()
     #assuming -1 is an unexisting time
-    sigma_r[(node,-1)] = 0.0
     for k in s.nodes:
         pred = -1
         for t in events:
             if (k,t) in node_inf:
                 continue
-            if k == node:
-                sigma_r[(k,t)] = 0
+            if k == node and t == s.alpha:
+                sigma_r[(k,t)] = 1.0
+                pred = t
             else:
                 if pred == -1:
                     if (k,t) in G.nodes():
                         sigma_r[(k,t)] = sigma[(k,t)]
                         pred = t
                     else:
-                        sigma_r[(k,t)] = 0
+                        sigma_r[(k,t)] = 0.0
                 else:
                     if (k,t) in G.nodes():
                         if cur_best[k][t] == cost(opt_walk[k][pred], t, n) and unt[k][pred] >= t:

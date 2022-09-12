@@ -294,7 +294,7 @@ def relax_resting_paths_dis_gen(b, t, tp, pre, cur_best, events, events_rev, Q, 
 
 
 
-def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, edge, cmp, cost, opt_walk, n):
+def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, cmp, cost, opt_walk, n):
     if pre[a][t] == {}:
         return
     m = opt_walk[a][t]
@@ -367,7 +367,7 @@ def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, d, neighbors
                         #print("salut2",(a,t),(b,tp))
                     relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
                     #print(cur_best)
-                    relax_paths_dis_gen(a,b,t,tp,pre,cur_best, events, Q, nod, edge, cmp, cost, opt_walk, n)
+                    relax_paths_dis_gen(a,b,t,tp,pre,cur_best, events, Q, nod, cmp, cost, opt_walk, n)
                     # print("relax paths cur", cur_best)
                     # print("relax paths opt", opt_walk)
                     # print("relax paths pre", pre)
@@ -376,7 +376,7 @@ def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, d, neighbors
 
 
 
-def relax_resting_bellman_dis_gen(b, t, tp, pre, cur_best, events, events_rev):
+def relax_resting_bellman_dis_gen(b, t, tp, pre, cur_best, events, events_rev, cmp, cost, opt_walk, n):
     cnew = cost(opt_walk[b][t],tp,n)
     cold = cost(opt_walk[b][tp],tp,n)
     if cmp(cnew, cold):
@@ -387,7 +387,7 @@ def relax_resting_bellman_dis_gen(b, t, tp, pre, cur_best, events, events_rev):
     return
 
 
-def relax_bellman_gen_dis(a, b, t, tp, pre, cur_best, events):
+def relax_bellman_dis_gen(a, b, t, tp, pre, cur_best, events, cmp, cost, opt_walk, n):
     if pre[a][t] == {}:
         return
     m = opt_walk[a][t]
@@ -428,15 +428,15 @@ def ford_bellman_directed_gen_dis(sg, s, events, events_rev, neighbors, d, neigh
                 pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
                 opt_walk[s][t] = mw.Metawalk([],[])
         #the 2 loops inside the first are to iterate over each temporal link 
-        for k in self.nodes:
+        for k in sg.nodes:
             for t in events:
-                for i in range(0,len(self.links)):
-                    a,b = self.links[i]
-                    for j in range(0,len(self.link_presence[i]),2):
-                        tp,t2 = self.link_presence[i][j:j+2]
+                for i in range(0,len(sg.links)):
+                    a,b = sg.links[i]
+                    for j in range(0,len(sg.link_presence[i]),2):
+                        tp,t2 = sg.link_presence[i][j:j+2]
                         for t in events:
                             if t <= tp:
-                                self.relax_bellman_dis_gen(a,b,t,tp,pre,cur_best, events)
-                                self.relax_resting_bellman_dis_gen(b,t,tp,pre,cur_best, events, events_rev)
+                                relax_bellman_dis_gen(a,b,t,tp,pre,cur_best, events, cmp, cost, opt_walk, n)
+                                relax_resting_bellman_dis_gen(a,t,tp,pre,cur_best, events, events_rev, cmp, cost, opt_walk, n)
 
         return (pre, cur_best, opt_walk)
