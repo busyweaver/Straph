@@ -1,5 +1,5 @@
 from straph.betweenness import volumes as vol
-
+import numpy
 def vol_rec_con_inst(s, e, G_rev, sigma):
     l = list(G_rev.successors(e))
     #print(e,l,sigma)
@@ -184,13 +184,19 @@ def edges(s):
 
 ####################################  number of paths generic discrete ####################################
 
-def vol_rec_dis_gen(s, e, G_rev, sigma):
+def vol_rec_dis_gen(s, e, G_rev, sigma, alpha):
     if e in sigma:
+        return
+    if e[0] == s:
+        if e[1] == alpha:
+            sigma[e] = 1
+        else:
+            sigma[e] = 0
         return
     l = list(G_rev.successors(e))
     res = 0
     for (w,tp) in l:
-        vol_rec_dis_gen(s, (w,tp), G_rev, sigma)
+        vol_rec_dis_gen(s, (w,tp), G_rev, sigma, alpha)
         if w == s:
             res += 1
         else:
@@ -199,24 +205,30 @@ def vol_rec_dis_gen(s, e, G_rev, sigma):
 
 
 
-def volume_metapaths_at_dis_gen(G, s):
+def volume_metapaths_at_dis_gen(G, s, alpha):
     sigma = dict()
     sink = G.sinks()
     G_rev = G.reverse()
     for e in sink:
-        vol_rec_dis_gen(s, e, G_rev, sigma)
+        vol_rec_dis_gen(s, e, G_rev, sigma, alpha)
     return sigma
 
-def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, unt, node_inf, opt_walk, cost, n):
+def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, node_inf, opt_walk, cost, n):
     sigma_r = dict()
     #assuming -1 is an unexisting time
     for k in s.nodes:
         pred = -1
         for t in events:
             if (k,t) in node_inf:
+                sigma_r[(k,t)] = numpy.Infinity
                 continue
             if k == node and t == s.alpha:
-                sigma_r[(k,t)] = 1.0
+                if (k,t) in sigma:
+                    sigma_r[(k,t)] = sigma[(k,t)]
+                else:
+                    #le graph pred est vide
+                    sigma_r[(k,t)] = 1
+
                 pred = t
             else:
                 if pred == -1:
@@ -227,11 +239,8 @@ def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, unt, node_
                         sigma_r[(k,t)] = 0.0
                 else:
                     if (k,t) in G.nodes():
-                        if cur_best[k][t] == cost(opt_walk[k][pred], t, n) and unt[k][pred] >= t:
+                        if cur_best[k][t] == cost(opt_walk[k][pred], t, n):
                             sigma_r[(k,t)] = sigma_r[(k,pred)] + sigma[(k,t)]
-                            pred = t
-                        elif cur_best[k][t] == cost(opt_walk[k][pred], t, n) and not(unt[k][pred] >= t):
-                            sigma_r[(k,t)] = sigma[(k,t)]
                             pred = t
                         else:
                             sigma_r[(k,t)] = sigma[(k,t)]
@@ -244,8 +253,120 @@ def infinite_closure(s, G, events, events_rev, node_inf, opt_walk, cur_best, cos
     res = set()
     for (v,t) in node_inf:
         i = events_rev[t]+1
-        while(i < len(events) and  (v,events[i]) not in G.nodes):
+        while(i < len(events) and  (v,events[i]) not in G.nodes()):
             if cur_best[v][events[i]] == cost(opt_walk[v][t],events[i],n):
                 res.add((v,events[i]))
             i += 1
     return res
+
+def sigma_total_dis_gen(sigma, s, cur_best, node, events, walk_type):
+    if False:
+        sigma_tot, min_values, sigma_tot_t = sigma_total_active_dis_gen(sigma, s, cur_best, node, events)
+    else:
+        sigma_tot, min_values, sigma_tot_t = sigma_total_passive_dis_gen(sigma, s, cur_best, node, events)
+    return sigma_tot, min_values, sigma_tot_t
+
+
+def sigma_total_passive_dis_gen(sigma, s, cur_best, node, events):
+    min_values = { i:min(cur_best[i].values())   for i in s.nodes}
+    sigma_dic = dict()
+    for (v,t) in sigma:
+        if v not in sigma_dic:
+            sigma_dic[v] = dict()
+        sigma_dic[v][t] = sigma[(v,t)]
+    sigma_tot = dict()
+    sigma_tot_t = dict()
+    for i in s.nodes:
+        sigma_tot_t[i] = dict()
+        if  i in sigma_dic:
+            for t  in events:
+                if t in sigma_dic[i]:
+                    #print(i,t)
+                    if i in min_values and cur_best[i][t] == min_values[i]:
+                        sigma_tot_t[i][t] = sigma_dic[i][t]
+                    else:
+                        sigma_tot_t[i][t] = 0
+            sigma_tot[i] = sum(sigma_tot_t[i][t] for t in sigma_tot_t[i])
+    return sigma_tot, min_values, sigma_tot_t
+
+
+def sigma_total_active_dis_gen(sigma, s, cur_best, node, events):
+    min_values = { i:min(cur_best[i].values())   for i in s.nodes}
+    sigma_dic = dict()
+    for (v,t) in sigma:
+        if v not in sigma_dic:
+            sigma_dic[v] = dict()
+        sigma_dic[v][t] = sigma[(v,t)]
+    sigma_tot = dict()
+    sigma_tot_t = dict()
+    for i in s.nodes:
+        if  i in sigma_dic:
+            for t  in events:
+                if t in sigma_dic[i]:
+                    if i not in sigma_tot_t:
+                        sigma_tot_t[i] = dict()
+                        pred = t
+                        if i in min_values and cur_best[i][t] == min_values[i]:
+                            sigma_tot_t[i][t] = sigma_dic[i][t]
+                        else:
+                            sigma_tot_t[i][t] = 0
+                    else:
+                        if i in min_values and cur_best[i][t] == min_values[i]:
+                            sigma_tot_t[i][t] = sigma_tot_t[i][pred] + sigma_dic[i][t]
+                            pred = t
+                        else:
+                            sigma_tot_t[i][t] = sigma_tot_t[i][pred]
+                            pred = t
+            sigma_tot[i] = sigma_tot_t[i][pred]
+    return sigma_tot, min_values, sigma_tot_t
+
+def complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node, walk_type):
+    if False:
+        sigma_tot_r = complete_sigma_tot_active(s, sigma_tot_t, node_inf, events, node)
+    else:
+        sigma_tot_r = complete_sigma_tot_passive(s, sigma_tot_t, node_inf, events, node)
+    return sigma_tot_r
+
+def complete_sigma_tot_passive(s, sigma_tot_t, node_inf, events, node):
+    sigma_tot_r = dict()
+    #assuming -1 is an unexisting time
+    for k in s.nodes:
+        pred = -1
+        for t in events:
+            if (k,t) in node_inf:
+                continue
+            if k in sigma_tot_t and t in sigma_tot_t[k]:
+                sigma_tot_r[(k,t)] =  sigma_tot_t[k][t]
+            else:
+                sigma_tot_r[(k,t)] =  0
+    return sigma_tot_r
+
+def complete_sigma_tot_active(s, sigma_tot_t, node_inf, events, node):
+    sigma_tot_r = dict()
+    #assuming -1 is an unexisting time
+    for k in s.nodes:
+        pred = -1
+        for t in events:
+            if (k,t) in node_inf:
+                continue
+            if False:
+                sigma_tot_r[(k,t)] = sigma_tot_t[k][t]
+                pred = t
+            else:
+                if pred == -1:
+                    if k in sigma_tot_t and t in sigma_tot_t[k]:
+                        sigma_tot_r[(k,t)] = sigma_tot_t[k][t]
+                        pred = t
+                    else:
+                        sigma_tot_r[(k,t)] = 0.0
+                else:
+                    if k in sigma_tot_t and t in sigma_tot_t[k]:
+                        sigma_tot_r[(k,t)] =  sigma_tot_t[k][t]
+                        pred = t
+                    else:
+                        sigma_tot_r[(k,t)] = sigma_tot_r[(k,pred)]
+    return sigma_tot_r
+
+def sigma_infinite(sigma, node_inf):
+    for e in node_inf:
+        sigma[e] = numpy.Infinity

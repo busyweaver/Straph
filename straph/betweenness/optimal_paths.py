@@ -321,26 +321,31 @@ def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, cmp, cost,
         pre[b][tp].add((a,t))
 
 
-def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, d, neighbors_inv, unt, cmp, cost):
+def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, neighbors_inv, cmp, cost, walk_type):
     Q = fib.FibonacciHeap()
     cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
     pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
     opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
     nod = dict()
     n = len(sg.nodes)
-    for e in neighbors[s].keys():
-        for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
-        #for j in range(0,2,2):
-            if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
-                l = sg.link_presence[d[(s,e)]][j:j+2]
-            else:
-                l = sg.link_presence[d[(s,e)]][j:j+1]
-            for t in l:
-                cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
-                pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
-                opt_walk[s][t] = mw.Metawalk([],[])
-                if (s,t) not in nod:
-                    nod[s,t] = Q.insert( (0.0,(s,t) ) )
+    # for e in neighbors[s].keys():
+    #     for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
+    #     #for j in range(0,2,2):
+    #         if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
+    #             l = sg.link_presence[d[(s,e)]][j:j+2]
+    #         else:
+    #             l = sg.link_presence[d[(s,e)]][j:j+1]
+    #         for t in l:
+    #             cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
+    #             pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
+    #             opt_walk[s][t] = mw.Metawalk([],[])
+    #             if (s,t) not in nod:
+    #                 nod[s,t] = Q.insert( (0.0,(s,t) ) )
+    cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
+    pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
+    opt_walk[s][sg.alpha] = mw.Metawalk([],[])
+    if (s,sg.alpha) not in nod:
+        nod[s,sg.alpha] = Q.insert( (cur_best[s][sg.alpha],(s,sg.alpha) ) )
     #print(Q.total_nodes)
     while Q.total_nodes != 0:
         #print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
@@ -349,23 +354,25 @@ def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, d, neighbors
         (a,t) = y
         #(tpp,dis) = x
         for b in neighbors_inv[a].keys():
-            for (tp,edge) in neighbors_inv[a][b]:
-                if tp >= t and unt[a][t] >= tp:
-                    #print("tp_inv",tp)
-                    #if (a,t) == (15,42.61256423310296):
+            if walk_type == "active":
+                for (tp,edge) in neighbors_inv[a][b]:
+                    if tp >= t :
+                        #print("tp_inv",tp)
+                        #if (a,t) == (15,42.61256423310296):
                         #print("salut2_inv",(a,t),(b,tp))
-                    relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
-                    # print("inv cur",cur_best)
-                    # print("inv opt",opt_walk)
-                    # print("inv pre",pre)
+                        relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
+                        # print("inv cur",cur_best)
+                        # print("inv opt",opt_walk)
+                        # print("inv pre",pre)
 
         for b in neighbors[a].keys():
             for (tp,edge) in neighbors[a][b]:
-                if tp >= t and unt[a][t] >= tp:
+                if tp >= t:
                     #print("tp",tp)
                     #if (a,t) == (15,42.61256423310296):
                         #print("salut2",(a,t),(b,tp))
-                    relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
+                    if walk_type == "active":
+                        relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
                     #print(cur_best)
                     relax_paths_dis_gen(a,b,t,tp,pre,cur_best, events, Q, nod, cmp, cost, opt_walk, n)
                     # print("relax paths cur", cur_best)
@@ -411,32 +418,35 @@ def relax_bellman_dis_gen(a, b, t, tp, pre, cur_best, events, cmp, cost, opt_wal
 
     return
 
-def ford_bellman_directed_gen_dis(sg, s, events, events_rev, neighbors, d, neighbors_inv, unt, cmp, cost):
+def ford_bellman_directed_gen_dis(sg, s, events, events_rev, neighbors, neighbors_inv, cmp, cost, walk_type):
     cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
     pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
     opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
     n = len(sg.nodes)
-    for e in neighbors[s].keys():
-        for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
-        #for j in range(0,2,2):
-            if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
-                l = sg.link_presence[d[(s,e)]][j:j+2]
-            else:
-                l = sg.link_presence[d[(s,e)]][j:j+1]
-            for t in l:
-                cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
-                pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
-                opt_walk[s][t] = mw.Metawalk([],[])
+    # for e in neighbors[s].keys():
+    #     for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
+    #     #for j in range(0,2,2):
+    #         if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
+    #             l = sg.link_presence[d[(s,e)]][j:j+2]
+    #         else:
+    #             l = sg.link_presence[d[(s,e)]][j:j+1]
+    #         for t in l:
+    #             cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
+    #             pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
+    #             opt_walk[s][t] = mw.Metawalk([],[])
+    cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
+    pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
+    opt_walk[s][sg.alpha] = mw.Metawalk([],[])
         #the 2 loops inside the first are to iterate over each temporal link 
-        for k in sg.nodes:
-            for t in events:
-                for i in range(0,len(sg.links)):
-                    a,b = sg.links[i]
-                    for j in range(0,len(sg.link_presence[i]),2):
-                        tp,t2 = sg.link_presence[i][j:j+2]
-                        for t in events:
-                            if t <= tp:
-                                relax_bellman_dis_gen(a,b,t,tp,pre,cur_best, events, cmp, cost, opt_walk, n)
+    for k in sg.nodes:
+        for t in events:
+            for i in range(0,len(sg.links)):
+                a,b = sg.links[i]
+                for j in range(0,len(sg.link_presence[i]),2):
+                    tp,t2 = sg.link_presence[i][j:j+2]
+                    for t in events:
+                        if t <= tp:
+                            relax_bellman_dis_gen(a,b,t,tp,pre,cur_best, events, cmp, cost, opt_walk, n)
+                            if walk_type == "active":
                                 relax_resting_bellman_dis_gen(a,t,tp,pre,cur_best, events, events_rev, cmp, cost, opt_walk, n)
-
         return (pre, cur_best, opt_walk)

@@ -1,4 +1,4 @@
-from straph.generators import erdos_renyi, barabasi_albert
+from straph.generators import erdos_renyi, erdos_renyi_discrete, barabasi_albert
 from straph.parser import parser, sort_csv
 from straph.paths import Path
 from straph.stream import (StreamGraph,

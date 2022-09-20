@@ -340,6 +340,10 @@ class Metawalk:
         return cons * (t - m.last_departure()) + m.length()
 
     def co_first_arrival(m, t, cons):
+        if m.is_none():
+            return np.Infinity
+        if m.is_empty():
+            return 0.0
         return m.first_arrival()
 
     def co_short(m, t, cons):

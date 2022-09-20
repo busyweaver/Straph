@@ -200,6 +200,42 @@ def erdos_renyi(t_window,
     return S
 
 
+
+def erdos_renyi_discrete(t_window, nb_node, prob):
+    if nb_node > 200000:
+        warnings.warn("The number of nodes is probably to big, it may lead to a memory error !")
+
+    nodes = [i for i in range(nb_node)]
+    node_presence = [ t_window  for i in range(nb_node)]
+    links = []
+    link_presence = []
+    for i in nodes:
+        for j in nodes:
+            b = False
+            if i != j:
+                for ev in range(t_window[0],t_window[1]+1):
+                    x = np.random.binomial(size = 1, n = 1, p = prob)[0]
+                    if x == 1:
+                        if b == False:
+                            links.append((i,j))
+                            link_presence.append( [ev,ev] )
+                            b = True
+                        else:
+                            taille = len(link_presence)-1
+                            link_presence[taille] = link_presence[taille] + [ev,ev]
+
+    S = sg.StreamGraph(times=t_window,
+                       nodes=nodes,
+                       node_presence=node_presence,
+                       links=links,
+                       link_presence=link_presence,
+                       node_to_label={n: str(n) for n in nodes},
+                       weights=None,
+                       trips=None,
+                       )
+    return S
+
+
 def get_node_presence_from_link(node_presence, n, b, e):
     """
     Return the maximal temporal node corresponding to (b,e,n)
