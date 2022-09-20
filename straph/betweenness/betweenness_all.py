@@ -190,7 +190,7 @@ def optimal_paths_resting_type(s, node, events, G, sigma, cur_best, node_inf, op
             sigma_r[e] = sigma[e]
     return sigma_r
 
-def remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, fun, n):
+def remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, fun, n, walk_type, b):
     inf_scc = []
     scc = nx.kosaraju_strongly_connected_components(G.graph)
     for s in scc:
@@ -210,9 +210,12 @@ def remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_w
             temp_inf.add(v)
     for v in temp_inf:
         G.graph.remove_node(v)
-    clos_inf = bt.infinite_closure(s, G, events, events_reverse, temp_inf, opt_walk, cur_best, fun, n)
-    node_inf = temp_inf.union(clos_inf)
-    return node_inf
+    if walk_type == "active":
+        clos_inf = bt.infinite_closure(s, G, events, events_reverse, temp_inf, opt_walk, cur_best, fun, n, b)
+    else:
+        clos_inf = {}
+    #node_inf = temp_inf.union(clos_inf)
+    return temp_inf, clos_inf
 
 def exact_betweenness_dis_gen(s, betweenness, general_contri, deltasvvt):
     exact_between = dict()
@@ -238,6 +241,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
     deltasvvt = dict()
     events, events_reverse = events_dic(s)
     initialization_dis_gen(s, events, betweenness)
+    link_ind = bt.link_index(s)
     neighbors, neighbors_inv = bt.neighbors_direct(s)
     if approx == -1:
         to_visit = s.nodes
@@ -247,18 +251,19 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
     for node in to_visit:
         #print(node)
         start_time = time.time()
-        pre, cur_best, opt_walk = bt.dijkstra_directed_dis_gen(s, node, events, events_reverse, neighbors, neighbors_inv, b, fun, walk_type)
+        pre, cur_best, opt_walk = bt.dijkstra_directed_dis_gen(s, node, events, events_reverse, neighbors, neighbors_inv, link_ind, b, fun, walk_type)
         G = bt.predecessor_graph_dis_gen(s, pre,node)
         preced = bt.preced_node(s, G,events,events_reverse)
-        node_inf = bt.remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, mw.Metawalk.co_short, len(s.nodes))
+        node_inf, clos_inf = bt.remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, mw.Metawalk.co_short, len(s.nodes), walk_type, b)
         GG = bt.graph_to_ordered(G, events, events_reverse)
-        sigma = bt.volume_metapaths_at_dis_gen(G, node, s.alpha)
+        sigma = bt.volume_metapaths_at_dis_gen(G, node)
         #print("sigma",sigma)
         bt.sigma_infinite(sigma, node_inf)
-        sigma_r = optimal_paths_resting_type(s, node, events, G, sigma, cur_best, node_inf, opt_walk, mw.Metawalk.co_short, len(s.nodes), walk_type)
         sigma_tot, min_values, sigma_tot_t = bt.sigma_total_dis_gen(sigma, s, cur_best, node, events, walk_type)
         #print("sigmatot", sigma_tot)
         sigma_tot_r = bt.complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node, walk_type)
+        node_inf = node_inf.union(clos_inf)
+        sigma_r = optimal_paths_resting_type(s, node, events, G, sigma, cur_best, node_inf, opt_walk, mw.Metawalk.co_short, len(s.nodes), walk_type)
         deltasvvt[node] = bt.dictionary_svvt_dis_gen(s, node, sigma_tot_r,min_values, cur_best, sigma_tot, events)
         general_contri[node] = bt.general_contribution_from_node_dis_gen(s, G, node, GG, sigma_r, deltasvvt[node], events, events_reverse, pre, preced, walk_type)
         update_betweenness(s, general_contri[node], betweenness, events)

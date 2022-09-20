@@ -116,18 +116,7 @@ def predecessor_graph(s, pre, node):
                     G.add_edge((v,t),(k,key),"interval",pre[k][key][v2])
     return G
 
-def predecessor_graph_dis_gen(s, pre, node):
-    G = Graph()
-    for k in s.nodes:
-        if k != node:
-            for key in pre[k].keys():
-                for v2 in pre[k][key]:
-                    v,t = v2
-                    if v == node:
-                        G.add_edge((node, s.alpha),(k,key), "weight", 1)
-                    else:
-                        G.add_edge((v,t),(k,key), "weight", 1)
-    return G
+
 
 def predecessor_graph_edge(s, pre, node):
     G = Graph()
@@ -191,3 +180,20 @@ def max_volume_superposition(GT):
         return 0
     else:
         return  max(length) +1
+
+
+####################################  pred graph generic discrete ####################################
+
+
+def predecessor_graph_dis_gen(s, pre, node):
+    G = Graph()
+    for k in s.nodes:
+        if k != node:
+            for key in pre[k].keys():
+                for v2 in pre[k][key]:
+                    v,t = v2
+                    if v == node:
+                        G.add_edge((node, key),(k,key), "weight", 1)
+                    else:
+                        G.add_edge((v,t),(k,key), "weight", 1)
+    return G

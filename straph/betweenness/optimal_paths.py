@@ -321,31 +321,28 @@ def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, cmp, cost,
         pre[b][tp].add((a,t))
 
 
-def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, neighbors_inv, cmp, cost, walk_type):
+def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, neighbors_inv, d, cmp, cost, walk_type):
     Q = fib.FibonacciHeap()
     cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
     pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
     opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
     nod = dict()
     n = len(sg.nodes)
-    # for e in neighbors[s].keys():
-    #     for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
-    #     #for j in range(0,2,2):
-    #         if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
-    #             l = sg.link_presence[d[(s,e)]][j:j+2]
-    #         else:
-    #             l = sg.link_presence[d[(s,e)]][j:j+1]
-    #         for t in l:
-    #             cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
-    #             pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
-    #             opt_walk[s][t] = mw.Metawalk([],[])
-    #             if (s,t) not in nod:
-    #                 nod[s,t] = Q.insert( (0.0,(s,t) ) )
-    cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
-    pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
-    opt_walk[s][sg.alpha] = mw.Metawalk([],[])
-    if (s,sg.alpha) not in nod:
-        nod[s,sg.alpha] = Q.insert( (cur_best[s][sg.alpha],(s,sg.alpha) ) )
+    for e in neighbors[s].keys():
+        for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
+        #for j in range(0,2,2):
+            l = sg.link_presence[d[(s,e)]][j:j+1]
+            for t in l:
+                opt_walk[s][t] = mw.Metawalk([],[])
+                cur_best[s][t] = cost(opt_walk[s][t], t, n)
+                pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
+                if (s,t) not in nod:
+                    nod[s,t] = Q.insert( (cur_best[s][t],(s,t) ) )
+    # cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
+    # pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
+    # opt_walk[s][sg.alpha] = mw.Metawalk([],[])
+    # if (s,sg.alpha) not in nod:
+    #     nod[s,sg.alpha] = Q.insert( (cur_best[s][sg.alpha],(s,sg.alpha) ) )
     #print(Q.total_nodes)
     while Q.total_nodes != 0:
         #print("nb_nodes", Q.total_nodes,"min",Q.find_min().data)
@@ -418,25 +415,24 @@ def relax_bellman_dis_gen(a, b, t, tp, pre, cur_best, events, cmp, cost, opt_wal
 
     return
 
-def ford_bellman_directed_gen_dis(sg, s, events, events_rev, neighbors, neighbors_inv, cmp, cost, walk_type):
+def ford_bellman_directed_gen_dis(sg, s, events, events_rev, neighbors, neighbors_inv, d, cmp, cost, walk_type):
     cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
     pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
     opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
     n = len(sg.nodes)
-    # for e in neighbors[s].keys():
-    #     for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
-    #     #for j in range(0,2,2):
-    #         if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
-    #             l = sg.link_presence[d[(s,e)]][j:j+2]
-    #         else:
-    #             l = sg.link_presence[d[(s,e)]][j:j+1]
-    #         for t in l:
-    #             cur_best[s][t] = cost(mw.Metawalk([],[]), t, n)
-    #             pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
-    #             opt_walk[s][t] = mw.Metawalk([],[])
-    cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
-    pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
-    opt_walk[s][sg.alpha] = mw.Metawalk([],[])
+    for e in neighbors[s].keys():
+        for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
+        #for j in range(0,2,2):
+            l = sg.link_presence[d[(s,e)]][j:j+1]
+            for t in l:
+                opt_walk[s][t] = mw.Metawalk([],[])
+                cur_best[s][t] = cost(opt_walk[s][t], t, n)
+                pre[s][t] = {(-numpy.Infinity,-numpy.Infinity)}
+                if (s,t) not in nod:
+                    nod[s,t] = Q.insert( (cur_best[s][t],(s,t) ) )
+    # cur_best[s][sg.alpha] = cost(mw.Metawalk([],[]), sg.alpha, n)
+    # pre[s][sg.alpha] = {(-numpy.Infinity,-numpy.Infinity)}
+    # opt_walk[s][sg.alpha] = mw.Metawalk([],[])
         #the 2 loops inside the first are to iterate over each temporal link 
     for k in sg.nodes:
         for t in events:

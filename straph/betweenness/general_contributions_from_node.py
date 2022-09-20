@@ -244,9 +244,9 @@ def contri_delta_edge(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event
 
 ####################################  number of paths generic discrete ####################################
 
-def dictionary_svvt_dis_gen(s, node, sigma_tot_r,min_values, cur_best, sigma_tot, events):
+def dictionary_svvt_dis_gen(S, node, sigma_tot_r,min_values, cur_best, sigma_tot, events):
     deltasvvt = dict()
-    for v in s.nodes:
+    for v in S.nodes:
         for t in events:
             deltasvvt[(v,t)] = contri_delta_svvt_dis_gen(node, v, t, sigma_tot_r, min_values, cur_best, sigma_tot)
     return deltasvvt
