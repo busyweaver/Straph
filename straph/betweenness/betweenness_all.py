@@ -271,6 +271,8 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         features[node] = [end_time - start_time]
     if approx == -1:
         exact_between = exact_betweenness_dis_gen(s, betweenness, general_contri, deltasvvt)
+    else:
+        exact_between = {}
     return exact_between, betweenness ,features
 
 def simulations_dis_gen(s, name):
