@@ -8,7 +8,7 @@ import pandas as pd
 import time
 import pickle
 import networkx as nx
-
+import random
 def events_dic(nouveau):
     events = list(nouveau.event_times())
     events.sort()
@@ -249,7 +249,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         lis = list(s.nodes)
         to_visit = random.sample(lis, approx)
     for node in to_visit:
-        #print(node)
+        print(node)
         start_time = time.time()
         pre, cur_best, opt_walk = bt.dijkstra_directed_dis_gen(s, node, events, events_reverse, neighbors, neighbors_inv, link_ind, b, fun, walk_type)
         G = bt.predecessor_graph_dis_gen(s, pre,node)
@@ -269,7 +269,8 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         update_betweenness(s, general_contri[node], betweenness, events)
         end_time = time.time()
         features[node] = [end_time - start_time]
-    exact_between = exact_betweenness_dis_gen(s, betweenness, general_contri, deltasvvt)
+    if approx == -1:
+        exact_between = exact_betweenness_dis_gen(s, betweenness, general_contri, deltasvvt)
     return exact_between, betweenness ,features
 
 def simulations_dis_gen(s, name):
