@@ -9,6 +9,9 @@ import time
 import pickle
 import networkx as nx
 import random
+import operator
+import straph.paths.meta_walks as mw
+
 def events_dic(nouveau):
     events = list(nouveau.event_times())
     events.sort()
@@ -127,7 +130,8 @@ def read_dictionary(name):
 #                 else:
 #                     file_output.write(str(v),",",str(t),",",str(bet[v][t]), "\n")
 
-def heatmap_betweenness(s, events, bet, deg_increa, square):
+def heatmap_betweenness(s, bet, deg_increa, square = True):
+    events, events_reverse = events_dic(s)
     # d = s.degrees()
     # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
     # deg_increa.sort()
@@ -138,7 +142,8 @@ def heatmap_betweenness(s, events, bet, deg_increa, square):
     ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square , cbar_kws={"shrink": 0.3})
     return ax
 
-def aggregated_time_betweenness(s, events, bet, deg_increa, square = True):
+def aggregated_time_betweenness(s, bet, deg_increa, square = True):
+    events, events_reverse = events_dic(s)
     # d = s.degrees()
     # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
     # deg_increa.sort()
@@ -149,7 +154,8 @@ def aggregated_time_betweenness(s, events, bet, deg_increa, square = True):
     ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.3})
     return ax
 
-def aggregated_node_betweenness(s, events, bet, deg_increa, square = True,):
+def aggregated_node_betweenness(s, bet, deg_increa, square = True,):
+    events, events_reverse = events_dic(s)
     # d = s.degrees()
     # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
     # deg_increa.sort()
@@ -254,7 +260,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         pre, cur_best, opt_walk = bt.dijkstra_directed_dis_gen(s, node, events, events_reverse, neighbors, neighbors_inv, link_ind, b, fun, walk_type)
         G = bt.predecessor_graph_dis_gen(s, pre,node)
         preced = bt.preced_node(s, G,events,events_reverse)
-        node_inf, clos_inf = bt.remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, mw.Metawalk.co_short, len(s.nodes), walk_type, b)
+        node_inf, clos_inf = bt.remove_infinite_from_predecessor_dis_gen(s, G, events, events_reverse, opt_walk, cur_best, fun, len(s.nodes), walk_type, b)
         GG = bt.graph_to_ordered(G, events, events_reverse)
         sigma = bt.volume_metapaths_at_dis_gen(G, node)
         #print("sigma",sigma)
@@ -263,7 +269,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         #print("sigmatot", sigma_tot)
         sigma_tot_r = bt.complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node, walk_type)
         node_inf = node_inf.union(clos_inf)
-        sigma_r = optimal_paths_resting_type(s, node, events, G, sigma, cur_best, node_inf, opt_walk, mw.Metawalk.co_short, len(s.nodes), walk_type)
+        sigma_r = optimal_paths_resting_type(s, node, events, G, sigma, cur_best, node_inf, opt_walk, fun, len(s.nodes), walk_type)
         deltasvvt[node] = bt.dictionary_svvt_dis_gen(s, node, sigma_tot_r,min_values, cur_best, sigma_tot, events)
         general_contri[node] = bt.general_contribution_from_node_dis_gen(s, G, node, GG, sigma_r, deltasvvt[node], events, events_reverse, pre, preced, walk_type)
         update_betweenness(s, general_contri[node], betweenness, events)
@@ -275,11 +281,32 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         exact_between = {}
     return exact_between, betweenness ,features
 
-def simulations_dis_gen(s, name):
-    exact_between, betweenness, general_contri, deltasvvt ,features = betweenness_all_dis_gen(s)
+def simulations_dis_gen(s, name, b, fun, walk_type, approx = -1):
+    exact_between, betweenness, features = betweenness_all_dis_gen(s, b, fun, walk_type, approx)
     #write_betweenness(bet, s, events, name)
     with open(name+"_betweenness.pic", 'wb') as handle:
+        pickle.dump(betweenness, handle)
+    with open(name+"_exact_betweenness.pic", 'wb') as handle:
         pickle.dump(exact_between, handle)
     with open(name+"_features.pic", 'wb') as handle:
         pickle.dump(features, handle)
+
+
+def computation_betweenness_many_optimal_dis_gen(s, name, approx = -1):
+    walk_type = ["active", "passive"]
+    fun_list = [["sfp" , mw.Metawalk.co_sfp], ["short" , mw.Metawalk.co_short], ["foremost" , mw.Metawalk.co_first_arrival]]
+    b = operator.lt
+    for wa in walk_type:
+        for fun in fun_list:
+            simulations_dis_gen(s, name + "_" + wa + "_" + fun[0], b, fun[1], wa, approx)
+
+
+
+
+
+
+
+
+
+
 

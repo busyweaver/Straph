@@ -257,7 +257,7 @@ def contri_delta_svvt_dis_gen(s, v, t, sigma_tot_r, min_values, cur_best, sigma_
     if min_values[v] == numpy.Infinity:
         return 0.0
     if sigma_tot_r[(v,t)] == numpy.Infinity:
-        return 1
+        return 0
     return sigma_tot_r[(v,t)]/sigma_tot[v]
 
 def general_contribution_from_node_dis_gen(s, G, node, GG, sigma_r, deltasvvt, events, events_reverse, pre, preced, walk_type):

@@ -1,6 +1,6 @@
 import networkx as nx
 from straph.betweenness import ordgraph as org
-
+import numpy
 
 class Graph:
 
@@ -188,10 +188,10 @@ def max_volume_superposition(GT):
 def predecessor_graph_dis_gen(s, pre, node):
     G = Graph()
     for k in s.nodes:
-        if k != node:
-            for key in pre[k].keys():
-                for v2 in pre[k][key]:
-                    v,t = v2
+        for key in pre[k].keys():
+            for v2 in pre[k][key]:
+                v,t = v2
+                if not (k == node and v2 == (-numpy.Infinity,-numpy.Infinity)): 
                     if v == node:
                         G.add_edge((node, key),(k,key), "weight", 1)
                     else:
