@@ -255,7 +255,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         lis = list(s.nodes)
         to_visit = random.sample(lis, approx)
     for node in to_visit:
-        print(node, "out of", s.nodes)
+        print(node, "out of", len(s.nodes))
         start_time = time.time()
         pre, cur_best, opt_walk = bt.dijkstra_directed_dis_gen(s, node, events, events_reverse, neighbors, neighbors_inv, link_ind, b, fun, walk_type)
         print("finish optimal paths")
