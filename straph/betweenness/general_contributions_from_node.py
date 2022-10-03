@@ -53,6 +53,7 @@ def prev_event(tp,event,event_rev):
     return event[i-1]
 
 def preced_node(s, G,events,events_rev):
+    # maybe use the ordered graph instead
     res = dict()
     d = dict()
     for (v,t) in G.nodes():

@@ -257,8 +257,7 @@ def infinite_closure(G, events, events_rev, node_inf, opt_walk, cur_best, cost, 
     return res
 
 def sigma_total_dis_gen(sigma, s, cur_best, node, events):
-    sigma_tot, min_values, sigma_tot_t = sigma_total_passive_dis_gen(sigma, s, cur_best, node, events)
-    return sigma_tot, min_values, sigma_tot_t
+    return sigma_total_passive_dis_gen(sigma, s, cur_best, node, events)
 
 
 def sigma_total_passive_dis_gen(sigma, s, cur_best, node, events):
@@ -314,12 +313,8 @@ def sigma_total_passive_dis_gen(sigma, s, cur_best, node, events):
 #             sigma_tot[i] = sigma_tot_t[i][pred]
 #     return sigma_tot, min_values, sigma_tot_t
 
-def complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node, walk_type):
-    if False:
-        sigma_tot_r = complete_sigma_tot_active(s, sigma_tot_t, node_inf, events, node)
-    else:
-        sigma_tot_r = complete_sigma_tot_passive(s, sigma_tot_t, node_inf, events, node)
-    return sigma_tot_r
+def complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node):
+    return complete_sigma_tot_passive(s, sigma_tot_t, node_inf, events, node)
 
 def complete_sigma_tot_passive(s, sigma_tot_t, node_inf, events, node):
     sigma_tot_r = dict()
