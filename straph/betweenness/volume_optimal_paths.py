@@ -220,8 +220,7 @@ def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, node_inf, 
                 if (k,t) in sigma:
                     sigma_r[(k,t)] = sigma[(k,t)]
                 else:
-                    #le graph pred est vide
-                    sigma_r[(k,t)] = 1
+                    sigma_r[(k,t)] = 0
 
                 pred = t
             else:
@@ -240,12 +239,13 @@ def optimal_with_resting_dis_gen(s, node, events, G, sigma, cur_best, node_inf, 
                             sigma_r[(k,t)] = sigma[(k,t)]
                             pred = t
                     else:
+                        # dans ce cas il y a des chemin a pred, leur extension est necessairement optimale car il n'y en a pas d'autres
                         sigma_r[(k,t)] = sigma_r[(k,pred)]
-                if (k,t) in node_inf:
-                    sigma_r[(k,t)] = numpy.Infinity
+            if (k,t) in node_inf:
+                sigma_r[(k,t)] = numpy.Infinity
     return sigma_r
 
-def infinite_closure(s, G, events, events_rev, node_inf, opt_walk, cur_best, cost, n, cmp):
+def infinite_closure(G, events, events_rev, node_inf, opt_walk, cur_best, cost, n, cmp):
     res = set()
     for (v,t) in node_inf:
         i = events_rev[t]+1
@@ -256,11 +256,8 @@ def infinite_closure(s, G, events, events_rev, node_inf, opt_walk, cur_best, cos
             i += 1
     return res
 
-def sigma_total_dis_gen(sigma, s, cur_best, node, events, walk_type):
-    if False:
-        sigma_tot, min_values, sigma_tot_t = sigma_total_active_dis_gen(sigma, s, cur_best, node, events)
-    else:
-        sigma_tot, min_values, sigma_tot_t = sigma_total_passive_dis_gen(sigma, s, cur_best, node, events)
+def sigma_total_dis_gen(sigma, s, cur_best, node, events):
+    sigma_tot, min_values, sigma_tot_t = sigma_total_passive_dis_gen(sigma, s, cur_best, node, events)
     return sigma_tot, min_values, sigma_tot_t
 
 
