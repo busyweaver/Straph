@@ -1052,6 +1052,19 @@ class StreamGraph:
                         file_output.write(str(t) + " ")
                     file_output.write("\n")
 
+    def write_to_buss(self, output_file):
+        if self.node_to_label:
+            with open(output_file + '_buss.g', 'w') as file_output:
+                for l, lp in zip(self.links, self.link_presence):
+                    for i in range(0,len(lp),2):
+                        file_output.write(str(self.node_to_label[l[0]]) + " " + str(self.node_to_label[l[1]]) + " " + str(lp[i]) + " \n")
+
+        else:
+            with open(output_file + '_buss.g', 'w') as file_output:
+                for l, lp in zip(self.links, self.link_presence):
+                    for i in range(0,len(lp),2):
+                        file_output.write(str(l[0]) + " " + str(l[1]) + " " + str(lp[i]) + " \n")
+
     def write_to_matthieu_link_stream(self, output_file):
         if self.node_to_label:
             with open(output_file + '_mat.ls', 'w') as file_output:
