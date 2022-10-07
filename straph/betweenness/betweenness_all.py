@@ -276,7 +276,7 @@ def betweenness_all_dis_gen(s, b, fun, walk_type, approx = -1):
         bt.sigma_infinite(sigma, node_inf)
         print("finish sigma")
         s_time = time.time()
-        sigma_tot, min_values, sigma_tot_t = bt.sigma_total_dis_gen(sigma, s, cur_best, node, events, walk_type)
+        sigma_tot, min_values, sigma_tot_t = bt.sigma_total_dis_gen(sigma, s, cur_best, node, events)
         #print("sigmatot", sigma_tot)
         sigma_tot_r = bt.complete_sigma_tot_t(s, sigma_tot_t, node_inf, events, node, walk_type)
         node_inf = node_inf.union(clos_inf)

@@ -23,7 +23,6 @@ class OrdGraph:
             if x in self.nei:
                 self.nei[x][ev_rev[tp]].append(w)
             else:
-                #maybe improve this by putting only real events related to x
                 self.nei[x] = [[] for e in ev ]
                 self.nei[x][ev_rev[tp]].append(w)
         for e in sinks:
