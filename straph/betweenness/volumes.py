@@ -44,6 +44,8 @@ class Volume:
     def __truediv__(self ,y):
         sp = y.val
         dp = y.dim
+        if sp == 0:
+            return Volume(0,0)
         if self.val/sp == 0:
             return Volume(0,0)
         else:

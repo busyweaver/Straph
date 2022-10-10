@@ -4686,7 +4686,7 @@ class StreamGraph:
 
     def fragmented_stream_graph(self):
         """Fragments a link stream so that links do not interlap, they either happens at the exact same interval or between different intervals, it creates a new link stream. If a link is included into another one, it is removed or cut. We suppose that the link stream time presence of the links are oncreasing"""
-        self.cut_links()
+        #self.cut_links()
         s = self.__deepcopy__()
         l = list(self.event_times())
         l.sort()

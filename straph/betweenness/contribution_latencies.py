@@ -45,6 +45,7 @@ def contribution_each_latency_con(s, latencies, mini, maxi, instant_before, inst
             while(j >= 0 and b):
                 #cond = self.check_contri_dis(l[j], l[i], latencies[k], k)
                 cond = check_contri(j, i, latencies[k],  k, instant_before[k], instant_after[k])
+                print(i,j, cond, k, latencies[k])
                 if cond == 2:
                     S = latencies[k][i][1]
                     b = False

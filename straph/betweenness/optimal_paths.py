@@ -31,7 +31,8 @@ def before(s, events, events_rev):
                 j -= 1
     return bef
 
-def to_undirected(s):
+def to_undirected(ss):
+    s = ss.__deepcopy__()
     taille = len(s.links)
     for i in range(0,taille):
         x,y = s.links[i]
@@ -39,6 +40,32 @@ def to_undirected(s):
         l = s.link_presence[i]
         lc = l[:]
         s.link_presence.append(lc)
+    d = dict()
+
+    for i in range(0,len(s.links)):
+        tmp = set()
+        for j in range(0,len(s.link_presence[i]),2):
+
+            tmp.add( tuple([s.link_presence[i][j],s.link_presence[i][j+1]]) )
+        s.link_presence[i] = tmp
+    for i in range(0,len(s.links)):
+        x = min(s.links[i][0],s.links[i][1])
+        y = max(s.links[i][0],s.links[i][1])
+        if (x,y) in d:
+            d[(x,y)] = d[(x,y)].union(s.link_presence[i])
+        else:
+            d[(x,y)] = s.link_presence[i]
+    new_l=[]
+    new_pre = []
+    for e in d.keys():
+        new_l.append(e)
+        new_l.append((e[1],e[0]))
+        new_pre.append([item for sublist in list(d[e]) for item in sublist])
+        new_pre.append([item for sublist in list(d[e]) for item in sublist])
+    s.links = new_l
+    s.link_presence = new_pre
+    return s
+
 
 
 def neighbors_direct(s):
@@ -65,6 +92,12 @@ def neighbors_direct(s):
                     res[x][y].append([t1, (t1,t1)])
                 if (j > 0 and t1 != s.link_presence[i][j-1]) or (j==0):
                     res_inv[y][x].append([t1, (t1,t1)])
+    for v in res.keys():
+        for e in res[v].keys():
+            res[v][e] = set(tuple([tuple(z) for z in res[v][e]]))
+    for v in res_inv.keys():
+        for e in res_inv[v].keys():
+            res_inv[v][e] = set(tuple([tuple(z) for z in res_inv[v][e]]))
 
     return res,res_inv
 
@@ -123,6 +156,7 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
     for v in sg.nodes:
         P[v] = set()
     for e in neighbors[s].keys():
+        print("neighbors", s, e,neighbors[s][e])
         for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
         #for j in range(0,2,2):
             if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
@@ -130,6 +164,7 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
             else:
                 l = sg.link_presence[d[(s,e)]][j:j+1]
             for t in l:
+                print("st",s ,t)
                 cur_best[s][t] = (t,0)
                 pre[s][t] = {(0,0):(-1,-1)}
                 if (s,t) not in nod:
@@ -140,6 +175,7 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
         (x,y) = Q.extract_min().data
         del nod[y]
         (a,t) = y
+        print("cur s a t ", s,a,t,cur_best[4])
         P[a].add(t)
         #(tpp,dis) = x
         for b in neighbors_inv[a].keys():
