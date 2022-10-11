@@ -55,16 +55,40 @@ def to_undirected(ss):
             d[(x,y)] = d[(x,y)].union(s.link_presence[i])
         else:
             d[(x,y)] = s.link_presence[i]
+    print(d)
+    new_s = []
+    #new_to_sort = []
+    new_sl = []
+    for e in d:
+        x = list(d[e])
+        x.sort()
+        new_s.append(x)
+        new_s.append(x[:])
+        new_sl.append(e)
+        new_sl.append((e[1],e[0]))
+    # for i in range(0,len(new_s)):
+    #     for j in range(0, len(new_s[i])):
     new_l=[]
     new_pre = []
-    for e in d.keys():
-        new_l.append(e)
-        new_l.append((e[1],e[0]))
-        new_pre.append([item for sublist in list(d[e]) for item in sublist])
-        new_pre.append([item for sublist in list(d[e]) for item in sublist])
+    for i in range(0,len(new_s)):
+        new_l.append(new_sl[i])
+        new_pre.append([item for sublist in new_s[i] for item in sublist])
     s.links = new_l
     s.link_presence = new_pre
     return s
+
+# def to_undirected(ss):
+#     s = ss.__deepcopy__()
+#     taille = len(s.links)
+#     for i in range(0,taille):
+#         x,y = s.links[i]
+#         s.links.append((y,x))
+#         l = s.link_presence[i]
+#         lc = l[:]
+#         s.link_presence.append(lc)
+#     return s
+
+
 
 
 
@@ -331,7 +355,7 @@ def relax_resting_paths_dis_gen(b, t, tp, pre, cur_best, events, events_rev, Q, 
 
 
 def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, cmp, cost, opt_walk, n):
-    if pre[a][t] == {}:
+    if len(pre[a][t]) == 0:
         return
     m = opt_walk[a][t]
     mp = m.clone()
@@ -360,7 +384,7 @@ def relax_paths_dis_gen(a, b, t, tp, pre, cur_best, events, Q, Q_nod, cmp, cost,
 def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, neighbors_inv, d, cmp, cost, walk_type):
     Q = fib.FibonacciHeap()
     cur_best = [ {t:numpy.Infinity   for t in events} for i in range(len(sg.nodes)) ]
-    pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
+    pre = [{t:set()   for t in events} for i in range(len(sg.nodes))]
     opt_walk = [ {t:mw.Metawalk()  for t in events} for i in range(len(sg.nodes)) ]
     nod = dict()
     n = len(sg.nodes)
@@ -404,8 +428,8 @@ def dijkstra_directed_dis_gen(sg, s, events, events_rev, neighbors, neighbors_in
                     #print("tp",tp)
                     #if (a,t) == (15,42.61256423310296):
                         #print("salut2",(a,t),(b,tp))
-                    if walk_type == "active":
-                        relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
+                    # if walk_type == "active":
+                    #     relax_resting_paths_dis_gen(a,t,tp,pre,cur_best, events, events_rev, Q, nod, cmp, cost, opt_walk, n)
                     #print(cur_best)
                     relax_paths_dis_gen(a,b,t,tp,pre,cur_best, events, Q, nod, cmp, cost, opt_walk, n)
                     # print("relax paths cur", cur_best)

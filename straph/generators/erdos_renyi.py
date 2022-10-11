@@ -223,6 +223,8 @@ def erdos_renyi_discrete(t_window, nb_node, prob):
                         else:
                             taille = len(link_presence)-1
                             link_presence[taille] = link_presence[taille] + [ev,ev]
+    for i in range(0,len(link_presence)):
+        link_presence[i].sort()
 
     S = sg.StreamGraph(times=t_window,
                        nodes=nodes,

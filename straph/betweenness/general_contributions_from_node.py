@@ -332,12 +332,13 @@ def contri_delta_svt_dis_gen(node, v, t, l_nei, sigma_r, contribution, deltasvvt
                 else:
                     partial_sum[l_nei[v,t][ii][0]] = s
 
-                if ii != 0:
-                    jj = event_reverse[l_nei[v,t][ii-1][0]]
-                else:
-                    jj = event_reverse[t]
-                if walk_type == "active":
-                    contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
+            if ii != 0:
+                jj = event_reverse[l_nei[v,t][ii-1][0]]
+            else:
+                jj = event_reverse[t]
+            if walk_type == "active":
+                #contri_intermeidary_vertices_dis_gen(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
+                contri_intermeidary_vertices_dis_gen2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s)
         if v not in contribution:
             contribution[v] = dict()
         for vv in contrib_local:
