@@ -94,6 +94,19 @@ def general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, e
                 contribution[v][t] = vol.Volume(0,0)
     return contribution, edge_contribution
 
+def contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s):
+    print("node", node ,"(v,t)",v,t,"tp", t_p)
+    if v not in contribution:
+        contribution[v] = dict()
+    for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
+        print("event[jjj]", event[jjj])
+        if (v,event[jjj]) in l_nei:
+            continue
+        if v not in contrib_local:
+            contrib_local[v] = dict()
+        if not (event[jjj] in contribution[v]) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
+            print("ici","node",node  ,"(v,t)",v,t,"t_p", t_p, "event[jjj]", event[jjj],"s",s)
+            contrib_local[v][event[jjj]] = s.copy()
 
 def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced):
     if v not in contribution:
@@ -174,7 +187,7 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
             else:
                 jj = event_reverse[t]
                 #contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
-            contri_intermeidary_vertices_dis_gen2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s)
+            contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s)
 
         if v not in contribution:
             contribution[v] = dict()
@@ -311,7 +324,7 @@ def contri_intermeidary_vertices_dis_gen2(node, v, t, t_p, l_nei, contrib_local,
             contrib_local[v] = dict()
         if not (event[jjj] in contribution[v]) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
             print("ici","node",node  ,"(v,t)",v,t,"t_p", t_p, "event[jjj]", event[jjj],"s",s)
-            contrib_local[v][event[jjj]] = s.copy()
+            contrib_local[v][event[jjj]] = s
 
 def contri_delta_svt_dis_gen(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, preced, walk_type):
     if (v,t) == (1, 70.1131204334166):

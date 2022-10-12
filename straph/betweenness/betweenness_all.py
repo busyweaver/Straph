@@ -150,32 +150,32 @@ def heatmap_betweenness(s, bet, deg_increa, square = True):
     l = [ [ bet[y][t] for t in events ] for y in deg_increa  ]
     a = np.matrix(l)
     df_cm = pd.DataFrame(a, index = [v for v in deg_increa], columns = [t for t in events])
-    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square , cbar_kws={"shrink": 0.3})
+    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square , cbar_kws={"shrink": 0.6})
     return ax
 
-def aggregated_time_betweenness(s, bet, deg_increa, square = True):
+def aggregated_time_betweenness(s, bet, d, square = True):
     events, events_reverse = events_dic(s)
     # d = s.degrees()
     # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
     # deg_increa.sort()
     # deg_increa.reverse()
-    l =  [ [ sum(bet[y][t] for y in s.nodes) for t in events]  for j in range(1) ]
+    l =  [ [ sum(bet[d[y]][t] for y in s.nodes) for t in events]  for j in range(1) ]
     a = np.matrix(l)
     df_cm = pd.DataFrame(a,  index = ["aggregated nodes"], columns = [t for t in events])
-    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.3})
+    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.6})
     return ax
 
-def aggregated_node_betweenness(s, bet, deg_increa, square = True,):
+def aggregated_node_betweenness(s, bet, d, square = True,):
     events, events_reverse = events_dic(s)
     # d = s.degrees()
     # deg_increa = list(map( lambda x : (d[x], x) , list(d) ))
     # deg_increa.sort()
     # deg_increa.reverse()
-    l = [  [sum( bet[y][t] for t in events) for j in range(1)]   for y in deg_increa  ]
+    l = [  [sum( bet[d[y]][t] for t in events) for j in range(1)]   for y in s.nodes  ]
 
     a = np.matrix(l)
-    df_cm = pd.DataFrame(a,  index = [s.node_to_label[v] for v in deg_increa], columns = ["aggregated times"])
-    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.3})
+    df_cm = pd.DataFrame(a,  index = [v for v in d], columns = ["aggregated times"])
+    ax = sns.heatmap(df_cm,cmap="YlGnBu",square = square, cbar_kws={"shrink": 0.6})
     return ax
 
 
