@@ -97,15 +97,15 @@ def betweenness_all(s, approx = -1):
         GT = bt.interval_graph(Gp)
         edge = bt.edges(nouveau)
         before[node], after[node] = bt.volume_instantenuous(nouveau, G[node], events, events_reverse, edge)
-        before[node] = {v: {t:False for t in events} for v in s.nodes }
-        after[node] = {v: {t:False for t in events} for v in s.nodes } 
+        # before[node] = {v: {t:False for t in events} for v in s.nodes }
+        # after[node] = {v: {t:False for t in events} for v in s.nodes } 
         mx = bt.max_volume_superposition(GT)
         sigma = bt.volume_metapaths_at_t(G[node], node, cur_best[node], mx)
         f_edge = bt.dictionary_first_edge(G[node], cur_best[node])
         sigma_r[node] = bt.optimal_with_resting_con(nouveau, node, f_edge, events, G[node], sigma, cur_best[node], unt)
-        print("instant bef",before)
-        print("instant aft",after)
-        print("node contri", node)
+        #print("instant bef",before)
+        #print("instant aft",after)
+        #print("node contri", node)
         contri[node], prev_next[node] = bt.contribution_each_latency_con(nouveau, lat_rev_triplet,events[0],events[len(events)-1], before[node], after[node])
         latence_arrival = {v : { y: [x,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }
         latence_depar = {v : { x : [y,z] for (x,y,z) in lat_triplet[v] }  for v in nouveau.nodes }

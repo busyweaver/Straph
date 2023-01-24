@@ -7,9 +7,20 @@ from latencylib import Latency_lists
 # utility functions
 # given a link stream L, two nodes u and w, a latency pair (s,a) from u to w, and the ordered latency list LL from u to w, compute ... see paper.
 
+VSPsuaw = dict()
+def VSP_mem(L,(s_prime,u),(a_prime,w)):
+    if ((s_prime,u),(a_prime,w)) in VSPsuaw:
+        return VSPsuaw[((s_prime,u),(a_prime,w))]
+    else:
+        VSPsuaw[((s_prime,u),(a_prime,w))] = VSP(L,(s_prime,u),(a_prime,w))
+        return VSPsuaw[((s_prime,u),(a_prime,w))]
+
+
+
+
 def PrevList(L,u,w,(s,a),LL):
 	R,vol = [],(0.,0)
-	dist_su_aw = ls_dist(L,(s,u),a).get((a,w),None)
+	dist_su_aw = dist_mem(L,(s,u),a).get((a,w),None)
 	assert(dist_su_aw!=None)
 	if s==a:
 		d_u_w = graph_dist(get_graph_neighborhood_minus(L,s),u).get(w,None)
@@ -21,7 +32,7 @@ def PrevList(L,u,w,(s,a),LL):
 				R.append((s_prime,vol))
 				return(R)
 			if a_prime-s_prime==a-s:
-				dist_su_aw_prime = ls_dist(L,(s_prime,u),a_prime).get((a_prime,w),None)
+				dist_su_aw_prime = dist_mem(L,(s_prime,u),a_prime).get((a_prime,w),None)
 				if dist_su_aw==None or (dist_su_aw_prime!=None and dist_su_aw_prime<dist_su_aw):
 					R.append((s_prime,vol))
 					return(R)
@@ -30,13 +41,13 @@ def PrevList(L,u,w,(s,a),LL):
 					d_u_w = graph_dist(get_graph_neighborhood_minus(L,s_prime),u).get(w,None)
 					if s_prime==a_prime and d_u_w==dist_su_aw:
 						return(R)
-					vol = plusvol(vol,VSP(L,(s_prime,u),(a_prime,w)))
+					vol = plusvol(vol,VSP_mem(L,(s_prime,u),(a_prime,w)))
 	R.append((L.alpha,vol))
         return R
 
 def NextList(L,u,w,(s,a),LL):
 	R,vol = [],(0.,0)
-	dist_su_aw = ls_dist(L,(s,u),a).get((a,w),None)
+	dist_su_aw = dist_mem(L,(s,u),a).get((a,w),None)
 	assert(dist_su_aw!=None)
 	if s==a:
 		d_u_w = graph_dist(get_graph_neighborhood_plus(L,a),u).get(w,None)
@@ -48,7 +59,7 @@ def NextList(L,u,w,(s,a),LL):
 				R.append((a_prime,vol))
 				return(R)
 			if a_prime-s_prime==a-s:
-				dist_su_aw_prime = ls_dist(L,(s_prime,u),a_prime).get((a_prime,w),None)
+				dist_su_aw_prime = dist_mem(L,(s_prime,u),a_prime).get((a_prime,w),None)
 				if dist_su_aw==None or (dist_su_aw_prime!=None and dist_su_aw_prime<dist_su_aw):
 					R.append((a_prime,vol))
 					return(R)
@@ -57,9 +68,17 @@ def NextList(L,u,w,(s,a),LL):
 					d_u_w = graph_dist(get_graph_neighborhood_plus(L,a_prime),u).get(w,None)
 					if s_prime==a_prime and d_u_w==dist_su_aw:
 						return(R)
-					vol = plusvol(vol,VSP(L,(s_prime,u),(a_prime,w)))
+					vol = plusvol(vol,VSP_mem(L,(s_prime,u),(a_prime,w)))
 	R.append((L.omega,vol))
         return R
+
+dist = dict()
+def dist_mem(L,(i,u),j):
+    if (i,u,j) in dist:
+        return dist[(i,u,j)]
+    else:
+        dist[(i,u,j)] = ls_dist(L,(i,u),j)
+        return dist[(i,u,j)]
 
 # computes the contribution of nodes u and w to the betweenness of (t,v) in L
 def Contribution(L,u,w,(t,v),LL, dist):
@@ -71,21 +90,21 @@ def Contribution(L,u,w,(t,v),LL, dist):
         vol_tv=(0.,0)
         for (s,a) in LL:
                 if t >= s and t <= a:
-			dist_su = dist[((s,u),a)]
-			dist_tv = dist[((t,v),a)]
+			dist_su = dist_mem(L,(s,u),a)
+			dist_tv = dist_mem(L,(t,v),a)
 			if (t,v) in dist_su and (a,w) in dist_tv:
 				d_su_aw = dist_su[(a,w)]
 				d_su_tv = dist_su[(t,v)]
 				d_tv_aw = dist_tv[(a,w)]
 				if d_su_aw == d_su_tv+d_tv_aw:
-					vsp_su_tv = VSP(L, (s,u),(t,v))
-					vsp_tv_aw = VSP(L,(t,v),(a,w))
+					vsp_su_tv = VSP_mem(L, (s,u),(t,v))
+					vsp_tv_aw = VSP_mem(L,(t,v),(a,w))
 					if vsp_su_tv!=(0.,0) and vsp_tv_aw!=(0.,0):
 						vol_tv = timesvol(vsp_su_tv,vsp_tv_aw)
 				break
 	if vol_tv==(0.,0):
 		return(0.)
-	middle = VSP(L,(s,u),(a,w))
+	middle = VSP_mem(L,(s,u),(a,w))
 	Prev = PrevList(L,u,w,(s,a),LL)
 	Next = NextList(L,u,w,(s,a),LL)
 	#print "prev",Prev

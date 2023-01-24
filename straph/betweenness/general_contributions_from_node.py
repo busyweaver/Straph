@@ -94,19 +94,22 @@ def general_contribution_from_node(s, G, node, GG, sigma_r, deltasvvt, events, e
                 contribution[v][t] = vol.Volume(0,0)
     return contribution, edge_contribution
 
-def contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s):
-    print("node", node ,"(v,t)",v,t,"tp", t_p)
+def contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s, val_cont_int):
+    #print("node", node ,"(v,t)",v,t,"tp", t_p)
     if v not in contribution:
         contribution[v] = dict()
     for jjj in range(jj+1,event_reverse[l_nei[v,t][ii][0]]+1):
-        print("event[jjj]", event[jjj])
+        #print("event[jjj]", event[jjj])
         if (v,event[jjj]) in l_nei:
             continue
         if v not in contrib_local:
             contrib_local[v] = dict()
-        if not (event[jjj] in contribution[v]) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
-            print("ici","node",node  ,"(v,t)",v,t,"t_p", t_p, "event[jjj]", event[jjj],"s",s)
+        if (not (event[jjj] in contribution[v])) and (event[jjj] in preced[v] and t == preced[v][event[jjj]]):
+            #print("ici","node",node  ,"(v,t)",v,t,"t_p", t_p, "event[jjj]", event[jjj],"s",s, " jj+1",jj+1, "event_reverse[l_nei[v,t][ii][0]]+1", event_reverse[l_nei[v,t][ii][0]]+1, "l_nei[v,t]", l_nei[v,t], "ii", ii, "val_cont_int", val_cont_int)
             contrib_local[v][event[jjj]] = s.copy()
+            if event[jjj] == t_p:
+                contrib_local[v][event[jjj]] = contrib_local[v][event[jjj]] -  val_cont_int.copy()
+
 
 def contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced):
     if v not in contribution:
@@ -138,16 +141,15 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
         contrib_local = dict()
         for ii in range(len(l_nei[(v,t)])-1,-1,-1):
             #normally it should be sorted
+            val_cont_int = vol.Volume(0,0)
             for u in l_nei[v,t][ii][1]:
                 w,t_p = (u,l_nei[v,t][ii][0])
-                if (v,t) == (1, 70.1131204334166):
-                    print("w,t_p",w,t_p)
+
                 #print((v,t)," -> ",(w,t_p))
                 contri_delta_svt(node, w, t_p, l_nei, sigma_r, contribution, deltasvvt, event, event_reverse, pre, GT, unt, preced)
                 (t1,t2) = pre[w][t_p][v,t]
                 if t1 != t2 and t_p > t and unt[v][t] >=t_p:
-                    if (v,t) == (1, 70.1131204334166):
-                        print("case cont")
+
                     l = [(w, t_p)] + list(GT[t1,t2].successors((w,t_p)))
                     for yp,tpp in l:
                         #print("yp,tpp",yp,tpp)
@@ -159,24 +161,18 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
                         else:
                             mul = GT[t1,t2].edge_weight((w,t_p),(yp,tpp),"nb_paths")
                             mul = vol.Volume(mul,0)
-                        if ((kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]).dim > 0:
-                            print("ici",kappa(r,tpp,ev_prev),"*",sigma_r[(v,t)],"/",sigma_r[(yp,tpp)],  "*",contribution[yp][tpp])
+                        # if ((kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]).dim > 0:
+                        #     print("ici",kappa(r,tpp,ev_prev),"*",sigma_r[(v,t)],"/",sigma_r[(yp,tpp)],  "*",contribution[yp][tpp])
                         s += mul * (kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]
-                        if (v,t) == (1, 70.1131204334166):
-                            print("s",s,"contribution[yp][tpp]", contribution[yp][tpp], "(kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] )",(kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ),"r",r,"mul",mul, "coef", (kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp])
+                        val_cont_int += mul * (kappa(r,tpp,ev_prev)*sigma_r[(v,t)]/sigma_r[(yp,tpp)] ) *contribution[yp][tpp]
+
+
                         #print("kappa(r,tpp,ev_prev)",kappa(r,tpp,ev_prev),"sigma_r[(v,t)]",sigma_r[(v,t)], "sigma_r[(yp,tpp)]",sigma_r[(yp,tpp)],"contribution[yp][tpp]",contribution[yp][tpp],"s",s)
 
                 if ((t == t_p) or (t_p > t and t1 == t2)) and unt[v][t] >=t_p:
-                    if (v,t) == (1, 70.1131204334166):
-                            print("case discret")
-                    #print("sigma_r[(v,t)]", sigma_r[(v,t)], "sigma_r[(w,t_p)]", sigma_r[(w,t_p)])
-                    if ((sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]).dim > 0:
-                        print("la",sigma_r[(v,t)],"/",sigma_r[(w,t_p)], "*",contribution[w][t_p], "t", t, "tp", t_p, "v", v, "w", w)
-                    s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
-                    if (v,t) == (1, 70.1131204334166):
-                            print("s",s, "(sigma_r[(v,t)]/sigma_r[(w,t_p)] )", (sigma_r[(v,t)]/sigma_r[(w,t_p)] ), "(sigma_r[(v,t)]/sigma_r[(w,t_p)] )", (sigma_r[(v,t)]/sigma_r[(w,t_p)] ), "coef", (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p])
-                    #print("sigma_r[(v,t)]",sigma_r[(v,t)],"sigma_r[(w,t_p)]",sigma_r[(w,t_p)],"contribution[w][t_p]",contribution[w][t_p],"s",s)
 
+                    s += (sigma_r[(v,t)]/sigma_r[(w,t_p)] ) *contribution[w][t_p]
+                #Normalement partial sum ne sert à rien peut virer
                 if l_nei[v,t][ii][0] not in partial_sum:
                     partial_sum[l_nei[v,t][ii][0]] = s.copy()
                 else:
@@ -187,7 +183,7 @@ def contri_delta_svt(node, v, t, l_nei, sigma_r, contribution, deltasvvt, event,
             else:
                 jj = event_reverse[t]
                 #contri_intermeidary_vertices(v, t, w, t_p, l_nei, partial_sum, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced)
-            contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s)
+            contri_intermeidary_vertices2(node, v, t, t_p, l_nei, contrib_local, ii, jj, sigma_r, event, event_reverse, contribution, preced, s, val_cont_int)
 
         if v not in contribution:
             contribution[v] = dict()

@@ -36,10 +36,10 @@ LL = dict()
 vsp = dict()
 for u in L.V:
     LL[u] = Latency_lists(L,u)
-    for i in L.eventtimes:
-        for j in L.eventtimes:
-            if j >= i:
-                dist[((i,u),j)] = ls_dist(L,(i,u),j)
+    # for i in L.eventtimes:
+    #     for j in L.eventtimes:
+    #         if j >= i:
+    #             dist[((i,u),j)] = ls_dist(L,(i,u),j)
 print("latency and distances finished")
 # for u in L.V:
 #     for v in L.V:

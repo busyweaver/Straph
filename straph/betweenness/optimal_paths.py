@@ -55,7 +55,7 @@ def to_undirected(ss):
             d[(x,y)] = d[(x,y)].union(s.link_presence[i])
         else:
             d[(x,y)] = s.link_presence[i]
-    print(d)
+    #print(d)
     new_s = []
     #new_to_sort = []
     new_sl = []
@@ -176,11 +176,10 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
     cur_best = [ {t:(-numpy.Infinity,numpy.Infinity)   for t in events} for i in range(len(sg.nodes)) ]
     pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
     nod = dict()
-    P = dict()
-    for v in sg.nodes:
-        P[v] = set()
+
+
     for e in neighbors[s].keys():
-        print("neighbors", s, e,neighbors[s][e])
+        #print("neighbors", s, e,neighbors[s][e])
         for j in range(0,len(sg.link_presence[d[(s,e)]]),2):
         #for j in range(0,2,2):
             if sg.link_presence[d[(s,e)]][j] != sg.link_presence[d[(s,e)]][j+1]:
@@ -188,7 +187,7 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
             else:
                 l = sg.link_presence[d[(s,e)]][j:j+1]
             for t in l:
-                print("st",s ,t)
+                #print("st",s ,t)
                 cur_best[s][t] = (t,0)
                 pre[s][t] = {(0,0):(-1,-1)}
                 if (s,t) not in nod:
@@ -199,8 +198,7 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
         (x,y) = Q.extract_min().data
         del nod[y]
         (a,t) = y
-        print("cur s a t ", s,a,t,cur_best[4])
-        P[a].add(t)
+
         #(tpp,dis) = x
         for b in neighbors_inv[a].keys():
             for (tp,edge) in neighbors_inv[a][b]:
