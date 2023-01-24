@@ -1,3 +1,7 @@
 .idea
 sdist
 bdist_wheel
+*.pic
+*tree~
+*.pyc
+docs/notebooks/.ipynb_checkpoints/
