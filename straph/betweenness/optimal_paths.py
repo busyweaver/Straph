@@ -221,6 +221,68 @@ def dijkstra_directed(sg, s, events, events_rev, neighbors, d, neighbors_inv, un
                     #print("relax paths", cur_best)
     return (pre, cur_best)
 
+def edges_at_time(s, events):
+    res = { t: {v: set() for v in range(len(s.nodes)) } for t in events}
+    for i in range(len(s.links)):
+        x,y = s.links[i]
+        for j in range(0,len(s.link_presence[i]),2):
+            t1,t2 = s.link_presence[i][j:j+2]
+            res[t1][x].add(y)
+            res[t2][x].add(y)
+    return res
+
+
+def clem_new_algorithm(sg, s, events, events_rev, neighbors, d, neighbors_inv, unt):
+    edgesT = edges_at_time(sg, events)
+    lst = dict()
+    l = dict()
+    realpath = dict()
+    nod = dict()
+    pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
+    M = max(events)
+    for v in range(len(sg.nodes)):
+        lst[v] = -numpy.Infinity
+        l[v] = numpy.Infinity
+        realpath[v] = set()
+    for t in events:
+        Q = fib.FibonacciHeap()
+        if s not in nod:
+            nod[s] = Q.insert( ((M-t,0),s ) )
+        lst[s] = t
+        l[s] = 0
+        realpath[s] = {t}
+        for v in range(len(sg.nodes)):
+            if v != s:
+                j = events_rev[t]
+                if (t != events[0]) and events[j-1] in unt[v]  and (unt[v][events[j-1]] >= t):
+                    pre[v][t] = pre[v][events[j-1]]
+                if lst[v] != -numpy.Infinity:
+                    if v not in nod:
+                        nod[v] = Q.insert( ((M - lst[v],l[v]),v ) )
+        while Q.total_nodes != 0:
+            (x,y) = Q.extract_min().data
+            del nod[y]
+            v = y
+            for u in edgesT[t][v]:
+                if (lst[v] > lst[u]) or (lst[v] == lst[u] and l[v] + 1 < l[u]):
+                    lst[u] = lst[v]
+                    l[u] = l[v] + 1
+                    realpath[u] = {t}
+                    pre[u][t] = { (v,tp)  for tp in realpath[v]}
+                    if u not in nod:
+                        nod[u] = Q.insert( ((M - lst[u],l[u]),u ) )
+                if lst[v] == lst[u] and l[u] == l[v] + 1:
+                    realpath[u].add(t)
+                    pre[u][t] = pre[u][t].union( { (v,tp) for  tp in realpath[v]})
+        for v in range(len(sg.nodes)):
+            #print(t,events_rev[t],events[events_rev[t] + 1],unt[v])
+            #print("v",v)
+            if (t not in unt[v])  or ((t != events[-1]) and (not (unt[v][t] >= events[events_rev[t] + 1]))):
+                lst[v] = -numpy.Infinity
+                l[v] = numpy.Infinity
+                realpath[v] = {}
+    return pre
+
 
 ################################ for edge betwenness ################################
 
