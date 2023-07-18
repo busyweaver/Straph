@@ -238,7 +238,7 @@ def clem_new_algorithm(sg, s, events, events_rev, neighbors, d, neighbors_inv, u
     l = dict()
     realpath = dict()
     nod = dict()
-    pre = [{t:{}   for t in events} for i in range(len(sg.nodes))]
+    pre = [{t:set()   for t in events} for i in range(len(sg.nodes))]
     M = max(events)
     for v in range(len(sg.nodes)):
         lst[v] = -numpy.Infinity
@@ -253,9 +253,9 @@ def clem_new_algorithm(sg, s, events, events_rev, neighbors, d, neighbors_inv, u
         realpath[s] = {t}
         for v in range(len(sg.nodes)):
             if v != s:
-                j = events_rev[t]
-                if (t != events[0]) and events[j-1] in unt[v]  and (unt[v][events[j-1]] >= t):
-                    pre[v][t] = pre[v][events[j-1]]
+                # j = events_rev[t]
+                # if (t != events[0]) and events[j-1] in unt[v]  and (unt[v][events[j-1]] >= t):
+                #     pre[v][t] = pre[v][events[j-1]]
                 if lst[v] != -numpy.Infinity:
                     if v not in nod:
                         nod[v] = Q.insert( ((M - lst[v],l[v]),v ) )
