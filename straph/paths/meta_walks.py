@@ -350,3 +350,10 @@ class Metawalk:
         if m.is_none():
             return np.Infinity
         return m.length()
+
+    def co_duration(m, t, cons):
+        if m.is_none():
+            return np.Infinity
+        if m.is_empty():
+            return 0.0
+        return m.first_arrival() - m.last_departure()
