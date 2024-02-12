@@ -397,6 +397,50 @@ def dijkstra_directed_edge(sg, s, events, events_rev, neighbors, d, neighbors_in
 
 ################################ for discrete temporal graphs generic ################################
 
+def co_sh_im(val,n,t,tp, extend):
+    if val == numpy.Infinity:
+        return numpy.Infinity
+    if val == -1:
+        return 0
+    if extend:
+        return val
+
+    return val + 1
+
+def co_sfp_im(val,n,t, tp, extend):
+    if val == numpy.Infinity:
+        return numpy.Infinity
+    if val == -1:
+        return 0.0
+    dur = val//n
+    l = val%n
+    dep = t-dur
+    if extend:
+        return (tp-dep)*n+l
+    return (tp-dep)*n+l+1
+
+def co_fm_im(val,n,t,tp, extend):
+    if val == numpy.Infinity:
+        return numpy.Infinity
+    if val == -1:
+        return 0.0
+    #should not go in here
+    if extend:
+        return -1
+    return tp
+
+def co_dur_im(val,n,t,tp, extend):
+    if val == numpy.Infinity:
+        return numpy.Infinity
+    if val == -1:
+        return 0.0
+    if extend:
+        return val
+    dep = t-val
+
+    return (tp-dep)
+
+
 def relax_resting_paths_dis_gen(b, t, tp, pre, cur_best, events, events_rev, Q, Q_nod, cmp, cost, opt_walk, n):
     #print("opt_walk[b][t]", opt_walk[b][t], "opt_walk[b][tp]", opt_walk[b][tp])
     #print("opt_walk", opt_walk)
@@ -503,37 +547,6 @@ def relax_resting_bellman_dis_gen(b, t, tp, pre, cur_best, events, events_rev, c
     return
 
 
-def co_sh_im(val,n,t,tp, extend):
-    if val == numpy.Infinity:
-        return numpy.Infinity
-    if val == -1:
-        return 0
-    if extend:
-        return val
-
-    return val + 1
-
-def co_sfp_im(val,n,t, tp, extend):
-    if val == numpy.Infinity:
-        return numpy.Infinity
-    if val == -1:
-        return 0.0
-    dur = val//n
-    l = val%n
-    dep = t-dur
-    if extend:
-        return (tp-dep)*n+l
-    return (tp-dep)*n+l+1
-
-def fm_im(val,n,t,tp, extend):
-    if val == numpy.Infinity:
-        return numpy.Infinity
-    if val == -1:
-        return 0.0
-    #should not go in here
-    if extend:
-        return -1
-    return tp
 
 
 
